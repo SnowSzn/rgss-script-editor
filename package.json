@@ -1,0 +1,108 @@
+{
+  "name": "rgss-script-editor",
+  "displayName": "RGSS Script Editor",
+  "description": "It allows to edit RPG Maker ruby script files extracting them from the Scripts.rvdata2 bundled data",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "workspaceContains:Game.ini"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "rgss-script-editor.setProjectFolder",
+        "title": "Set Project Folder",
+        "category": "RGSS Script Editor"
+      },
+      {
+        "command": "rgss-script-editor.extractScripts",
+        "title": "Extract Scripts",
+        "category": "RGSS Script Editor"
+      },
+      {
+        "command": "rgss-script-editor.runGame",
+        "title": "Run Game",
+        "category": "RGSS Script Editor"
+      }
+    ],
+    "configuration": [
+      {
+        "title": "_RGSS Script Editor",
+        "properties": {
+          "rgssScriptEditor.debug.logToConsole": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enables this extension to log information to the debug console"
+          },
+          "rgssScriptEditor.debug.logToFile": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enables this extension to log information to a file"
+          },
+          "rgssScriptEditor.external.scriptsFolder": {
+            "type": "string",
+            "default": "./Scripts",
+            "description": "The relative path to the folder where all scripts will be extracted"
+          },
+          "rgssScriptEditor.gameplay.gameName": {
+            "type": "string",
+            "default": "Game.exe",
+            "description": "The name of the game executable in the project folder"
+          },
+          "rgssScriptEditor.gameplay.editorTestMode": {
+            "type": "boolean",
+            "default": true,
+            "description": "Activates test mode when running the game"
+          },
+          "rgssScriptEditor.gameplay.nativeConsole": {
+            "type": "boolean",
+            "default": true,
+            "description": "Enables the native console when running the game (only for RPG Maker VX Ace projects)"
+          }
+        }
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "rgss-script-editor.setProjectFolder",
+        "key": "F6",
+        "when": "workspaceFolderCount > 0"
+      },
+      {
+        "command": "rgss-script-editor.runGame",
+        "key": "F12"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "yarn run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "yarn run compile && yarn run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/marshal": "^0.5.2",
+    "@types/mocha": "^10.0.3",
+    "@types/node": "18.x",
+    "@types/vscode": "^1.84.0",
+    "@typescript-eslint/eslint-plugin": "^6.9.0",
+    "@typescript-eslint/parser": "^6.9.0",
+    "@vscode/test-electron": "^2.3.6",
+    "eslint": "^8.52.0",
+    "glob": "^10.3.10",
+    "mocha": "^10.2.0",
+    "typescript": "^5.2.2",
+    "zlib": "^1.0.5"
+  },
+  "dependencies": {
+    "@hyrious/marshal": "^0.3.2"
+  }
+}
