@@ -20,7 +20,6 @@
         "title": "Set Project Folder",
         "category": "RGSS Script Editor",
         "icon": "$(folder)"
-        
       },
       {
         "command": "rgss-script-editor.openProjectFolder",
@@ -46,7 +45,6 @@
         "category": "RGSS Script Editor",
         "icon": "$(gear)"
       }
-      
     ],
     "configuration": [
       {
@@ -137,7 +135,6 @@
     "@hyrious/marshal": "^0.3.2",
     "@types/mocha": "^10.0.3",
     "@types/node": "18.x",
-    "@types/pako": "^2.0.2",
     "@types/vscode": "^1.84.0",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.9.0",
