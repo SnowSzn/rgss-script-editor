@@ -1,43 +1,27 @@
-import path from 'path';
 import * as fs from 'fs';
-import * as exEvents from './extension_events';
-import { config } from './configuration';
+import * as vscode from 'vscode';
+import { config } from './Configuration';
 
 /**
  * Log file name
  */
 const LOG_FILE_NAME = '.rgss-script-editor.log';
 
+/**
+ * Extension logger class
+ */
 class Logger {
-  /**
-   * Folder path to the log file
-   */
-  private filePath: string | undefined;
   /**
    * Log file name
    */
   private fileName: string;
-  /**
-   * File options
-   */
-  private options: fs.WriteFileOptions;
 
   /**
-   * Creates a Logger instance with the given file name on the workspace folder path
+   * Creates a Logger with the given file name
    * @param logFileName Name of the log file
    */
   constructor(logFileName: string) {
     this.fileName = logFileName;
-    this.filePath = undefined;
-    this.options = { flag: 'a' };
-  }
-
-  /**
-   * Sets the logger path to the given one
-   * @param logFilePath Log file path
-   */
-  setLogFilePath(logFilePath: string): void {
-    this.filePath = logFilePath;
   }
 
   /**
@@ -52,23 +36,20 @@ class Logger {
    * Gets the logger file name
    * @returns Logger file name
    */
-  getFileName(): string {
+  getLogFileName(): string {
     return this.fileName;
   }
 
   /**
-   * Deletes the log file corresponding to this Logger instance
+   * Deletes the log file corresponding to this Logger if it exists
    */
+
   deleteLogFile(): void {
-    let logFilePath = this.getLogFilePath();
+    let logFilePath = this.determineLogFilePath();
     if (logFilePath) {
-      fs.unlink(logFilePath, (err) => {
-        if (err) {
-          this.logError(err.message);
-        }
-      });
-    } else {
-      this.logWarning('Cannot delete log file because it does not exists!');
+      if (fs.existsSync(logFilePath.fsPath)) {
+        fs.unlinkSync(logFilePath.fsPath);
+      }
     }
   }
 
@@ -77,31 +58,24 @@ class Logger {
    *
    * A new line character is automatically concatenated
    * @param message Message
-   * @param error Console error output flag
+   * @param errorConsole Console error output flag
    */
-  log(message: string, error: boolean = false): void {
+  log(message: string, errorConsole: boolean = false): void {
     let msg = '[RGSS Script Editor] ' + message.concat('\n');
     // Logs the message to the console
-    if (config.getLogToConsole()) {
-      if (error) {
+    if (config.getConfigLogConsole()) {
+      if (errorConsole) {
         console.error(msg);
       } else {
         console.log(msg);
       }
     }
     // Check if log to file is enabled
-    if (config.getLogToFile()) {
+    if (config.getConfigLogFile()) {
       // Process logging operation
-      let logFilePath = this.getLogFilePath();
+      let logFilePath = this.determineLogFilePath();
       if (logFilePath) {
-        fs.writeFile(logFilePath, msg, this.options, (error) => {
-          if (error) {
-            console.error(error.message);
-            console.error(
-              `[Fatal Logger] Cannot write the message '${message}'`
-            );
-          }
-        });
+        fs.writeFileSync(logFilePath.fsPath, msg, { flag: 'a' });
       }
     }
   }
@@ -137,29 +111,19 @@ class Logger {
   }
 
   /**
-   * Gets the path to the log file
+   * Determines the Uri path to the log file based on the current RPG Maker project folder
    *
    * It returns undefined in case the path couldn't be created
-   * @returns Path to the log file
+   * @returns Log file Uri path
    */
-  private getLogFilePath(): string | undefined {
-    if (this.filePath) {
-      // Formats logging path
-      return path.join(this.filePath, this.fileName);
+  private determineLogFilePath(): vscode.Uri | undefined {
+    let projectFolder = config.getProjectFolder();
+    if (projectFolder && this.fileName) {
+      return vscode.Uri.joinPath(projectFolder, this.fileName);
+    } else {
+      return undefined;
     }
-    return undefined;
   }
 }
 
 export let logger = new Logger(LOG_FILE_NAME);
-
-exEvents.handler.on(
-  exEvents.ON_PROJECT_FOLDER_CHANGE,
-  (oldFolder, newFolder) => {
-    logger.setLogFilePath(newFolder);
-    // Deletes the log file in the new folder
-    if (config.getLogToFile()) {
-      logger.deleteLogFile();
-    }
-  }
-);

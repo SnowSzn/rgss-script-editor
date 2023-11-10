@@ -18,18 +18,35 @@
       {
         "command": "rgss-script-editor.setProjectFolder",
         "title": "Set Project Folder",
-        "category": "RGSS Script Editor"
+        "category": "RGSS Script Editor",
+        "icon": "$(folder)"
+        
+      },
+      {
+        "command": "rgss-script-editor.openProjectFolder",
+        "title": "Open Project Folder",
+        "category": "RGSS Script Editor",
+        "icon": "$(folder-opened)"
       },
       {
         "command": "rgss-script-editor.extractScripts",
         "title": "Extract Scripts",
-        "category": "RGSS Script Editor"
+        "category": "RGSS Script Editor",
+        "icon": "$(debug-restart)"
       },
       {
         "command": "rgss-script-editor.runGame",
         "title": "Run Game",
-        "category": "RGSS Script Editor"
+        "category": "RGSS Script Editor",
+        "icon": "$(debug-continue)"
+      },
+      {
+        "command": "rgss-script-editor.createCustomSettings",
+        "title": "Create Custom JSON Settings",
+        "category": "RGSS Script Editor",
+        "icon": "$(gear)"
       }
+      
     ],
     "configuration": [
       {
@@ -38,32 +55,56 @@
           "rgssScriptEditor.debug.logToConsole": {
             "type": "boolean",
             "default": true,
-            "description": "Enables this extension to log information to the debug console"
+            "description": "Enables this extension to log information to the debug console",
+            "order": 0
           },
           "rgssScriptEditor.debug.logToFile": {
             "type": "boolean",
             "default": true,
-            "description": "Enables this extension to log information to a file"
+            "description": "Enables this extension to log information to a file",
+            "order": 1
+          },
+          "rgssScriptEditor.external.backUpsFolder": {
+            "type": "string",
+            "default": "./Data/.backUps",
+            "description": "The relative path within the project's folder where all back ups will be saved",
+            "order": 10
           },
           "rgssScriptEditor.external.scriptsFolder": {
             "type": "string",
             "default": "./Scripts",
-            "description": "The relative path to the folder where all scripts will be extracted"
+            "description": "The relative path within the project's folder where all scripts will be extracted",
+            "order": 10
           },
-          "rgssScriptEditor.gameplay.gameName": {
+          "rgssScriptEditor.gameplay.gameExecutablePath": {
             "type": "string",
-            "default": "Game.exe",
-            "description": "The name of the game executable in the project folder"
+            "default": "./Game.exe",
+            "description": "The relative path to the game executable inside the project folder",
+            "order": 20
+          },
+          "rgssScriptEditor.gameplay.automaticArgumentsDetection": {
+            "type": "boolean",
+            "default": true,
+            "description": "Allows the extension to determine the appropiate game executable arguments based on the RGSS version (When this mode is enabled custom arguments are ignored)",
+            "order": 21
           },
           "rgssScriptEditor.gameplay.editorTestMode": {
             "type": "boolean",
             "default": true,
-            "description": "Activates test mode when running the game"
+            "description": "Whether to run the game on test mode or not (This flag is ignored when using custom arguments)",
+            "order": 22
           },
           "rgssScriptEditor.gameplay.nativeConsole": {
             "type": "boolean",
             "default": true,
-            "description": "Enables the native console when running the game (only for RPG Maker VX Ace projects)"
+            "description": "Whether to allow a console window to appear on game execution or not, only RPG Maker VX Ace (This flag is ignored when using custom arguments)",
+            "order": 23
+          },
+          "rgssScriptEditor.gameplay.customArguments": {
+            "type": "string",
+            "default": "",
+            "description": "Set your own custom arguments here separated by a whitespace (You must disable 'auto. arguments detection' behavior to use this)",
+            "order": 29
           }
         }
       }
@@ -77,6 +118,10 @@
       {
         "command": "rgss-script-editor.runGame",
         "key": "F12"
+      },
+      {
+        "command": "rgss-script-editor.extractScripts",
+        "key": "F7"
       }
     ]
   },
@@ -89,9 +134,10 @@
     "test": "node ./out/test/runTest.js"
   },
   "devDependencies": {
-    "@types/marshal": "^0.5.2",
+    "@hyrious/marshal": "^0.3.2",
     "@types/mocha": "^10.0.3",
     "@types/node": "18.x",
+    "@types/pako": "^2.0.2",
     "@types/vscode": "^1.84.0",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.9.0",
@@ -99,10 +145,6 @@
     "eslint": "^8.52.0",
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
-    "typescript": "^5.2.2",
-    "zlib": "^1.0.5"
-  },
-  "dependencies": {
-    "@hyrious/marshal": "^0.3.2"
+    "typescript": "^5.2.2"
   }
 }

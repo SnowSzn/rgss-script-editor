@@ -1,5 +1,3 @@
-import * as Configuration from '../utils/configuration';
-
 /**
  * Ruby Game Scripting System script class
  */

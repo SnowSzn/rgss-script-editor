@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import * as manager from './modules/manager';
+import * as manager from './modules/Manager';
 
 // TODO: Create extension
 /*
@@ -37,12 +37,41 @@ import * as manager from './modules/manager';
             - Modules/module3.rb
             - Addons/Actors/actor.rb
             - etc ...
+        Info: https://code.visualstudio.com/api/references/contribution-points (contributes.customEditors)
+      
+      Hacer que la extension pueda leer opciones de un fichero JSON en la carpeta del proyecto
+      por ejemplo: un fichero 'rgss-script-editor.json' que sobreescribirá al configuracion
+      de VSCode (en configuration.ts), si gameName en VSCode es 'Game.exe'
+      en el fichero local se podria cambiar el gameName a 'Juego.exe' y la extension
+      seria capaz devolver la opcion de VSCode o la opcion del JSON
+
+      Añadir un check para no permitir que se vuelva a extraer los ficheros de fichero bundle
+      si ya se ha hecho, esto es una medida de seguridad para evitar que se sobreescriba el contenido
+      de la carpeta de Scripts si ya se hizo, ya que una vez que los scripts se extraen, se sobreescribira
+      el fichero bundle con un fichero preparado para cargar los scripts de la carpeta, en el caso de que
+      se cambie de nombre la carpeta, deberia existir un comando para re-crear el fichero bundle con el nuevo path
+
+      Otras ideas:
+      Cambiar las opciones de la extension sobre los argumentos:
+        - A) Allow auto. arguments detection (boolean)
+          -> Allows the extension to determine the appropiate RPG Maker game arguments based on the RGSS version
+          -> When 'auto. detection' mode is ON custom arguments are ignored
+        - B) Enable Native Console (boolean)
+          -> Whether to allow a console to appear on game execution or not (only RPG Maker VX Ace)
+          -> This flag only works for 'auto. arguments detection' mode
+        - C) Enable test mode (boolean)
+          -> Whether to run the game on test mode or not
+          -> This flag only works for 'auto. arguments detection' mode
+        - D) Custom Arguments (string)
+          -> Set your own custom arguments here that will be used when auto. detection is turned off
+          -> This option ignores the state of the B and C flags since they are custom arguments
 */
 // TODO: INFO: https://stackoverflow.com/questions/39569993/vs-code-extension-get-full-path
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  // **********************************************************
   // Set project folder command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -50,29 +79,48 @@ export function activate(context: vscode.ExtensionContext) {
       () => {
         vscode.window
           .showWorkspaceFolderPick({
-            placeHolder: 'Select the RPG Maker project folder',
+            placeHolder: 'Choose the RPG Maker active project folder',
             ignoreFocusOut: true,
           })
-          .then((value) => {
+          .then(async (value) => {
             if (value) {
-              manager.setProjectFolder(value.uri);
+              await manager.setProjectFolder(value.uri);
             }
           });
       }
     )
   );
+  // **********************************************************
+  // Open project folder command
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.openProjectFolder',
+      () => {
+        manager.openProjectFolder();
+      }
+    )
+  );
+  // **********************************************************
   // Extract scripts
   context.subscriptions.push(
     vscode.commands.registerCommand('rgss-script-editor.extractScripts', () => {
       manager.extractScripts();
     })
   );
+  // **********************************************************
   // Run game command
   context.subscriptions.push(
     vscode.commands.registerCommand('rgss-script-editor.runGame', () => {
       manager.runGame();
     })
   );
+  // **********************************************************
+  // Checks if current opened folder is valid to auto. open it
+  let folders = vscode.workspace.workspaceFolders;
+  if (folders) {
+    manager.quickStart(folders);
+  }
+  // **********************************************************
 }
 
 // This method is called when your extension is deactivated
