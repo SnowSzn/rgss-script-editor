@@ -1,6 +1,30 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 
+export function basenameUri(urifPath: vscode.Uri): string {
+  switch (process.platform) {
+    case 'win32':
+      return path.win32.basename(urifPath.fsPath);
+    case 'darwin':
+    case 'linux':
+      return path.posix.basename(urifPath.fsPath);
+    default:
+      return path.basename(urifPath.fsPath);
+  }
+}
+
+export function basename(fPath: string): string {
+  switch (process.platform) {
+    case 'win32':
+      return path.win32.basename(fPath);
+    case 'darwin':
+    case 'linux':
+      return path.posix.basename(fPath);
+    default:
+      return path.basename(fPath);
+  }
+}
+
 export function resolveUri(urifPath: vscode.Uri): string {
   switch (process.platform) {
     case 'win32':

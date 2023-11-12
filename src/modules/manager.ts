@@ -1,31 +1,35 @@
-import * as fs from 'fs';
-import * as marshal from '@hyrious/marshal';
-import * as zlib from 'zlib';
 import * as cp from 'child_process';
 import * as vscode from 'vscode';
+import * as uiElements from './ui/ExtensionUIElements';
 import * as configuration from './utils/Configuration';
-import * as ui from './ui/ExtensionUI';
-import * as scripts from './utils/ScriptFolderUtil';
+import * as scriptsUtils from './utils/ScriptFolderUtils';
 import { logger } from './utils/Logger';
 import { isWineInstalled } from './utils/CheckWine';
-import { checkFolderValidness } from './utils/CheckProjectFolderValidness';
 
 /**
  * Quickstart extension
- * @param folders List of folders
  */
-export async function quickStart(folders: readonly vscode.WorkspaceFolder[]) {
-  let validFolders = [];
-  for (let folder of folders) {
-    if (checkFolderValidness(folder.uri)) {
-      validFolders.push(folder);
+export async function quickStart() {
+  let folders = vscode.workspace.workspaceFolders;
+  if (folders && configuration.config.getConfigQuickstart()) {
+    let validFolders = [];
+    for (let folder of folders) {
+      if (configuration.config.checkFolderValidness(folder.uri)) {
+        validFolders.push(folder);
+      }
     }
-  }
-  // Opens the folder if there is only one valid
-  if (validFolders.length === 1) {
-    await setProjectFolder(validFolders[0].uri);
+    // Opens the folder if there is only one valid
+    if (validFolders.length === 1) {
+      let folder = validFolders[0];
+      vscode.window.showInformationMessage(
+        `Detected '${folder.name}' as a RPG Maker project!`
+      );
+      await setProjectFolder(folder.uri);
+    } else {
+      uiElements.controller.controlStatusBar({ setProjectFolder: true });
+    }
   } else {
-    // Do nothing for now
+    uiElements.controller.hideAllStatusBars();
   }
 }
 
@@ -44,14 +48,29 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
       logger.logInfo(
         `Folder '${value.curProjectFolder?.fsPath}' opened successfully!`
       );
+      // Updates VSCode context when clause
+      vscode.commands.executeCommand(
+        'setContext',
+        'rgss-script-editor.validWorkingFolder',
+        true
+      );
       logger.logInfo(`RGSS Version detected: '${value.curRgssVersion}'`);
       // Updates status bar
-      ui.controller.updateProjectFolderStatusBar(value.curProjectFolder!);
-      ui.controller.showStatusBar();
+      uiElements.controller.updateProjectFolderStatusBar(
+        value.curProjectFolderName!
+      );
+      uiElements.controller.showAllStatusBars();
     },
     (reason) => {
-      ui.controller.hideStatusBar();
       logger.logError(reason);
+      // Updates VSCode context when clause
+      vscode.commands.executeCommand(
+        'setContext',
+        'rgss-script-editor.validWorkingFolder',
+        false
+      );
+      // Tries quickstart again
+      quickStart();
     }
   );
 }
@@ -76,68 +95,36 @@ export async function openProjectFolder() {
 /**
  * Extracts all scripts from the bundled file into the script folder
  */
-export function extractScripts() {
+export async function extractScripts() {
   logger.logInfo('Extracting scripts from the bundled file...');
   let scriptsFolderPath = configuration.config.determineScriptsFolderPath();
   let bundleFilePath = configuration.config.determineBundleScriptsPath();
-  // let rgssVersion = configuration.config.getRGSSVersion();
   if (bundleFilePath && scriptsFolderPath) {
     logger.logInfo(`RPG Maker bundle file path is: '${bundleFilePath}'`);
     logger.logInfo(
       `Path to the extracted scripts folder is: '${scriptsFolderPath}'`
     );
     try {
-      // TODO: How to extract script files?
-      // Makes sure to create the path where all scripts will be stored
-      scripts.createScriptFolder();
-      // Creates a backup
-      scripts.createBackUp(bundleFilePath);
-      // Perform extract logic
-      // TODO: Importante
-      // permitir que se puedan hacer tantos 'extracts' como quiera el usuario, PERO
-      // NUNCA se eliminara el directorio y se volvera a recrear por cada extraccion que se haga
-      // ademas, la extension DEBE ignorar el script dummy que se crea para cargar los ficheros externos
-      // Se podria recurrir a un regex que comprobase una linea especifica en el codigo del script e ignorarlo
-      // cuando se cumpla la condicion de que el fichero es el que se ha creado por la extension
-      // logger.logInfo('Reading bundled file...');
-      // let decoder = new TextDecoder('utf-8');
-      // let file = fs.readFileSync(bundleFilePath);
-      // var data: any = marshal.load(file, { string: 'binary' });
-      // for (let i = 0; i < data.length; i++) {
-      //   var [_section, _name, _code] = data[i];
-      //   var section = _section;
-      //   var name = decoder.decode(_name);
-      //   var code = zlib.inflateSync(_code);
-      //   logger.logInfo(`Section: '${section.toString()}'`);
-      //   logger.logInfo(`Name: '${name.toString()}'`);
-      //   logger.logInfo(`Code: '${code.toString()}'`);
-
-      // }
-      // TODO: Fixed now, I gotta check if for RGSS1 I need to marshal.loadAll() tho
-      // //let binary = await vscode.workspace.fs.readFile(Uri.new());
-      // switch (rgssVersion) {
-      //   case Configuration.RGSSVersions.RGSS1: {
-      //   }
-      //   case Configuration.RGSSVersions.RGSS2: {
-      //   }
-      //   case Configuration.RGSSVersions.RGSS3: {
-      //     //let binaryArr = hMarshal.load(binary) as Array<Array<number | string>>;
-      //     let binaryArr = hMarshal.load(binary) as Array<Array<ArrayBuffer>>;
-      //     for (let index = 0; index < binaryArr.length; index++) {
-      //       let script = binaryArr[index];
-      //       let code = zlib.inflateRawSync(binaryArr[index][2], {
-      //         windowBits: zlib.constants.Z_MAX_WINDOWBITS,
-      //       });
-      //       logger.logInfo(`stop`);
-      //     }
-      //   }
-      // }
+      // Extracts all scripts
+      await scriptsUtils.extractScripts(bundleFilePath, scriptsFolderPath);
+      // Creates a load order
+      scriptsUtils.createLoadOrder(scriptsFolderPath);
+      vscode.commands.executeCommand(
+        'setContext',
+        'rgss-script-editor.extractedScripts',
+        true
+      );
     } catch (error: unknown) {
       if (typeof error === 'string') {
         logger.logError(error.toUpperCase());
       } else if (error instanceof Error) {
         logger.logError(error.message);
       }
+      vscode.commands.executeCommand(
+        'setContext',
+        'rgss-script-editor.extractedScripts',
+        false
+      );
     }
   } else {
     logger.logError(

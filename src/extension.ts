@@ -72,6 +72,17 @@ import * as manager from './modules/Manager';
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
   // **********************************************************
+  vscode.commands.executeCommand(
+    'setContext',
+    'rgss-script-editor.validWorkingFolder',
+    false
+  );
+  vscode.commands.executeCommand(
+    'setContext',
+    'rgss-script-editor.extractedScripts',
+    false
+  );
+  // **********************************************************
   // Set project folder command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -103,9 +114,12 @@ export function activate(context: vscode.ExtensionContext) {
   // **********************************************************
   // Extract scripts
   context.subscriptions.push(
-    vscode.commands.registerCommand('rgss-script-editor.extractScripts', () => {
-      manager.extractScripts();
-    })
+    vscode.commands.registerCommand(
+      'rgss-script-editor.extractScripts',
+      async () => {
+        await manager.extractScripts();
+      }
+    )
   );
   // **********************************************************
   // Run game command
@@ -115,11 +129,7 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
   // **********************************************************
-  // Checks if current opened folder is valid to auto. open it
-  let folders = vscode.workspace.workspaceFolders;
-  if (folders) {
-    manager.quickStart(folders);
-  }
+  manager.quickStart();
   // **********************************************************
 }
 

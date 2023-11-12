@@ -1,10 +1,25 @@
 {
+  "icon": "./icons/icon.png",
   "name": "rgss-script-editor",
   "displayName": "RGSS Script Editor",
-  "description": "It allows to edit RPG Maker ruby script files extracting them from the Scripts.rvdata2 bundled data",
-  "version": "0.0.1",
+  "description": "It allows to edit RPG Maker ruby script files extracting them from the Scripts bundled data file",
+  "author": {"name": "SnowSzn", "url": "https://github.com/SnowSzn"},
+  "publisher": "SnowSzn",
+  "license": "MIT",
+  "keywords": [
+    "Ruby Game Scripting System",
+    "RGSS",
+    "RPG Maker Script Editor",
+    "RPGMaker",
+    "RPG Maker XP",
+    "RPG Maker VX",
+    "RPG Maker VX Ace"
+  ],
+  "repository": {"url": "https://github.com/SnowSzn/rgss-script-editor"},
+  "bugs": {"url": "https://github.com/SnowSzn/rgss-script-editor/issues"},
+  "version": "0.1.0",
   "engines": {
-    "vscode": "^1.70.0"
+    "vscode": "^1.80.0"
   },
   "categories": [
     "Other"
@@ -31,13 +46,13 @@
         "command": "rgss-script-editor.extractScripts",
         "title": "Extract Scripts",
         "category": "RGSS Script Editor",
-        "icon": "$(debug-restart)"
+        "icon": "$(arrow-down)"
       },
       {
         "command": "rgss-script-editor.runGame",
         "title": "Run Game",
         "category": "RGSS Script Editor",
-        "icon": "$(debug-continue)"
+        "icon": "$(notebook-execute)"
       },
       {
         "command": "rgss-script-editor.createCustomSettings",
@@ -53,7 +68,7 @@
           "rgssScriptEditor.debug.logToConsole": {
             "type": "boolean",
             "default": true,
-            "description": "Enables this extension to log information to the debug console",
+            "description": "Enables this extension to log information to the Visual Studio Code debug console",
             "order": 0
           },
           "rgssScriptEditor.debug.logToFile": {
@@ -62,47 +77,53 @@
             "description": "Enables this extension to log information to a file",
             "order": 1
           },
+          "rgssScriptEditor.extension.quickStart": {
+            "type": "boolean",
+            "default": true,
+            "description": "Allows the extension to activate itself by checking whether the opened folder is a valid RPG Maker project or not",
+            "order": 20
+          },
           "rgssScriptEditor.external.backUpsFolder": {
             "type": "string",
-            "default": "./Data/.backUps",
+            "default": "./.rgss-script-editor-backups",
             "description": "The relative path within the project's folder where all back ups will be saved",
-            "order": 10
+            "order": 30
           },
           "rgssScriptEditor.external.scriptsFolder": {
             "type": "string",
             "default": "./Scripts",
             "description": "The relative path within the project's folder where all scripts will be extracted",
-            "order": 10
+            "order": 31
           },
           "rgssScriptEditor.gameplay.gameExecutablePath": {
             "type": "string",
             "default": "./Game.exe",
             "description": "The relative path to the game executable inside the project folder",
-            "order": 20
+            "order": 50
           },
           "rgssScriptEditor.gameplay.automaticArgumentsDetection": {
             "type": "boolean",
             "default": true,
             "description": "Allows the extension to determine the appropiate game executable arguments based on the RGSS version (When this mode is enabled custom arguments are ignored)",
-            "order": 21
+            "order": 51
           },
           "rgssScriptEditor.gameplay.editorTestMode": {
             "type": "boolean",
             "default": true,
             "description": "Whether to run the game on test mode or not (This flag is ignored when using custom arguments)",
-            "order": 22
+            "order": 52
           },
           "rgssScriptEditor.gameplay.nativeConsole": {
             "type": "boolean",
             "default": true,
-            "description": "Whether to allow a console window to appear on game execution or not, only RPG Maker VX Ace (This flag is ignored when using custom arguments)",
-            "order": 23
+            "description": "(RPG Maker VX Ace Only) Whether to allow a console window to appear on game execution or not (This flag is ignored when using custom arguments)",
+            "order": 53
           },
           "rgssScriptEditor.gameplay.customArguments": {
             "type": "string",
             "default": "",
             "description": "Set your own custom arguments here separated by a whitespace (You must disable 'auto. arguments detection' behavior to use this)",
-            "order": 29
+            "order": 59
           }
         }
       }
@@ -115,11 +136,42 @@
       },
       {
         "command": "rgss-script-editor.runGame",
-        "key": "F12"
+        "key": "F12",
+        "when": "rgss-script-editor.validWorkingFolder"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "rgss-script-editor",
+          "title": "RGSS Script Editor",
+          "icon": "./icons/views/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "rgss-script-editor": [
+        {
+          "id": "rgss-script-editor.editorView",
+          "name": "Editor"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "rgss-script-editor.editorView",
+        "contents": "There is no folder opened in Visual Studio Code.\nYou should open a RPG Maker project folder to start this extension.\n[Open Folder](command:vscode.openFolder)",
+        "when": "workspaceFolderCount <= 0"
       },
       {
-        "command": "rgss-script-editor.extractScripts",
-        "key": "F7"
+        "view": "rgss-script-editor.editorView",
+        "contents": "You must select a folder to set it as the active RPG Maker project.\n[Set Active Project Folder](command:rgss-script-editor.setProjectFolder)",
+        "when": "workspaceFolderCount > 0 && !rgss-script-editor.validWorkingFolder"
+      },
+      {
+        "view": "rgss-script-editor.editorView",
+        "contents": "You must extract the contents of the RPG Maker bundled file.\nA folder containing all script files extracted will be created in the currently selected project folder.\n[Extract Scripts](command:rgss-script-editor.extractScripts)",
+        "when": "rgss-script-editor.validWorkingFolder && !rgss-script-editor.extractedScripts"
       }
     ]
   },

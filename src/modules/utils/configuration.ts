@@ -8,8 +8,10 @@ import * as pathResolve from './PathResolve';
  */
 export type ConfigChangeFolder = {
   oldProjectFolder?: vscode.Uri | undefined;
+  oldProjectFolderName?: string | undefined;
   oldRgssVersion?: string | undefined;
   curProjectFolder: vscode.Uri;
+  curProjectFolderName: string | undefined;
   curRgssVersion: string;
 };
 
@@ -103,6 +105,14 @@ class Configuration {
   }
 
   /**
+   * Gets the extension quickstart status flag
+   * @returns Quickstart status flag
+   */
+  getConfigQuickstart(): boolean | undefined {
+    return this.getVSCodeConfig<boolean>('extension.quickStart');
+  }
+
+  /**
    * Gets the project relative path to the back ups folder
    * @returns Back ups folder path
    */
@@ -181,8 +191,10 @@ class Configuration {
         // If config is valid, there is no way attributes are undefined
         resolve({
           oldProjectFolder: this.projectFolder!,
+          oldProjectFolderName: pathResolve.basenameUri(this.projectFolder!),
           oldRgssVersion: this.rgssVersion!,
           curProjectFolder: this.projectFolder!,
+          curProjectFolderName: pathResolve.basenameUri(this.projectFolder!),
           curRgssVersion: this.rgssVersion!,
         });
       } else {
@@ -201,8 +213,12 @@ class Configuration {
         } else {
           resolve({
             oldProjectFolder: oldProjectFolder,
+            oldProjectFolderName: oldProjectFolder
+              ? pathResolve.basenameUri(oldProjectFolder)
+              : oldProjectFolder,
             oldRgssVersion: oldRgssVersion,
             curProjectFolder: this.projectFolder,
+            curProjectFolderName: pathResolve.basenameUri(this.projectFolder!),
             curRgssVersion: this.rgssVersion,
           });
         }
@@ -250,6 +266,23 @@ class Configuration {
    */
   valid(): boolean {
     return this.rgssVersion !== undefined && this.projectFolder !== undefined;
+  }
+
+  /**
+   * Checks if the given folder is a valid RPG Maker project folder for this extension
+   * @param folder Folder Uri path
+   * @returns Whether it is a valid RPG Maker project folder or not
+   */
+  checkFolderValidness(folder: vscode.Uri): boolean {
+    let rgss1 = pathResolve.joinUri(folder, RGSSBundleScriptsPath.RGSS1);
+    let rgss2 = pathResolve.joinUri(folder, RGSSBundleScriptsPath.RGSS2);
+    let rgss3 = pathResolve.joinUri(folder, RGSSBundleScriptsPath.RGSS3);
+    for (let data of [rgss1, rgss2, rgss3]) {
+      if (fs.existsSync(data)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
@@ -371,7 +404,7 @@ class Configuration {
       let customArgs = this.getConfigCustomArguments();
       if (customArgs) {
         customArgs.split(' ').forEach((value) => {
-          gameArgs!.push(value);
+          gameArgs.push(value);
         });
       }
     }
