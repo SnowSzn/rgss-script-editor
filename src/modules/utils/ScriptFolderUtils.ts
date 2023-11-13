@@ -22,9 +22,9 @@ const LOADER_SCRIPT_CODE_REGEXP = /Kernel\.send\(:require/g;
  */
 const LOAD_ORDER_FILE_NAME = 'load_order.txt';
 /**
- * Regexp of invalid characters for both Windows and Linux-based systems
+ * Regexp of invalid characters for both Windows, Linux-based systems and the script loader
  */
-const INVALID_CHARACTERS = /[\\/:\*\?"<>\▼|]/g;
+const INVALID_CHARACTERS = /[\\/:\*\?"<>\|▼■]/g;
 
 /**
  * Asynchronously extracts the given RPG Maker bundle file to the scripts directory.
@@ -63,7 +63,7 @@ export async function extractScripts(
           zlib.inflateSync(bundleMarshalized[i][2]).toString('utf8')
         );
         // Checks if the current script is the loader to avoid extracting it
-        if (validLoaderScript(section, code)) {
+        if (validLoaderScript(section)) {
           continue;
         } else {
           let scriptPath = pathResolve.join(scriptFolder, name);
@@ -158,7 +158,7 @@ module ScriptLoader
     load_order.each do |script|
       script_path = File.join(SCRIPTS_FOLDER_PATH, script)
       print "[RGSS Script Editor] Loading script: '#{script_path}'\\n"
-      Kernel.send(:require, script_path)
+      Kernel.send(:load, script_path)
     end
   end
 end
@@ -179,7 +179,10 @@ ScriptLoader.run
       hashStringKeysToSymbol: true,
     });
     // Overwrite bundle data
-    fs.writeFileSync(bundleFile, bundleMarshalized, { flag: 'w' });
+    fs.writeFileSync(bundleFile, bundleMarshalized, {
+      encoding: 'latin1',
+      flag: 'w',
+    });
     return true;
   } else {
     throw new Error(
@@ -340,7 +343,7 @@ function checkValidExtraction(bundle: any[][]): boolean {
     // Checks if it exists at least a valid script in the bundle array that is not a loader
     let scriptSection = script[0];
     let scriptCode = zlib.inflateSync(script[2]).toString('utf8');
-    if (validLoaderScript(scriptSection, scriptCode)) {
+    if (validLoaderScript(scriptSection)) {
       return false; // It is the loader
     } else {
       return true; // At least a 'true' is needed
@@ -389,14 +392,10 @@ function processScriptCode(scriptCode: string): string {
 /**
  * Checks if the given arguments corresponds to the extension's loader script
  * @param scriptSection Section of the script
- * @param scriptCode Code of the script
  * @returns Whether it is a valid script loader or not
  */
-function validLoaderScript(scriptSection: number, scriptCode: string) {
-  return (
-    // LOADER_SCRIPT_CODE_REGEXP.test(scriptCode) &&
-    scriptSection === LOADER_SCRIPT_SECTION
-  );
+function validLoaderScript(scriptSection: number) {
+  return scriptSection === LOADER_SCRIPT_SECTION;
 }
 
 /**

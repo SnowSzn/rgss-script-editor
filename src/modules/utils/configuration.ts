@@ -89,6 +89,14 @@ class Configuration {
   }
 
   /**
+   * Gets the extension quickstart status flag
+   * @returns Quickstart status flag
+   */
+  getConfigQuickstart(): boolean | undefined {
+    return this.getVSCodeConfig<boolean>('extension.quickStart');
+  }
+
+  /**
    * Gets log to console flag status
    * @returns Log to console flag
    */
@@ -102,14 +110,6 @@ class Configuration {
    */
   getConfigLogFile(): boolean | undefined {
     return this.getVSCodeConfig<boolean>('debug.logToFile');
-  }
-
-  /**
-   * Gets the extension quickstart status flag
-   * @returns Quickstart status flag
-   */
-  getConfigQuickstart(): boolean | undefined {
-    return this.getVSCodeConfig<boolean>('extension.quickStart');
   }
 
   /**

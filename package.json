@@ -71,23 +71,23 @@
       {
         "title": "_RGSS Script Editor",
         "properties": {
+          "rgssScriptEditor.extension.quickStart": {
+            "type": "boolean",
+            "default": true,
+            "description": "Allows the extension to activate itself by checking whether the opened folder is a valid RPG Maker project or not",
+            "order": 1
+          },
           "rgssScriptEditor.debug.logToConsole": {
             "type": "boolean",
             "default": true,
             "description": "Enables this extension to log information to the Visual Studio Code debug console",
-            "order": 0
+            "order": 10
           },
           "rgssScriptEditor.debug.logToFile": {
             "type": "boolean",
             "default": true,
             "description": "Enables this extension to log information to a file",
-            "order": 1
-          },
-          "rgssScriptEditor.extension.quickStart": {
-            "type": "boolean",
-            "default": true,
-            "description": "Allows the extension to activate itself by checking whether the opened folder is a valid RPG Maker project or not",
-            "order": 20
+            "order": 11
           },
           "rgssScriptEditor.external.backUpsFolder": {
             "type": "string",

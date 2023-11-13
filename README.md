@@ -1,24 +1,42 @@
 # RGSS Script Editor
 
-This is an extension for Visual Studio Code that makes VSCode usable as a script editor for RPG Maker XP, RPG Maker VX and RPG Maker VX Ace.
+This is an extension for Visual Studio Code that makes VSCode usable as the script editor for RPG Maker series based on RGSS framework:
+- RPG Maker XP
+- RPG Maker VX
+- RPG Maker VX Ace
 
-This extension extracts all the scripts from the bundle file that RPG Maker uses, and overwrites the bundle file with a 'script loader' script that loads individual scripts based on a text file that dictates the loading order.
+In a nutshell, this extension extracts each script in the bundle file that RPG Maker uses into individual ruby files.
+Once the extraction is done, it makes a backup of the original bundle file and overwrites it with a 'script loader' script that loads ruby scripts inside a relative folder based on a text file that dictates the loading order.
+
+Since this extension uses a different approach for loading scripts, you can use the RPG Maker editor and edit scripts in Visual Studio Code at the same time without worrying about RPG Maker overwriting the bundled file with outdated data.
+
+**Long explanation**
+
+RPG Maker loads all data (including the game's scripts) at startup when the editor is launched, that's why you can modify the scripts inside their built-in script editor and the modification will be saved into the bundled data file (Scripts.(rxdata/rvdata/rvdata2)), this happens with every modification you do inside their editor, from maps to the whole database, they are saved into the appropiate data file.
+
+The problem is that RPG Maker does not save this modifications individually, all files are saved at the same time, this means that even if you do not make any modification to the game's scripts and modified something else (for example: the database) all scripts will be overwritten with the initial data that was loaded.
+
+This produces an incompatibility with any external script editor or Visual Studio Code extension that works by overwriting the Scripts bundle data file since the editor will overwrite it everytime the project is saved, so basically the easy solution is not having the editor and the external script editor opened and working at the same time. 
+
+This extension tries to circumvent this limitation by overwriting the script bundle data file with a script loader that will load external scripts inside a relative path within the project's folder.
+
+It also allows to specify a load order and even organize the scripts inside folders, the script loader will read the ``load_order.txt`` file and load each script until end of line is reached.
+
+For security reasons, a backup scripts bundle data file is created when the extraction is done.
 
 ## Features
 
-- **Run the Game:** Run the game in VSCode using a custom keybind (F12 by default)
-  - Test mode: You can enable/disable test mode when running the game.
-  - Console Window: You can enable/disable console allocation when running the game. **(only available for RPG Maker VX Ace)**
-  - Custom Arguments: If you want to run the game with your custom arguments you can set them in the extension's settings.
-- TBD.
+- **Run Game:** You can run the game within VSCode using a keybind (F12 by default)
+- **Backup Creation:** Backs up the scripts bundled file when extraction is done.
+- **Scripts Extraction:** You can extracts all scripts inside the data file to a custom directory within the project's folder.
+- **Script Loader:** The game will load all scripts files individually based on a load order
+- **Workspace Support**: You can change the active folder easily in a workspace.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+TODO: Add some GIFs or screenshots
 
 For example if there is an image subfolder under your extension project workspace:
 
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+using: \!\[feature X\]\(images/feature-x.png\)
 
 ## Requirements
 
@@ -35,128 +53,62 @@ For example if there is an image subfolder under your extension project workspac
 
 ## Extension Settings
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
 This extension contributes the following settings:
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+* `rgssScriptEditor.extension.quickStart`: Enable/disable quick start mode.
+  * Quick start will set the extension's project folder based on the current context:
+    * If only one folder is opened and it is a valid RPG Maker project it will be activated.
+    * If a workspace is opened (several folders) you will be able to choose the appropiate folder to activate with a button in the status bar.
+    * If no folder is opened or the opened folders are not valid RPG Maker projects the extension will deactivate its UI elements automatically.
+* `rgssScriptEditor.debug.logToConsole`: Enable/disable logging to VSCode console.
+* `rgssScriptEditor.debug.logToFile`: Enable/disable logging to a log file.
+* `rgssScriptEditor.external.backUpsFolder`: Sets the relative path within the active RPG Maker project where all backups will be stored.
+* `rgssScriptEditor.external.scriptsFolder`: Sets the relative path within the active RPG Maker project where all scripts will be extracted.
+* `rgssScriptEditor.gameplay.gameExecutablePath`: Sets the relative path within the active RPG Maker project where the game executable is.
+  * This allows MKXP-Z executable to be launched.
+* `rgssScriptEditor.gameplay.automaticArgumentsDetection`: Enable/disable automatic arguments detection.
+  * If enabled, the extension will automatically choose the appropiate arguments based on the RPG Maker version.
+  * **IMPORTANT: This mode must be disabled to use custom arguments.**
+* `rgssScriptEditor.gameplay.editorTestMode`: Enable/disable test (debug) mode.
+  * If enabled, the extension will run the game on debug mode.
+  * If custom arguments are used, this option is ignored.
+* `rgssScriptEditor.gameplay.nativeConsole`: Enable/disable RPG Maker console.
+  * **IMPORTANT: This is only available for RPG Maker VX Ace**
+  * If enabled, the extension will run the game with a console window.
+  * If custom arguments are used, this option is ignored.
+* `rgssScriptEditor.gameplay.customArguments`: Set your own custom arguments to run the game with.
+  * **IMPORTANT: Auto. Arguments Detection mode must be disabled**
+  * Launchs the game with the arguments specified here.
+  * Arguments must be separated by a whitespace.
 
 ## Known Issues
 
-``Exception``
+There are some issues that may happen when running this extension, I suspect that they happen due to way ``Kernel.load`` loads files in Ruby 1.9.
 
-## Release Notes
+If you don't use special characters inside the scripts nothing will happen, but if it does these are the issues:
 
-Users appreciate release notes as you update your extension.
+* > [SyntaxError] Invalid Multibyte char (US-ASCII) Exception
 
-### 1.0.0
-
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
-
----
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
-# RGSS Script Editor
-
-This is an extension for Visual Studio Code that makes VSCode usable as a script editor for RPG Maker XP, RPG Maker VX and RPG Maker VX Ace.
-
-This extension extracts all the scripts from the bundle file that RPG Maker uses, and overwrites the bundle file with a 'script loader' script that loads individual scripts based on a text file that dictates the loading order.
-
-## Features
-
-- **Run the Game:** Run the game in VSCode using a custom keybind (F12 by default)
-  - Test mode: You can enable/disable test mode when running the game.
-  - Console Window: You can enable/disable console allocation when running the game. **(only available for RPG Maker VX Ace)**
-  - Custom Arguments: If you want to run the game with your custom arguments you can set them in the extension's settings.
-- TBD.
-
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
-
-For example if there is an image subfolder under your extension project workspace:
-
-\!\[feature X\]\(images/feature-x.png\)
-
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
-
-## Requirements
-
-### Windows
-- [Visual Studio Code](https://code.visualstudio.com/)
-### Linux
-- [Visual Studio Code](https://code.visualstudio.com/)
-- [Wine](https://www.winehq.org/) (preferably the latest version)
-  - To take full advantage of the extension you should have wine available on your system, which will be used to run the Windows game executable.
-  - You check if Wine is installed in your system with: ``wine --version``
-### macOS
-- [Visual Studio Code](https://code.visualstudio.com/)
-- **Not tested in macOS**
-
-## Extension Settings
-
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
-
-For example:
-
-This extension contributes the following settings:
-
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
-
-## Known Issues
-
-> [SyntaxError] Invalid Multibyte char (US-ASCII) Exception
-
-This may happen in some scripts that are loaded because Ruby 1.9 does not automatically detect the file's encoding
+This may happen in some scripts that are loaded because Ruby 1.9 does not automatically "detect" the file's encoding
 so it fails when trying to load a script file that has special characters.
 
 This is easily fixed by adding ``# encoding: utf-8`` in the script.
 
-I've added this line in every script that it is extracted from the bundle file, but for new scripts you may have to add it yourself if it crashes.
+The extension will add this line in *every script* that it is extracted from the bundle file, but for new scripts you may have to add it yourself if it crashes.
 
-> [LoadError] no such file to load -- {SCRIPT_FILE} Exception
+* > [LoadError] no such file to load -- Exception
 
-This may happen for a number of reasons:
-- **The file trying to load does not exists**
+This exception may happen for a number of reasons:
 
-Make sure that ALL files within the text file that defines the load order exists in the specified path.
+**The file trying to load does not exists**
 
-If you don't want to load a script file you can simply ignore it and remove it from the load order.
+Make sure that **all files** within the text file that defines the load order **exists** in the specified path.
 
-- **The file exists, but it still crashes**
+If you don't want to load a script file you can simply remove it from the load order TXT file.
+
+**The file exists, but it still crashes**
 
 If the file exists and RPG Maker still crashes you should make sure the path to the script file does not have special characters.
-
-I believe there some weirdness going on with ``Kernel.require`` when it comes to load a script file that contains special characters.
 
 I made sure to remove all of them that I know from all scripts when extraction is done, but to be 100 % try not to use special characters to name your scripts.
 
@@ -166,42 +118,11 @@ For example, these characters, that RPG Maker uses in their built-in editor are 
 
 ## Release Notes
 
-Users appreciate release notes as you update your extension.
-
 ### 1.0.0
 
-Initial release of ...
-
-### 1.0.1
-
-Fixed issue #.
-
-### 1.1.0
-
-Added features X, Y, and Z.
+Initial release.
 
 ---
 
 ## Credits
 - [marshal](https://github.com/hyrious/marshal)
-
-## Following extension guidelines
-
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
-
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
-
-## Working with Markdown
-
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
-
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
-
-## For more information
-
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
-
-**Enjoy!**
