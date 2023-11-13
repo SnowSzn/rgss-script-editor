@@ -121,6 +121,14 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.createScriptLoader',
+      async () => {
+        await manager.createScriptLoader();
+      }
+    )
+  );
   // **********************************************************
   // Run game command
   context.subscriptions.push(

@@ -105,10 +105,14 @@ export async function extractScripts() {
       `Path to the extracted scripts folder is: '${scriptsFolderPath}'`
     );
     try {
+      // Creates a backup file
+      await scriptsUtils.createBackUp(bundleFilePath);
       // Extracts all scripts
       await scriptsUtils.extractScripts(bundleFilePath, scriptsFolderPath);
+      // Overwrites the bundle file with the loader
+      await scriptsUtils.createScriptLoader(bundleFilePath);
       // Creates a load order
-      scriptsUtils.createLoadOrder(scriptsFolderPath);
+      await scriptsUtils.createLoadOrder(scriptsFolderPath);
       vscode.commands.executeCommand(
         'setContext',
         'rgss-script-editor.extractedScripts',
@@ -130,6 +134,27 @@ export async function extractScripts() {
     logger.logError(
       `Cannot extract scripts because either the scripts folder: '${scriptsFolderPath}' 
       or the bundled scripts file path: '${bundleFilePath}' are not valid!`
+    );
+  }
+}
+
+/**
+ * Asynchronously creates the bundle script loader file for RPG Maker engine
+ */
+export async function createScriptLoader() {
+  logger.logInfo('Creating script loader...');
+  let bundleFilePath = configuration.config.determineBundleScriptsPath();
+  if (bundleFilePath) {
+    logger.logInfo(`RPG Maker bundle file path is: '${bundleFilePath}'`);
+    await scriptsUtils.createBackUp(bundleFilePath);
+    // TODO: En lugar de llamar explicitamente a 'createBackUp' lo que deberia hacer es
+    // hacer que se llama automaticamente dentro del unico metodo que sobreescribe el fichero rvdata
+    // que es: 'createScriptLoader'
+    await scriptsUtils.createScriptLoader(bundleFilePath);
+  } else {
+    logger.logError(
+      `Cannot create the script loader bundled file because the bundled scripts 
+      file path: '${bundleFilePath}' is not valid!`
     );
   }
 }
@@ -185,7 +210,7 @@ export async function runGame() {
   logger.logInfo(`Running game with: '${executableName}'...`);
   logger.logInfo(`Using arguments: '${executableArgs.toString()}'`);
   let gameProcess = cp.execFile(executableName, executableArgs, {
-    encoding: 'utf-8',
+    encoding: 'utf8',
     cwd: gameWorkingDir,
   });
   gameProcess.unref();

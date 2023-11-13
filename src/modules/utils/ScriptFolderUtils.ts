@@ -18,9 +18,13 @@ const LOADER_SCRIPT_NAME = 'RGSS Script Editor Loader';
  */
 const LOADER_SCRIPT_CODE_REGEXP = /Kernel\.send\(:require/g;
 /**
+ * Load order file name within the scripts folder
+ */
+const LOAD_ORDER_FILE_NAME = 'load_order.txt';
+/**
  * Regexp of invalid characters for both Windows and Linux-based systems
  */
-const INVALID_CHARACTERS = /[\\/:\*\?"<>\|]/g;
+const INVALID_CHARACTERS = /[\\/:\*\?"<>\▼|]/g;
 
 /**
  * Asynchronously extracts the given RPG Maker bundle file to the scripts directory.
@@ -39,7 +43,7 @@ export async function extractScripts(
   scriptFolder: string
 ): Promise<boolean> {
   try {
-    let textDecoder = new TextDecoder('utf-8');
+    let textDecoder = new TextDecoder('utf8');
     let bundleContents = fs.readFileSync(bundleFile);
     let bundleMarshalized = marshal.load(bundleContents, {
       string: 'binary',
@@ -48,8 +52,6 @@ export async function extractScripts(
     if (checkValidExtraction(bundleMarshalized)) {
       // Create scripts folder if it does not exists (throws error)
       await createScriptFolder(scriptFolder);
-      // Back ups the original bundle file for security reasons (throws error)
-      await createBackUp(bundleFile);
       // Perform extraction
       for (let i = 0; i < bundleMarshalized.length; i++) {
         let section = bundleMarshalized[i][0];
@@ -57,15 +59,15 @@ export async function extractScripts(
           textDecoder.decode(bundleMarshalized[i][1]),
           i
         );
-        let code = zlib.inflateSync(bundleMarshalized[i][2]).toString('utf-8');
+        let code = processScriptCode(
+          zlib.inflateSync(bundleMarshalized[i][2]).toString('utf8')
+        );
         // Checks if the current script is the loader to avoid extracting it
         if (validLoaderScript(section, code)) {
           continue;
         } else {
           let scriptPath = pathResolve.join(scriptFolder, name);
-          fs.promises.writeFile(scriptPath, code, {
-            encoding: 'utf-8',
-          });
+          fs.writeFileSync(scriptPath, code, { encoding: 'utf8' });
         }
       }
       return true;
@@ -74,6 +76,115 @@ export async function extractScripts(
     }
   } catch (error) {
     throw error; // Auto. rejects the promise with the thrown error
+  }
+}
+
+/**
+ * Asynchronously overwrites the RPG Maker bundle file to create the script loader inside of it.
+ *
+ * IMPORTANT: This method must be called after the backup file is done!
+ *
+ * If the creation was successful it resolves a promise with a true value
+ *
+ * If something is wrong the promise is rejected with an error
+ * @param bundleFile Absolute path to the RPG Maker bundle file
+ */
+export async function createScriptLoader(bundleFile: string): Promise<boolean> {
+  // At this point, bundle file must have been backed up!!
+  let scriptFolderRelative =
+    configuration.config.getConfigScriptsFolderRelativePath();
+  if (scriptFolderRelative) {
+    scriptFolderRelative = pathResolve.joinRPG(scriptFolderRelative);
+    let loadOrderFilePath = pathResolve.joinRPG(
+      scriptFolderRelative,
+      LOAD_ORDER_FILE_NAME
+    );
+    let scriptCode = `# encoding: utf-8
+#==============================================================================
+# ** ${LOADER_SCRIPT_NAME}
+#------------------------------------------------------------------------------
+# Author: SnowSzn
+# Github: https://github.com/SnowSzn/
+# VSCode extension: https://github.com/SnowSzn/rgss-script-editor
+# Version: 1.0
+#------------------------------------------------------------------------------
+# This is script is used to load all external script files from the scripts
+# folder that was created using the VSCode extension.
+#
+# You don't have to modify anything here, the extension automatically creates
+# this script after the extraction process is done successfully.
+#
+# IMPORTANT: In the case that you do one of these situations:
+#   1. Moved/Renamed the scripts folder
+#   2. Moved/Renamed/Deleted the load order TXT file ('${LOAD_ORDER_FILE_NAME}')
+# You MUST change the value of the constants in the configuration module
+# to reflect the change, otherwise the script will fail and raise an exception.
+#   - SCRIPTS_FOLDER_PATH: Path to the scripts folder
+#   - LOAD_ORDER_FILE_PATH: Path to the load order file (including extension)
+#
+#
+# If you don't want to change it here, you can also re-create the loader using
+# the appropiate command in the extension context.
+#
+# In case you accidentally deleted the script folder, you can recover use the
+# backup file that was created before the extraction process was initialized
+# though you will lose all progress made that you may have done.
+#==============================================================================
+
+#
+# VSCode Extension configuration
+#
+module ScriptLoaderConfiguration
+  # Path to the scripts folder
+  SCRIPTS_FOLDER_PATH = "${scriptFolderRelative}"
+  # Path to the loader text file
+  LOAD_ORDER_FILE_PATH = "${loadOrderFilePath}"
+end
+
+# IMPORTANT: DO NOT MODIFY ANYTHING BELOW THIS LINE
+
+#
+# Script loader
+#
+module ScriptLoader
+  include ScriptLoaderConfiguration
+
+  #
+  # Loader logic
+  #
+  def self.run
+    print "[RGSS Script Editor] Running script loader\\n"
+    load_order = File.read(LOAD_ORDER_FILE_PATH).split("\\n")
+    load_order.each do |script|
+      script_path = File.join(SCRIPTS_FOLDER_PATH, script)
+      print "[RGSS Script Editor] Loading script: '#{script_path}'\\n"
+      Kernel.send(:require, script_path)
+    end
+  end
+end
+
+ScriptLoader.run
+
+# IMPORTANT: DO NOT MODIFY ANYTHING ABOVE THIS LINE
+`;
+    // Format data
+    let bundle: any[][] = [[]];
+    bundle[0][0] = LOADER_SCRIPT_SECTION;
+    bundle[0][1] = LOADER_SCRIPT_NAME;
+    bundle[0][2] = zlib.deflateSync(scriptCode, {
+      level: zlib.constants.Z_BEST_COMPRESSION,
+      finishFlush: zlib.constants.Z_FINISH,
+    });
+    let bundleMarshalized = marshal.dump(bundle, {
+      hashStringKeysToSymbol: true,
+    });
+    // Overwrite bundle data
+    fs.writeFileSync(bundleFile, bundleMarshalized, { flag: 'w' });
+    return true;
+  } else {
+    throw new Error(
+      `Relative path to the scripts folder: ${scriptFolderRelative} is undefined!`
+    );
   }
 }
 
@@ -88,7 +199,7 @@ export async function extractScripts(
  */
 export async function createLoadOrder(scriptFolder: string) {
   if (fs.existsSync(scriptFolder)) {
-    let loadOrderFile = pathResolve.join(scriptFolder, 'load_order.txt');
+    let loadOrderFile = pathResolve.join(scriptFolder, LOAD_ORDER_FILE_NAME);
     let files = readDirRecursive(scriptFolder);
     // Deletes previous load order file (if it exists)
     if (fs.existsSync(loadOrderFile)) {
@@ -112,39 +223,6 @@ export async function createLoadOrder(scriptFolder: string) {
 }
 
 /**
- * Asynchronously creates the external script folder and the loader file.
- *
- * If the scripts folder path is already created the promise is resolved.
- *
- * If something went wrong the promise is rejected with an error.
- */
-async function createScriptFolder(scriptsFolderPath: string): Promise<void> {
-  return new Promise<void>((resolve, reject) => {
-    if (!scriptsFolderPath) {
-      reject(
-        new Error(
-          `Extracted scripts folder path. '${scriptsFolderPath}' is invalid!`
-        )
-      );
-      return;
-    }
-    // Checks if it does not exists already and creates it
-    if (!fs.existsSync(scriptsFolderPath)) {
-      fs.mkdir(scriptsFolderPath, { recursive: true }, (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          logger.logInfo(`Created scripts folder at: '${scriptsFolderPath}'`);
-          resolve();
-        }
-      });
-    } else {
-      resolve();
-    }
-  });
-}
-
-/**
  * Asynchronously creates a back up of the given file in the extension's back up folder location.
  *
  * This function creates the backup folder path if it does not exists already.
@@ -154,7 +232,7 @@ async function createScriptFolder(scriptsFolderPath: string): Promise<void> {
  * If something went wrong the promise is rejected with an error.
  * @param filePath Full path to the file
  */
-async function createBackUp(filePath: string) {
+export async function createBackUp(filePath: string) {
   return new Promise<boolean>((resolve, reject) => {
     // Checks if the given file exists first
     if (!fs.existsSync(filePath)) {
@@ -188,6 +266,39 @@ async function createBackUp(filePath: string) {
           `Cannot create backup file because backup folder path: '${backUpsFolder}' is invalid!`
         )
       );
+    }
+  });
+}
+
+/**
+ * Asynchronously creates the external script folder and the loader file.
+ *
+ * If the scripts folder path is already created the promise is resolved.
+ *
+ * If something went wrong the promise is rejected with an error.
+ */
+async function createScriptFolder(scriptsFolderPath: string): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    if (!scriptsFolderPath) {
+      reject(
+        new Error(
+          `Extracted scripts folder path. '${scriptsFolderPath}' is invalid!`
+        )
+      );
+      return;
+    }
+    // Checks if it does not exists already and creates it
+    if (!fs.existsSync(scriptsFolderPath)) {
+      fs.mkdir(scriptsFolderPath, { recursive: true }, (err) => {
+        if (err) {
+          reject(err);
+        } else {
+          logger.logInfo(`Created scripts folder at: '${scriptsFolderPath}'`);
+          resolve();
+        }
+      });
+    } else {
+      resolve();
     }
   });
 }
@@ -228,7 +339,7 @@ function checkValidExtraction(bundle: any[][]): boolean {
   return bundle.some((script) => {
     // Checks if it exists at least a valid script in the bundle array that is not a loader
     let scriptSection = script[0];
-    let scriptCode = zlib.inflateSync(script[2]).toString('utf-8');
+    let scriptCode = zlib.inflateSync(script[2]).toString('utf8');
     if (validLoaderScript(scriptSection, scriptCode)) {
       return false; // It is the loader
     } else {
@@ -249,6 +360,8 @@ function processScriptName(scriptName: string, scriptIndex: number): string {
   let index = scriptIndex.toString();
   // Removes any invalid characters
   let name = scriptName.replace(INVALID_CHARACTERS, '');
+  // Removes any whitespace left in the start
+  name = name.trim();
   // Adds script index
   name = `${index.padStart(4, '0')} - ${name}`;
   // Concatenates the ruby extension if it isn't already
@@ -256,6 +369,21 @@ function processScriptName(scriptName: string, scriptIndex: number): string {
     return name.concat('.rb');
   }
   return name;
+}
+
+/**
+ * Processes the script code body to ensure compatibility with RPG Maker.
+ *
+ * Ruby 1.9 does not automatically detects file encoding so it must be added in the script to avoid encoding crashes.
+ * @param scriptCode Code of the script
+ * @returns The script code processed
+ */
+function processScriptCode(scriptCode: string): string {
+  let script = '';
+  if (!scriptCode.includes('# encoding: utf-8')) {
+    script = `# encoding: utf-8\n${scriptCode}`;
+  }
+  return script;
 }
 
 /**

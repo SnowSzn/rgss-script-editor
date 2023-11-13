@@ -72,3 +72,11 @@ export function join(fPath: string, ...paths: string[]): string {
       return path.join(fPath, ...paths);
   }
 }
+
+export function joinUriRPG(fPath: vscode.Uri, ...paths: string[]): string {
+  return path.posix.join(fPath.fsPath, ...paths);
+}
+
+export function joinRPG(fPath: string, ...paths: string[]): string {
+  return path.posix.join(fPath, ...paths);
+}
