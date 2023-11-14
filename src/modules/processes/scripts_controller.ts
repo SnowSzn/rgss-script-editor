@@ -1,9 +1,11 @@
 import * as fs from 'fs';
 import * as zlib from 'zlib';
 import * as marshal from '@hyrious/marshal';
-import * as configuration from './Configuration';
-import * as pathResolve from './PathResolve';
-import { logger } from './Logger';
+import * as pathResolve from '../utils/path_resolve';
+import { logger } from '../utils/logger';
+
+// TODO: Refactor this script
+//	-> Remove Promises<boolean> and turn them into a Promise<number> with a meaning
 
 /**
  * Unique script section for this extension's external scripts loader script
@@ -14,15 +16,11 @@ const LOADER_SCRIPT_SECTION = 133_769_420;
  */
 const LOADER_SCRIPT_NAME = 'RGSS Script Editor Loader';
 /**
- * A regexp that checks if the Kernel line is present in the loader script file
- */
-const LOADER_SCRIPT_CODE_REGEXP = /Kernel\.send\(:require/g;
-/**
  * Load order file name within the scripts folder
  */
 const LOAD_ORDER_FILE_NAME = 'load_order.txt';
 /**
- * Regexp of invalid characters for both Windows, Linux-based systems and the script loader
+ * Regexp of invalid characters for Windows, Linux-based systems and the script loader
  */
 const INVALID_CHARACTERS = /[\\/:\*\?"<>\|▼■]/g;
 
@@ -82,17 +80,23 @@ export async function extractScripts(
 /**
  * Asynchronously overwrites the RPG Maker bundle file to create the script loader inside of it.
  *
- * IMPORTANT: This method must be called after the backup file is done!
+ * If the creation was successful it resolves a promise with a true value.
  *
- * If the creation was successful it resolves a promise with a true value
- *
- * If something is wrong the promise is rejected with an error
+ * If something is wrong the promise is rejected with an error.
  * @param bundleFile Absolute path to the RPG Maker bundle file
+ * @param backUpsFolderPath Absolute path to the backups folder
+ * @param scriptFolderRelative Relative path to the external scripts folder
  */
-export async function createScriptLoader(bundleFile: string): Promise<boolean> {
-  // At this point, bundle file must have been backed up!!
-  let scriptFolderRelative =
-    configuration.config.getConfigScriptsFolderRelativePath();
+export async function createScriptLoader(
+  bundleFile: string,
+  backUpsFolderPath: string,
+  scriptFolderRelative: string
+): Promise<boolean> {
+  // TODO: Create backup file ONLY if valid.
+  // Check bundle file if there's more scripts besides the script loader
+  // Create a backup of the bundle file
+  await createBackUp(bundleFile, backUpsFolderPath);
+  // Create script loader
   if (scriptFolderRelative) {
     scriptFolderRelative = pathResolve.joinRPG(scriptFolderRelative);
     let loadOrderFilePath = pathResolve.joinRPG(
@@ -235,40 +239,28 @@ export async function createLoadOrder(scriptFolder: string) {
  * If something went wrong the promise is rejected with an error.
  * @param filePath Full path to the file
  */
-export async function createBackUp(filePath: string) {
-  return new Promise<boolean>((resolve, reject) => {
-    // Checks if the given file exists first
-    if (!fs.existsSync(filePath)) {
-      reject(new Error(`The file to copy: '${filePath}' does not exists!`));
-      return;
-    }
-    // Perform backup creation
-    let backUpsFolder = configuration.config.determineBackUpsFolderPath();
-    if (backUpsFolder) {
-      // Makes sure backup directory exists
-      if (!fs.existsSync(backUpsFolder)) {
-        fs.mkdirSync(backUpsFolder, { recursive: true });
-      }
-      let backUpFilePath = pathResolve.join(
-        backUpsFolder,
-        `${pathResolve.basename(filePath)} - ${currentDate()}.bak`
-      );
-      fs.copyFile(filePath, backUpFilePath, (err) => {
-        if (err) {
-          reject(new Error(`It was impossible to copy the file (${err})`));
-        } else {
-          logger.logInfo(
-            `Back up scripts bundle file created at: '${backUpFilePath}'`
-          );
-          resolve(true);
-        }
-      });
+async function createBackUp(filePath: string, backUpsFolder: string) {
+  // Checks if the given file exists first
+  if (!fs.existsSync(filePath)) {
+    throw new Error(`The file to copy: '${filePath}' does not exists!`);
+    return;
+  }
+  // Makes sure backup directory exists
+  if (!fs.existsSync(backUpsFolder)) {
+    fs.mkdirSync(backUpsFolder, { recursive: true });
+  }
+  let backUpFilePath = pathResolve.join(
+    backUpsFolder,
+    `${pathResolve.basename(filePath)} - ${currentDate()}.bak`
+  );
+  fs.copyFile(filePath, backUpFilePath, (err) => {
+    if (err) {
+      throw new Error(`It was impossible to copy the file (${err})`);
     } else {
-      reject(
-        new Error(
-          `Cannot create backup file because backup folder path: '${backUpsFolder}' is invalid!`
-        )
+      logger.logInfo(
+        `Back up scripts bundle file created at: '${backUpFilePath}'`
       );
+      return 1;
     }
   });
 }

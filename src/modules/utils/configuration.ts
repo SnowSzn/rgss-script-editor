@@ -1,7 +1,6 @@
-import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
-import * as pathResolve from './PathResolve';
+import * as pathResolve from './path_resolve';
 
 /**
  * Return type when changing project folder
@@ -11,7 +10,7 @@ export type ConfigChangeFolder = {
   oldProjectFolderName?: string | undefined;
   oldRgssVersion?: string | undefined;
   curProjectFolder: vscode.Uri;
-  curProjectFolderName: string | undefined;
+  curProjectFolderName: string;
   curRgssVersion: string;
 };
 
@@ -70,22 +69,6 @@ class Configuration {
   constructor() {
     this.projectFolder = undefined;
     this.rgssVersion = undefined;
-  }
-
-  /**
-   * Gets the project folder Uri path
-   * @returns Project folder Uri path
-   */
-  getProjectFolder(): vscode.Uri | undefined {
-    return this.projectFolder;
-  }
-
-  /**
-   * Gets the RGSS version
-   * @returns RGSS version
-   */
-  getRGSSVersion(): string | undefined {
-    return this.rgssVersion;
   }
 
   /**
@@ -185,79 +168,41 @@ class Configuration {
   async setProjectFolder(
     projectFolder: vscode.Uri
   ): Promise<ConfigChangeFolder> {
-    return new Promise<ConfigChangeFolder>((resolve, reject) => {
-      // Avoids opening the same folder twice if it is valid already
-      if (this.valid() && projectFolder === this.projectFolder) {
-        // If config is valid, there is no way attributes are undefined
-        resolve({
-          oldProjectFolder: this.projectFolder!,
-          oldProjectFolderName: pathResolve.basenameUri(this.projectFolder!),
-          oldRgssVersion: this.rgssVersion!,
-          curProjectFolder: this.projectFolder!,
-          curProjectFolderName: pathResolve.basenameUri(this.projectFolder!),
-          curRgssVersion: this.rgssVersion!,
-        });
-      } else {
-        // Updates current project folder
-        let oldProjectFolder = this.projectFolder;
-        let oldRgssVersion = this.rgssVersion;
-        this.projectFolder = projectFolder;
-        // Updates configuration for the new project folder
-        this.rgssVersion = this.determineRGSSVersion(projectFolder);
-        if (this.rgssVersion === undefined) {
-          // Reject promise if RGSS could not be found
-          reject(
-            `Cannot determine RGSS version in folder '${this.projectFolder.fsPath}', 
+    // Avoids opening the same folder twice if it is valid already
+    if (this.valid() && projectFolder === this.projectFolder) {
+      // If config is valid, there is no way attributes are undefined
+      return {
+        oldProjectFolder: this.projectFolder,
+        oldProjectFolderName: pathResolve.basename(this.projectFolder),
+        oldRgssVersion: this.rgssVersion,
+        curProjectFolder: this.projectFolder,
+        curProjectFolderName: pathResolve.basename(this.projectFolder),
+        curRgssVersion: this.rgssVersion!,
+      };
+    } else {
+      let oldProjectFolder = this.projectFolder;
+      let oldRgssVersion = this.rgssVersion;
+      this.projectFolder = projectFolder;
+      this.rgssVersion = this.findRGSSVersion(projectFolder);
+      if (this.rgssVersion === undefined) {
+        // Reject promise if RGSS could not be found
+        throw new Error(
+          `Cannot determine RGSS version in folder '${this.projectFolder.fsPath}', 
             Scripts bundle file is missing, fix the problem and try opening the folder again`
-          );
-        } else {
-          resolve({
-            oldProjectFolder: oldProjectFolder,
-            oldProjectFolderName: oldProjectFolder
-              ? pathResolve.basenameUri(oldProjectFolder)
-              : oldProjectFolder,
-            oldRgssVersion: oldRgssVersion,
-            curProjectFolder: this.projectFolder,
-            curProjectFolderName: pathResolve.basenameUri(this.projectFolder!),
-            curRgssVersion: this.rgssVersion,
-          });
-        }
-      }
-    });
-  }
-
-  /**
-   * Asynchronously opens the RPG Maker project's folder.
-   *
-   * If the platform is unsupported or the project folder is invalid it will reject the promise
-   * @returns A promise
-   */
-  async openProjectFolder(): Promise<boolean> {
-    return new Promise<boolean>((resolve, reject) => {
-      if (this.valid() && this.projectFolder) {
-        // Command changes by platform
-        let folderArgument = pathResolve.resolveUri(this.projectFolder);
-        switch (process.platform) {
-          case 'win32': {
-            exec(`explorer ${folderArgument}`);
-            resolve(true);
-          }
-          case 'linux': {
-            exec(`xdg-open ${folderArgument}`);
-            resolve(true);
-          }
-          case 'darwin': {
-            exec(`open ${folderArgument}`);
-            resolve(true);
-          }
-          default: {
-            reject(`Unsupported platflorm`);
-          }
-        }
+        );
       } else {
-        reject(`Invalid project folder!`);
+        return {
+          oldProjectFolder: oldProjectFolder,
+          oldProjectFolderName: oldProjectFolder
+            ? pathResolve.basename(oldProjectFolder)
+            : oldProjectFolder,
+          oldRgssVersion: oldRgssVersion,
+          curProjectFolder: this.projectFolder,
+          curProjectFolderName: pathResolve.basename(this.projectFolder!),
+          curRgssVersion: this.rgssVersion,
+        };
       }
-    });
+    }
   }
 
   /**
@@ -265,7 +210,11 @@ class Configuration {
    * @returns Whether it is valid or not
    */
   valid(): boolean {
-    return this.rgssVersion !== undefined && this.projectFolder !== undefined;
+    if (this.rgssVersion && this.projectFolder) {
+      return true;
+    } else {
+      return false;
+    }
   }
 
   /**
@@ -274,9 +223,9 @@ class Configuration {
    * @returns Whether it is a valid RPG Maker project folder or not
    */
   checkFolderValidness(folder: vscode.Uri): boolean {
-    let rgss1 = pathResolve.joinUri(folder, RGSSBundleScriptsPath.RGSS1);
-    let rgss2 = pathResolve.joinUri(folder, RGSSBundleScriptsPath.RGSS2);
-    let rgss3 = pathResolve.joinUri(folder, RGSSBundleScriptsPath.RGSS3);
+    let rgss1 = pathResolve.join(folder, RGSSBundleScriptsPath.RGSS1);
+    let rgss2 = pathResolve.join(folder, RGSSBundleScriptsPath.RGSS2);
+    let rgss3 = pathResolve.join(folder, RGSSBundleScriptsPath.RGSS3);
     for (let data of [rgss1, rgss2, rgss3]) {
       if (fs.existsSync(data)) {
         return true;
@@ -286,64 +235,98 @@ class Configuration {
   }
 
   /**
-   * Determines the project folder path based on the system platform
+   * Gets the project folder full path based on the system platform (OS).
+   *
+   * It returns undefined if the path cannot be resolved.
    * @returns Resolved project folder
    */
-  determineProjectFolder(): string | undefined {
+  getProjectFolderPath(): string | undefined {
     if (this.valid() && this.projectFolder) {
-      return pathResolve.resolveUri(this.projectFolder);
+      return pathResolve.resolve(this.projectFolder);
     }
     return undefined;
   }
 
   /**
-   * Determines the back ups folder full path
+   * Gets the back ups folder full path based on the system platform (OS).
    *
-   * It returns undefined if it is impossible to determine the path
+   * It returns undefined if it is impossible to get the path.
    * @returns Back ups folder path
    */
-  determineBackUpsFolderPath(): string | undefined {
+  getBackUpsFolderPath(): string | undefined {
     let backUpsFolder = this.getConfigBackUpsFolderRelativePath();
     if (this.valid() && backUpsFolder) {
-      return pathResolve.joinUri(this.projectFolder!, backUpsFolder);
+      return pathResolve.join(this.projectFolder!, backUpsFolder);
     }
     return undefined;
   }
 
   /**
-   * Determines the extracted scripts folder full path
+   * Gets the extracted scripts folder full path based on the system platform (OS).
    *
-   * It returns undefined if it is impossible to determine the path
+   * It returns undefined if it is impossible to get the path.
    * @returns Scripts folder path
    */
-  determineScriptsFolderPath(): string | undefined {
+  getScriptsFolderPath(): string | undefined {
     let scriptsFolder = this.getConfigScriptsFolderRelativePath();
     if (this.valid() && scriptsFolder) {
-      return pathResolve.joinUri(this.projectFolder!, scriptsFolder);
+      return pathResolve.join(this.projectFolder!, scriptsFolder);
     }
     return undefined;
   }
 
   /**
-   * Determines the game executable path for the active project folder
+   * Gets the game executable full path for the active project folder based on the system platform (OS).
    *
-   * If the path to the executable does not exists it returns undefined
+   * It returns undefined if it is impossible to get the path.
    * @returns Game executable path
    */
-  determineGameExePath(): string | undefined {
+  getGameExePath(): string | undefined {
     let gameRelativePath = this.getConfigGameExeRelativePath();
     if (this.valid() && gameRelativePath) {
-      return pathResolve.joinUri(this.projectFolder!, gameRelativePath);
+      return pathResolve.join(this.projectFolder!, gameRelativePath);
     }
     return undefined;
   }
 
   /**
-   * Determines the game executable arguments.
+   * Gets the full path to the bundled scripts file.
+   *
+   * It returns undefined if it is impossible to get the path.
+   * @returns Bundled scripts file path
+   */
+  getBundleScriptsPath(): string | undefined {
+    if (this.valid()) {
+      switch (this.rgssVersion) {
+        case RGSSVersions.RGSS1: {
+          return pathResolve.join(
+            this.projectFolder!,
+            RGSSBundleScriptsPath.RGSS1
+          );
+        }
+        case RGSSVersions.RGSS2: {
+          return pathResolve.join(
+            this.projectFolder!,
+            RGSSBundleScriptsPath.RGSS2
+          );
+        }
+        case RGSSVersions.RGSS3: {
+          return pathResolve.join(
+            this.projectFolder!,
+            RGSSBundleScriptsPath.RGSS3
+          );
+        }
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Determines the appropiate game executable arguments.
    *
    * If automatic argument detection is enabled it will ignore custom arguments.
    *
-   * If the current project folder is not valid it returns an empty array
+   * If the current project folder is not valid it returns an empty array.
    * @returns Game executable arguments
    */
   determineGameExeArguments(): string[] {
@@ -412,38 +395,6 @@ class Configuration {
   }
 
   /**
-   * Determines the absolute path to the bundled scripts
-   *
-   * If the path does not exists it returns undefined
-   * @returns The absolute path to the bundled scripts file
-   */
-  determineBundleScriptsPath(): string | undefined {
-    if (this.valid()) {
-      switch (this.rgssVersion) {
-        case RGSSVersions.RGSS1: {
-          return pathResolve.joinUri(
-            this.projectFolder!,
-            RGSSBundleScriptsPath.RGSS1
-          );
-        }
-        case RGSSVersions.RGSS2: {
-          return pathResolve.joinUri(
-            this.projectFolder!,
-            RGSSBundleScriptsPath.RGSS2
-          );
-        }
-        case RGSSVersions.RGSS3: {
-          return pathResolve.joinUri(
-            this.projectFolder!,
-            RGSSBundleScriptsPath.RGSS3
-          );
-        }
-      }
-    }
-    return undefined;
-  }
-
-  /**
    * Gets the configuration value from the VS Code settings
    *
    * If the key is not found it returns undefined
@@ -455,16 +406,16 @@ class Configuration {
   }
 
   /**
-   * Determines the RGSS version of the given folder.
+   * Finds the appropiate RGSS version of the given folder.
    *
-   * If the RGSS version cannot be determined it returns undefined
+   * If the RGSS version cannot be determined it returns undefined.
    * @param projectFolder Project folder Uri path
    * @returns The RGSS version of the given project folder
    */
-  private determineRGSSVersion(projectFolder: vscode.Uri): string | undefined {
-    let rgss1 = pathResolve.joinUri(projectFolder, RGSSBundleScriptsPath.RGSS1);
-    let rgss2 = pathResolve.joinUri(projectFolder, RGSSBundleScriptsPath.RGSS2);
-    let rgss3 = pathResolve.joinUri(projectFolder, RGSSBundleScriptsPath.RGSS3);
+  private findRGSSVersion(projectFolder: vscode.Uri): string | undefined {
+    let rgss1 = pathResolve.join(projectFolder, RGSSBundleScriptsPath.RGSS1);
+    let rgss2 = pathResolve.join(projectFolder, RGSSBundleScriptsPath.RGSS2);
+    let rgss3 = pathResolve.join(projectFolder, RGSSBundleScriptsPath.RGSS3);
     // Checks for RGSS1
     if (fs.existsSync(rgss1)) {
       return RGSSVersions.RGSS1;

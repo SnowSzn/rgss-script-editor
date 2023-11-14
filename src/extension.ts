@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import * as manager from './modules/Manager';
+import * as manager from './modules/manager';
 
 // TODO: Create extension
 /*
@@ -72,17 +72,6 @@ import * as manager from './modules/Manager';
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
   // **********************************************************
-  vscode.commands.executeCommand(
-    'setContext',
-    'rgss-script-editor.validWorkingFolder',
-    false
-  );
-  vscode.commands.executeCommand(
-    'setContext',
-    'rgss-script-editor.extractedScripts',
-    false
-  );
-  // **********************************************************
   // Set project folder command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -93,9 +82,9 @@ export function activate(context: vscode.ExtensionContext) {
             placeHolder: 'Choose the RPG Maker active project folder',
             ignoreFocusOut: true,
           })
-          .then(async (value) => {
+          .then((value) => {
             if (value) {
-              await manager.setProjectFolder(value.uri);
+              manager.setProjectFolder(value.uri);
             }
           });
       }
@@ -114,18 +103,17 @@ export function activate(context: vscode.ExtensionContext) {
   // **********************************************************
   // Extract scripts
   context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'rgss-script-editor.extractScripts',
-      async () => {
-        await manager.extractScripts();
-      }
-    )
+    vscode.commands.registerCommand('rgss-script-editor.extractScripts', () => {
+      manager.extractScripts();
+    })
   );
+  // **********************************************************
+  // Create script loader
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'rgss-script-editor.createScriptLoader',
-      async () => {
-        await manager.createScriptLoader();
+      () => {
+        manager.createScriptLoader();
       }
     )
   );
@@ -137,6 +125,7 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
   // **********************************************************
+  // Falls to the quickstart
   manager.quickStart();
   // **********************************************************
 }

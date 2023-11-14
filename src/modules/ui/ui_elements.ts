@@ -133,6 +133,6 @@ class ExtensionUIElements {
 }
 
 /**
- * Extension UI instance
+ * UI elements instance
  */
 export const controller = new ExtensionUIElements();

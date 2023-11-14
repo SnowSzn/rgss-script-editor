@@ -1,6 +1,6 @@
 import * as fs from 'fs';
-import * as vscode from 'vscode';
-import { config } from './Configuration';
+import * as pathResolve from './path_resolve';
+import { config } from './configuration';
 
 /**
  * Log file name
@@ -47,8 +47,8 @@ class Logger {
   deleteLogFile(): void {
     let logFilePath = this.determineLogFilePath();
     if (logFilePath) {
-      if (fs.existsSync(logFilePath.fsPath)) {
-        fs.unlinkSync(logFilePath.fsPath);
+      if (fs.existsSync(logFilePath)) {
+        fs.unlinkSync(logFilePath);
       }
     }
   }
@@ -75,7 +75,7 @@ class Logger {
       // Process logging operation
       let logFilePath = this.determineLogFilePath();
       if (logFilePath) {
-        fs.writeFileSync(logFilePath.fsPath, msg, { flag: 'a' });
+        fs.writeFileSync(logFilePath, msg, { flag: 'a' });
       }
     }
   }
@@ -111,15 +111,29 @@ class Logger {
   }
 
   /**
-   * Determines the Uri path to the log file based on the current RPG Maker project folder
+   * Logs the given unknown error with an ERROR label
+   *
+   * A new line character is automatically concatenated
+   * @param message Message
+   */
+  logErrorUnknown(error: unknown): void {
+    if (typeof error === 'string') {
+      this.logError(error);
+    } else if (error instanceof Error) {
+      this.logError(`${error.name}: ${error.message} at: ${error.stack}`);
+    }
+  }
+
+  /**
+   * Determines the path to the log file based on the current RPG Maker project folder
    *
    * It returns undefined in case the path couldn't be created
-   * @returns Log file Uri path
+   * @returns Log file path
    */
-  private determineLogFilePath(): vscode.Uri | undefined {
-    let projectFolder = config.getProjectFolder();
+  private determineLogFilePath(): string | undefined {
+    let projectFolder = config.getProjectFolderPath();
     if (projectFolder && this.fileName) {
-      return vscode.Uri.joinPath(projectFolder, this.fileName);
+      return pathResolve.join(projectFolder, this.fileName);
     } else {
       return undefined;
     }

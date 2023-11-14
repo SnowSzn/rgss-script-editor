@@ -150,8 +150,8 @@
       "activitybar": [
         {
           "id": "rgss-script-editor",
-          "title": "RGSS Script Editor",
-          "icon": "./icons/views/icon.svg"
+          "icon": "./icons/views/icon.svg",
+          "title": "RGSS Script Editor"
         }
       ]
     },
@@ -159,6 +159,8 @@
       "rgss-script-editor": [
         {
           "id": "rgss-script-editor.editorView",
+          "icon": "./icons/views/icon.svg",
+          "contextualTitle": "RGSS Script Editor",
           "name": "Editor"
         }
       ]
@@ -171,12 +173,12 @@
       },
       {
         "view": "rgss-script-editor.editorView",
-        "contents": "You must select a folder to set it as the active RPG Maker project.\n[Set Active Project Folder](command:rgss-script-editor.setProjectFolder)",
+        "contents": "There are more than one folder opened in Visual Studio Code.\nYou can select a folder to set it as the active RPG Maker project.\n[Set Active Project Folder](command:rgss-script-editor.setProjectFolder)",
         "when": "workspaceFolderCount > 0 && !rgss-script-editor.validWorkingFolder"
       },
       {
         "view": "rgss-script-editor.editorView",
-        "contents": "You must extract the contents of the RPG Maker bundled file.\nA folder containing all script files extracted will be created in the currently selected project folder.\n[Extract Scripts](command:rgss-script-editor.extractScripts)",
+        "contents": "You must extract the contents of the RPG Maker bundled file.\nA folder containing all script files extracted will be created in the currently selected project folder.\nOnce all scripts are extracted, the scripts bundle file will be overwritten with a script loader and you can start using this editor\n[Extract Scripts](command:rgss-script-editor.extractScripts)",
         "when": "rgss-script-editor.validWorkingFolder && !rgss-script-editor.extractedScripts"
       }
     ]
