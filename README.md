@@ -111,12 +111,12 @@ This exception may happen for a number of reasons:
 Make sure that **all files** within the text file that defines the load order **exists** in the specified path.
 
 If you don't want to load a script file you can simply remove it from the load order TXT file or ignore it with a `#` character at the start of the line, like:
-``ruby
+```txt
 ./Scripts/script.rb
 ./Scripts/another script.rb
 #./Scripts/skipped script.rb
 #./Scripts/another skipped script.rb
-``
+```
 
 **The file exists, but it still crashes**
 
