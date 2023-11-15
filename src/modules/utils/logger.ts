@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as pathResolve from './path_resolve';
-import { config } from './configuration';
+import { config as configuration } from './configuration';
 
 /**
  * Log file name
@@ -43,7 +43,6 @@ class Logger {
   /**
    * Deletes the log file corresponding to this Logger if it exists
    */
-
   deleteLogFile(): void {
     let logFilePath = this.determineLogFilePath();
     if (logFilePath) {
@@ -62,16 +61,16 @@ class Logger {
    */
   log(message: string, errorConsole: boolean = false): void {
     let msg = '[RGSS Script Editor] ' + message.concat('\n');
-    // Logs the message to the console
-    if (config.getConfigLogConsole()) {
+    // Logging to console enabled
+    if (configuration.getConfigLogConsole()) {
       if (errorConsole) {
         console.error(msg);
       } else {
         console.log(msg);
       }
     }
-    // Check if log to file is enabled
-    if (config.getConfigLogFile()) {
+    // Logging to file enabled
+    if (configuration.getConfigLogFile()) {
       // Process logging operation
       let logFilePath = this.determineLogFilePath();
       if (logFilePath) {
@@ -125,13 +124,13 @@ class Logger {
   }
 
   /**
-   * Determines the path to the log file based on the current RPG Maker project folder
+   * Determines the path to the log file based on the current RPG Maker project folder.
    *
-   * It returns undefined in case the path couldn't be created
+   * Returns undefined if it is impossible to determine the path.
    * @returns Log file path
    */
   private determineLogFilePath(): string | undefined {
-    let projectFolder = config.getProjectFolderPath();
+    let projectFolder = configuration.getProjectFolderPath();
     if (projectFolder && this.fileName) {
       return pathResolve.join(projectFolder, this.fileName);
     } else {

@@ -26,7 +26,7 @@ export const enum RGSSVersions {
 /**
  * Enum of valid test arguments based on the RGSS version
  */
-export const enum RGSSDefaultTestArguments {
+export const enum RGSSTestArguments {
   RGSS1 = 'debug',
   RGSS2 = 'test',
   RGSS3 = 'test',
@@ -35,7 +35,7 @@ export const enum RGSSDefaultTestArguments {
 /**
  * Enum of valid test arguments based on the RGSS version
  */
-export const enum RGSSDefaultConsoleArguments {
+export const enum RGSSConsoleArguments {
   RGSS1 = '',
   RGSS2 = '',
   RGSS3 = 'console',
@@ -198,7 +198,7 @@ class Configuration {
             : oldProjectFolder,
           oldRgssVersion: oldRgssVersion,
           curProjectFolder: this.projectFolder,
-          curProjectFolderName: pathResolve.basename(this.projectFolder!),
+          curProjectFolderName: pathResolve.basename(this.projectFolder),
           curRgssVersion: this.rgssVersion,
         };
       }
@@ -206,15 +206,16 @@ class Configuration {
   }
 
   /**
-   * Checks if a valid RPG Maker project folder is currently opened or not
+   * Checks if a valid RPG Maker project folder is currently opened or not.
+   *
+   * Being 'valid' means:
+   *  - A valid RPG Maker project folder is opened.
+   *  - RGSS Version is valid and detected.
+   *  - Scripts bundle path is valid.
    * @returns Whether it is valid or not
    */
   valid(): boolean {
-    if (this.rgssVersion && this.projectFolder) {
-      return true;
-    } else {
-      return false;
-    }
+    return !!this.rgssVersion && !!this.projectFolder;
   }
 
   /**
@@ -241,8 +242,8 @@ class Configuration {
    * @returns Resolved project folder
    */
   getProjectFolderPath(): string | undefined {
-    if (this.valid() && this.projectFolder) {
-      return pathResolve.resolve(this.projectFolder);
+    if (this.valid()) {
+      return pathResolve.resolve(this.projectFolder!);
     }
     return undefined;
   }
@@ -326,78 +327,66 @@ class Configuration {
    *
    * If automatic argument detection is enabled it will ignore custom arguments.
    *
-   * If the current project folder is not valid it returns an empty array.
-   * @returns Game executable arguments
+   * If the arguments cannot be determined it returns undefined.
+   * @returns list of game arguments
    */
-  determineGameExeArguments(): string[] {
-    let gameArgs: string[] = [];
-    if (!this.valid()) {
-      return gameArgs;
-    }
-    // Valid project folder
+  determineGameExeArguments(): string[] | undefined {
+    let args: string[] = [];
+    // Auto. arguments detection enabled
     if (this.getConfigArgumentDetection()) {
       switch (this.rgssVersion) {
         case RGSSVersions.RGSS1: {
-          // Adds console arguments
-          if (this.getConfigNativeConsole()) {
-            if (RGSSDefaultConsoleArguments.RGSS1.length > 0) {
-              gameArgs.push(RGSSDefaultConsoleArguments.RGSS1);
-            }
+          // Test argument
+          if (this.getConfigEditorTestMode() && !!RGSSTestArguments.RGSS1) {
+            args.push(RGSSTestArguments.RGSS1);
           }
-          // Adds test arguments
-          if (this.getConfigEditorTestMode()) {
-            if (RGSSDefaultTestArguments.RGSS1.length > 0) {
-              gameArgs.push(RGSSDefaultTestArguments.RGSS1);
-            }
+          // Console argument
+          if (this.getConfigNativeConsole() && !!RGSSConsoleArguments.RGSS1) {
+            args.push(RGSSConsoleArguments.RGSS1);
           }
-          break;
+          return args;
         }
         case RGSSVersions.RGSS2: {
-          // Adds console arguments
-          if (this.getConfigNativeConsole()) {
-            if (RGSSDefaultConsoleArguments.RGSS2.length > 0) {
-              gameArgs.push(RGSSDefaultConsoleArguments.RGSS2);
-            }
+          // Test argument
+          if (this.getConfigEditorTestMode() && !!RGSSTestArguments.RGSS2) {
+            args.push(RGSSTestArguments.RGSS2);
           }
-          // Adds test arguments
-          if (this.getConfigEditorTestMode()) {
-            if (RGSSDefaultTestArguments.RGSS2.length > 0) {
-              gameArgs.push(RGSSDefaultTestArguments.RGSS2);
-            }
+          // Console argument
+          if (this.getConfigNativeConsole() && !!RGSSConsoleArguments.RGSS2) {
+            args.push(RGSSConsoleArguments.RGSS2);
           }
-          break;
+          return args;
         }
         case RGSSVersions.RGSS3: {
-          // Adds console arguments
-          if (this.getConfigNativeConsole()) {
-            if (RGSSDefaultConsoleArguments.RGSS3.length > 0) {
-              gameArgs.push(RGSSDefaultConsoleArguments.RGSS3);
-            }
+          // Test argument
+          if (this.getConfigEditorTestMode() && !!RGSSTestArguments.RGSS3) {
+            args.push(RGSSTestArguments.RGSS3);
           }
-          // Adds test arguments
-          if (this.getConfigEditorTestMode()) {
-            if (RGSSDefaultTestArguments.RGSS3.length > 0) {
-              gameArgs.push(RGSSDefaultTestArguments.RGSS3);
-            }
+          // Console argument
+          if (this.getConfigNativeConsole() && !!RGSSConsoleArguments.RGSS3) {
+            args.push(RGSSConsoleArguments.RGSS3);
           }
-          break;
+          return args;
+        }
+        default: {
+          return undefined;
         }
       }
     } else {
-      let customArgs = this.getConfigCustomArguments();
-      if (customArgs) {
-        customArgs.split(' ').forEach((value) => {
-          gameArgs.push(value);
+      // Custom arguments
+      this.getConfigCustomArguments()
+        ?.split(' ')
+        .forEach((arg) => {
+          args.push(arg);
         });
-      }
+      return args;
     }
-    return gameArgs;
   }
 
   /**
-   * Gets the configuration value from the VS Code settings
+   * Gets the configuration value from the VS Code settings.
    *
-   * If the key is not found it returns undefined
+   * If the key is not found it returns undefined.
    * @param key Configuration key
    * @returns
    */

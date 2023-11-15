@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as context from './context/context_controller';
 import * as uiElements from './ui/ui_elements';
 import * as gameplay from './processes/run_game';
-import * as folder from './processes/open_folder';
+import * as workingFolder from './processes/open_folder';
 import * as scripts from './processes/scripts_controller';
 import { config as configuration } from './utils/configuration';
 import { logger } from './utils/logger';
@@ -18,6 +18,7 @@ export async function quickStart() {
   let folders = vscode.workspace.workspaceFolders;
   if (folders && configuration.getConfigQuickstart()) {
     let validFolders = [];
+    // Check valid folders
     for (let folder of folders) {
       if (configuration.checkFolderValidness(folder.uri)) {
         validFolders.push(folder);
@@ -31,6 +32,9 @@ export async function quickStart() {
       );
       await setProjectFolder(folder.uri);
     } else {
+      vscode.window.showInformationMessage(
+        `Several RPG Maker project folders detected!`
+      );
       // Enables 'choose project folder' button on the status bar
       uiElements.controller.controlStatusBar({ setProjectFolder: true });
     }
@@ -46,33 +50,53 @@ export async function quickStart() {
  */
 export async function setProjectFolder(projectFolder: vscode.Uri) {
   logger.logInfo(`Changing project folder to: '${projectFolder.fsPath}'...`);
-  configuration
-    .setProjectFolder(projectFolder)
-    .then((value) => {
-      // Deletes log file in the new project folder if it exists and logging is enabled
-      if (configuration.getConfigLogFile()) {
-        logger.deleteLogFile();
-      }
-      context.setValidProjectFolder(true);
-      logger.logInfo(`RGSS Version detected: '${value.curRgssVersion}'`);
-      // Updates status bar
-      uiElements.controller.updateProjectFolderStatusBar(
-        value.curProjectFolderName!
-      );
-      uiElements.controller.showAllStatusBars();
+  try {
+    const project = await configuration.setProjectFolder(projectFolder);
+
+    // Deletes log file in the new project folder if logging is enabled
+    if (configuration.getConfigLogFile()) {
+      logger.deleteLogFile();
+    }
+
+    // Updates extension folder context
+    logger.logInfo(`'${project.curProjectFolder.fsPath}' opened successfully!`);
+    logger.logInfo(`RGSS Version detected: '${project.curRgssVersion}'`);
+    context.setValidProjectFolder(true);
+
+    // Updates extension extracted scripts context
+    let bundleFile = configuration.getBundleScriptsPath();
+    logger.logInfo(`Checking bundle scripts file status: '${bundleFile}'`);
+    const projectScripts = await scripts.checkExtractedScripts(bundleFile!);
+    if (projectScripts === scripts.SCRIPTS_EXTRACTED) {
+      context.setExtractedScripts(true);
       logger.logInfo(
-        `Folder '${value.curProjectFolder.fsPath}' opened successfully!`
+        'Scripts extraction has already been done previously for this project!'
       );
-      // TODO: Add method to scripts to check whether this folder currently has
-      // extracted successfully the bundled data.
-      // It must check if the current bundled data has ONLY the loader script
-    })
-    .catch((reason) => {
-      logger.logErrorUnknown(reason);
-      context.setValidProjectFolder(false);
-      // Tries quickstart again
-      quickStart();
-    });
+    } else if (projectScripts === scripts.SCRIPTS_NOT_EXTRACTED) {
+      context.setExtractedScripts(false);
+      logger.logWarning('Scripts were detected inside the bundle scripts file');
+      logger.logInfo(
+        'If this is the first time opening the project you should now extract script files!'
+      );
+      logger.logInfo(
+        'In case you have previously extracted the scripts, make sure not to add new scripts to the bundle file'
+      );
+    } else {
+      context.setExtractedScripts(false);
+      logger.logWarning(
+        `The bundle scripts file check reported an unknown code: ${projectScripts}`
+      );
+    }
+
+    // Process UI elements
+    uiElements.controller.updateProjectName(project.curProjectFolderName);
+    uiElements.controller.showAllStatusBars();
+  } catch (error) {
+    logger.logErrorUnknown(error);
+    context.setValidProjectFolder(false);
+    context.setExtractedScripts(false);
+    quickStart();
+  }
 }
 
 /**
@@ -82,13 +106,13 @@ export async function openProjectFolder() {
   let folderPath = configuration.getProjectFolderPath();
   if (folderPath) {
     try {
-      let folderProcess = await folder.openFolder(folderPath);
+      let folderProcess = await workingFolder.openFolder(folderPath);
     } catch (error) {
       logger.logErrorUnknown(error);
     }
   } else {
     logger.logError(
-      `Cannot open project folder, the project folder is: '${folderPath}'`
+      `Cannot open project folder, the project folder is invalid: '${folderPath}'`
     );
   }
 }
@@ -98,93 +122,140 @@ export async function openProjectFolder() {
  */
 export async function extractScripts() {
   logger.logInfo('Extracting scripts from the bundled file...');
-  let scriptsFolderRelPath = configuration.getConfigScriptsFolderRelativePath();
-  let scriptsFolderPath = configuration.getScriptsFolderPath();
-  let bundleFilePath = configuration.getBundleScriptsPath();
-  let backupsFolderPath = configuration.getBackUpsFolderPath();
-  if (
-    bundleFilePath &&
-    scriptsFolderPath &&
-    scriptsFolderRelPath &&
-    backupsFolderPath
-  ) {
-    logger.logInfo(`RPG Maker bundle file path is: '${bundleFilePath}'`);
-    logger.logInfo(
-      `Path to the extracted scripts folder is: '${scriptsFolderPath}'`
-    );
-    try {
-      // Extracts all scripts
-      await scripts.extractScripts(bundleFilePath, scriptsFolderPath);
+  let scriptsFolderRel = configuration.getConfigScriptsFolderRelativePath();
+  let bundleFile = configuration.getBundleScriptsPath();
+  let scriptsFolder = configuration.getScriptsFolderPath();
+  let backFolder = configuration.getBackUpsFolderPath();
+  // Check validness
+  if (!bundleFile || !scriptsFolder || !backFolder) {
+    logger.logError('Failed to extract RPG Maker scripts bundle file');
+    logger.logError(`RPG Maker bundle file path: '${bundleFile}'`);
+    logger.logError(`Backup folder path: '${backFolder}'`);
+    logger.logError(`Scripts folder path: '${scriptsFolder}'`);
+    return;
+  }
+  logger.logInfo(`RPG Maker bundle file path: '${bundleFile}'`);
+  logger.logInfo(`Scripts folder path: '${scriptsFolder}'`);
+  logger.logInfo(`Relative scripts path: '${scriptsFolderRel}'`);
+  logger.logInfo(`Backup folder path: '${backFolder}'`);
+  try {
+    // Extracts all scripts
+    let extraction = await scripts.extractScripts(bundleFile, scriptsFolder);
+    // Evaluate extraction
+    if (extraction === scripts.SCRIPTS_EXTRACTED) {
+      logger.logInfo('Scripts extracted successfully!');
       // Overwrites the bundle file with the loader
-      await scripts.createScriptLoader(
-        bundleFilePath,
-        backupsFolderPath,
-        scriptsFolderRelPath
+      await scripts.createScriptLoaderBundle(
+        bundleFile,
+        backFolder,
+        scriptsFolderRel!
       );
       // Creates a load order
-      await scripts.createLoadOrder(scriptsFolderPath);
+      await scripts.createLoadOrderFile(scriptsFolder);
       context.setExtractedScripts(true);
-    } catch (error: unknown) {
-      logger.logErrorUnknown(error);
-      context.setExtractedScripts(false);
+    } else if (extraction === scripts.SCRIPTS_NOT_EXTRACTED) {
+      logger.logInfo(
+        "Extraction not needed, there aren't scripts left in the bundle file"
+      );
+    } else {
+      logger.logWarning(`Extraction returned an unknown code: '${extraction}'`);
     }
-  } else {
-    logger.logError(
-      `Cannot extract scripts because either the scripts folder: '${scriptsFolderPath}' 
-      or the bundled scripts file path: '${bundleFilePath}' are not valid!`
-    );
+  } catch (error: unknown) {
+    context.setExtractedScripts(false);
+    logger.logErrorUnknown(error);
   }
 }
 
 /**
  * Asynchronously creates the bundle script loader file for RPG Maker engine
+ * @returns A promise
  */
 export async function createScriptLoader() {
-  logger.logInfo('Creating script loader...');
+  logger.logInfo('Creating script loader bundle file...');
+  let bundleFile = configuration.getBundleScriptsPath();
+  let backFolder = configuration.getBackUpsFolderPath();
   let scriptsFolder = configuration.getConfigScriptsFolderRelativePath();
-  let bundleFilePath = configuration.getBundleScriptsPath();
-  let backupsFolderPath = configuration.getBackUpsFolderPath();
-  if (bundleFilePath && scriptsFolder && backupsFolderPath) {
-    logger.logInfo(`RPG Maker bundle file path is: '${bundleFilePath}'`);
-    await scripts.createScriptLoader(
-      bundleFilePath,
-      backupsFolderPath,
+  // Check validness
+  if (!bundleFile || !scriptsFolder || !backFolder) {
+    logger.logError('Failed to create script loader bundle file');
+    logger.logError(`RPG Maker bundle file path: '${bundleFile}'`);
+    logger.logError(`Backup folder path: '${backFolder}'`);
+    logger.logError(`Scripts folder path: '${scriptsFolder}'`);
+    return;
+  }
+  // Perform creation
+  try {
+    let bundleStatus = await scripts.checkExtractedScripts(bundleFile);
+    if (bundleStatus === scripts.SCRIPTS_NOT_EXTRACTED) {
+      logger.logError(
+        'Cannot create script loader bundle file because RPG Maker bundle file still has valid scripts inside of it!'
+      );
+      logger.logWarning(
+        'You should make sure to extract the scripts to avoid data loss before doing this'
+      );
+      return;
+    }
+    // Overwrite bundle file
+    let loaderStatus = await scripts.createScriptLoaderBundle(
+      bundleFile,
+      backFolder,
       scriptsFolder
     );
-  } else {
+    if (loaderStatus === scripts.LOADER_BUNDLE_CREATED) {
+      logger.logInfo('Script loader bundle file created successfully!');
+    }
+  } catch (error) {
+    logger.logErrorUnknown(error);
+  }
+}
+
+/**
+ * Creates the load order file within the current scripts folder path
+ * @returns A promise
+ */
+export async function createLoadOrder() {
+  let scriptsFolder = configuration.getScriptsFolderPath();
+  if (!scriptsFolder) {
     logger.logError(
-      `Cannot create the script loader bundled file because the bundled scripts 
-      file path: '${bundleFilePath}' is not valid!`
+      `Cannot create load order file because the scripts folder path: '${scriptsFolder}' is invalid!`
     );
+    return;
+  }
+  try {
+    logger.logInfo('Creating load order file...');
+    const loadOrderPath = await scripts.createLoadOrderFile(scriptsFolder);
+    logger.logInfo(
+      `Load order file created succesfully at: '${loadOrderPath}'`
+    );
+  } catch (error) {
+    logger.logErrorUnknown(error);
   }
 }
 
 /**
  * Runs the game executable if the there is an active project folder set
+ * @returns A promise
  */
 export async function runGame() {
   logger.logInfo('Trying to run the game executable...');
-  // Local variables
   let gameWorkingDir = configuration.getProjectFolderPath();
   let gameExecutablePath = configuration.getGameExePath();
   let gameExecutableArgs = configuration.determineGameExeArguments();
+  logger.logInfo(`Executable working directory: '${gameWorkingDir}'`);
+  logger.logInfo(`Executable path: '${gameExecutablePath}'`);
+  logger.logInfo(`Executable arguments: '${gameExecutableArgs}'`);
+  // Evaluates validness
+  if (!gameWorkingDir || !gameExecutablePath || !gameExecutableArgs) {
+    logger.logError(`Cannot run the executable due to invalid values.`);
+    return;
+  }
+  // Run logic
   try {
-    if (gameWorkingDir && gameExecutablePath) {
-      logger.logInfo(`Process working directory is: '${gameWorkingDir}'`);
-      logger.logInfo(`Game executable path is: '${gameExecutablePath}'`);
-      logger.logInfo(`Using arguments: '${gameExecutableArgs.toString()}'`);
-      // Launch process
-      let gameProcess = await gameplay.runExecutable(gameExecutablePath, {
-        cwd: gameWorkingDir,
-        args: gameExecutableArgs,
-      });
-      // Detaches from the executable
-      gameProcess.unref();
-    } else {
-      logger.logError(
-        `The path to the game executable: '${gameExecutablePath}' is invalid!`
-      );
-    }
+    let gameProcess = await gameplay.runExecutable(gameExecutablePath, {
+      cwd: gameWorkingDir,
+      args: gameExecutableArgs,
+    });
+    gameProcess.unref();
   } catch (error) {
     logger.logErrorUnknown(error);
   }

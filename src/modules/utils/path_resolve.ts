@@ -89,6 +89,19 @@ export function resolve(rPath: vscode.Uri | string): string {
 }
 
 /**
+ * Normalizes the given path for RPG Maker editor
+ * @param urifPath Uri path or string path
+ * @returns The resolved path
+ */
+export function resolveRPG(rPath: vscode.Uri | string): string {
+  if (rPath instanceof vscode.Uri) {
+    return path.posix.normalize(rPath.fsPath);
+  } else {
+    return path.posix.normalize(rPath);
+  }
+}
+
+/**
  * Joins the given path based on the current platform (OS)
  * @param urifPath Uri path or string path
  * @param paths List of paths to join

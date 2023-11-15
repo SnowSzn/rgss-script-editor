@@ -49,16 +49,22 @@
         "icon": "$(arrow-down)"
       },
       {
+        "command": "rgss-script-editor.createLoadOrder",
+        "title": "Create Load Order File",
+        "category": "RGSS Script Editor",
+        "icon": "$(list-ordered)"
+      },
+      {
         "command": "rgss-script-editor.createScriptLoader",
         "title": "Create Script Loader",
         "category": "RGSS Script Editor",
-        "icon": "$(debug-configure)"
+        "icon": "$(note)"
       },
       {
         "command": "rgss-script-editor.runGame",
         "title": "Run Game",
         "category": "RGSS Script Editor",
-        "icon": "$(notebook-execute)"
+        "icon": "$(run)"
       },
       {
         "command": "rgss-script-editor.createCustomSettings",

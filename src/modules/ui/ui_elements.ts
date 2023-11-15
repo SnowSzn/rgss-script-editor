@@ -55,7 +55,7 @@ class ExtensionUIElements {
    * Updates status bar project folder information
    * @param projectFolder Project folder
    */
-  updateProjectFolderStatusBar(projectFolder: string): void {
+  updateProjectName(projectFolder: string): void {
     this.statusBarProjectFolder.text = `$(folder) RGSS Script Editor active project: ${projectFolder}`;
   }
 
@@ -112,7 +112,7 @@ class ExtensionUIElements {
    */
   private initializeUIConfig(): void {
     this.statusBarSetProject.text =
-      '$(new-folder) Choose RPG Maker project folder';
+      '$(folder-library) Choose RPG Maker project folder';
     this.statusBarSetProject.tooltip =
       'Choose a RPG Maker project folder from the current workspace';
     this.statusBarSetProject.command = 'rgss-script-editor.setProjectFolder';
@@ -122,7 +122,7 @@ class ExtensionUIElements {
       'Opens the currently working RPG Maker project folder';
     this.statusBarProjectFolder.command =
       'rgss-script-editor.openProjectFolder';
-    this.statusBarRunGame.text = '$(notebook-execute) Run Game';
+    this.statusBarRunGame.text = '$(run) Run Game';
     this.statusBarRunGame.tooltip = 'Runs the game executable';
     this.statusBarRunGame.command = 'rgss-script-editor.runGame';
     this.statusBarExtractScripts.text = '$(arrow-down) Extract Scripts';

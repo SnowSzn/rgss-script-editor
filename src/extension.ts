@@ -108,6 +108,16 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
   // **********************************************************
+  // Create load order txt file
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.createLoadOrder',
+      () => {
+        manager.createLoadOrder();
+      }
+    )
+  );
+  // **********************************************************
   // Create script loader
   context.subscriptions.push(
     vscode.commands.registerCommand(
