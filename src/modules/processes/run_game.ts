@@ -13,6 +13,12 @@ export type RunOptions = {
    * Optional arguments for the new process
    */
   args?: string[];
+  /**
+   * Whether to use Wine or not (Linux only)
+   *
+   * This flag is ignored for Windows.
+   */
+  useWine?: boolean;
 };
 
 /**
@@ -46,14 +52,31 @@ export async function runExecutable(
     }
     case 'darwin':
     case 'linux': {
-      if (isWineInstalled()) {
-        exePath = 'wine';
-        exeArgs = [executablePath, ...(runOptions.args ?? [])];
-        break;
+      // Checks for Wine usage
+      if (runOptions.useWine) {
+        if (isWineInstalled()) {
+          // Use Wine to run executable
+          exePath = 'wine';
+          exeArgs = [executablePath, ...(runOptions.args ?? [])];
+          break;
+        } else {
+          // Wine is not installed!
+          throw new Error(
+            `It is impossible to run the executable on Linux using Wine if Wine is not installed!`
+          );
+        }
       } else {
-        throw new Error(
-          `It is impossible to run the game on linux-based system if wine is not installed`
-        );
+        // Wine won't be used, check if executable is valid first
+        if (executablePath.toLowerCase().endsWith('.exe')) {
+          throw new Error(
+            'The executable seems a Windows exe file and Wine usage is disabled!'
+          );
+        } else {
+          // Assume it is a Linux executable
+          exePath = executablePath;
+          exeArgs = runOptions.args ?? [];
+          break;
+        }
       }
     }
     default: {

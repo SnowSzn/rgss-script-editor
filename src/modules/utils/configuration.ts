@@ -120,6 +120,14 @@ class Configuration {
   }
 
   /**
+   * Gets use Wine flag status to run the executable in Linux.
+   * @returns Whether to use Wine or not
+   */
+  getConfigUseWine(): boolean | undefined {
+    return this.getVSCodeConfig<boolean>('gameplay.useWine');
+  }
+
+  /**
    * Gets the game executable automatic arguments detection mode.
    *
    * When this mode is enabled custom arguments are ignored.

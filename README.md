@@ -27,9 +27,11 @@ For security reasons, a backup scripts bundle data file is created when the extr
 ## Features
 
 - **Run Game:** You can run the game within VSCode using a keybind (F12 by default)
+  - Both `test` (`debug`) and `console` modes are supported.
 - **Backup Creation:** Backs up the scripts bundled file when extraction is done.
 - **Scripts Extraction:** You can extracts all scripts inside the data file to a custom directory within the project's folder.
 - **Script Loader:** The game will load all scripts files individually based on a load order
+  - You can ignore to load any script by adding a `#` character before the script path.
 - **Workspace Support**: You can change the active folder easily in a workspace.
 
 TODO: Add some GIFs or screenshots
@@ -47,6 +49,8 @@ using: \!\[feature X\]\(images/feature-x.png\)
 - [Wine](https://www.winehq.org/) (preferably the latest version)
   - To take full advantage of the extension you should have wine available on your system, which will be used to run the Windows game executable.
   - You check if Wine is installed in your system with: ``wine --version``
+  - **IMPORTANT: If you use MKXP-Z for Linux and you have created a Linux executable for your game, you won't need to install Wine.** 
+    - Wine is only required for RPG Maker base executables.
 ### macOS
 - [Visual Studio Code](https://code.visualstudio.com/)
 - **Not tested in macOS**
@@ -65,7 +69,9 @@ This extension contributes the following settings:
 * `rgssScriptEditor.external.backUpsFolder`: Sets the relative path within the active RPG Maker project where all backups will be stored.
 * `rgssScriptEditor.external.scriptsFolder`: Sets the relative path within the active RPG Maker project where all scripts will be extracted.
 * `rgssScriptEditor.gameplay.gameExecutablePath`: Sets the relative path within the active RPG Maker project where the game executable is.
-  * This allows MKXP-Z executable to be launched.
+  * You can change this option to allow MKXP-Z executable to be launched.
+* `rgssScriptEditor.gameplay.useWine`: Whether to use Wine to execute the game executable or not. (**Linux Only**)
+  * Since you can also build MKXP-Z for Linux, you should uncheck this box when running MKXP-Z in Linux if you have built a Linux-specific executable.
 * `rgssScriptEditor.gameplay.automaticArgumentsDetection`: Enable/disable automatic arguments detection.
   * If enabled, the extension will automatically choose the appropiate arguments based on the RPG Maker version.
   * **IMPORTANT: This mode must be disabled to use custom arguments.**
@@ -85,7 +91,7 @@ This extension contributes the following settings:
 
 There are some issues that may happen when running this extension, I suspect that they happen due to way ``Kernel.load`` loads files in Ruby 1.9.
 
-If you don't use special characters inside the scripts nothing will happen, but if it does these are the issues:
+If you don't use special characters on scripts files in their names or inside the script's contents nothing will happen, but if it does these are the issues that I've encountered:
 
 * > [SyntaxError] Invalid Multibyte char (US-ASCII) Exception
 
@@ -94,7 +100,7 @@ so it fails when trying to load a script file that has special characters.
 
 This is easily fixed by adding ``# encoding: utf-8`` in the script.
 
-The extension will add this line in *every script* that it is extracted from the bundle file, but for new scripts you may have to add it yourself if it crashes.
+The extension will add this line in *every script* that it is extracted from the bundle file automatically so you won't have to, but for new scripts you may have to add it yourself if it crashes.
 
 * > [LoadError] no such file to load -- Exception
 
@@ -104,11 +110,17 @@ This exception may happen for a number of reasons:
 
 Make sure that **all files** within the text file that defines the load order **exists** in the specified path.
 
-If you don't want to load a script file you can simply remove it from the load order TXT file.
+If you don't want to load a script file you can simply remove it from the load order TXT file or ignore it with a `#` character at the start of the line, like:
+``ruby
+./Scripts/script.rb
+./Scripts/another script.rb
+#./Scripts/skipped script.rb
+#./Scripts/another skipped script.rb
+``
 
 **The file exists, but it still crashes**
 
-If the file exists and RPG Maker still crashes you should make sure the path to the script file does not have special characters.
+If the file exists and RPG Maker still crashes you should make sure the path to the script file does not have special characters, specially in the script's name.
 
 I made sure to remove all of them that I know from all scripts when extraction is done, but to be 100 % try not to use special characters to name your scripts.
 
@@ -124,5 +136,5 @@ Initial release.
 
 ---
 
-## Credits
+## Contributors
 - [marshal](https://github.com/hyrious/marshal)

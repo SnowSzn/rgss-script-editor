@@ -113,29 +113,35 @@
             "description": "The relative path to the game executable inside the project folder",
             "order": 50
           },
+          "rgssScriptEditor.gameplay.useWine": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to use Wine to execute the game executable in Linux or not",
+            "order": 51
+          },
           "rgssScriptEditor.gameplay.automaticArgumentsDetection": {
             "type": "boolean",
             "default": true,
             "description": "Allows the extension to determine the appropiate game executable arguments based on the RGSS version (When this mode is enabled custom arguments are ignored)",
-            "order": 51
+            "order": 60
           },
           "rgssScriptEditor.gameplay.editorTestMode": {
             "type": "boolean",
             "default": true,
             "description": "Whether to run the game on test mode or not (This flag is ignored when using custom arguments)",
-            "order": 52
+            "order": 61
           },
           "rgssScriptEditor.gameplay.nativeConsole": {
             "type": "boolean",
             "default": true,
             "description": "(RPG Maker VX Ace Only) Whether to allow a console window to appear on game execution or not (This flag is ignored when using custom arguments)",
-            "order": 53
+            "order": 62
           },
           "rgssScriptEditor.gameplay.customArguments": {
             "type": "string",
             "default": "",
             "description": "Set your own custom arguments here separated by a whitespace (You must disable 'auto. arguments detection' behavior to use this)",
-            "order": 59
+            "order": 63
           }
         }
       }
