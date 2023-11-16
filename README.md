@@ -6,23 +6,23 @@ This is an extension for Visual Studio Code that makes VSCode usable as the scri
 - RPG Maker VX Ace
 
 In a nutshell, this extension extracts each script in the bundle file that RPG Maker uses into individual ruby files.
-Once the extraction is done, it makes a backup of the original bundle file and overwrites it with a 'script loader' script that loads ruby scripts inside a relative folder based on a text file that dictates the loading order.
+Once the extraction is done, it creates a backup of the original bundle file (``Scripts.rxdata``, ``Scripts.rvdata`` or ``Scripts.rvdata2``) as a security measure and overwrites it with a script loader bundle file that loads ruby scripts inside a relative folder based on a text file that dictates the loading order.
 
 Since this extension uses a different approach for loading scripts, you can use the RPG Maker editor and edit scripts in Visual Studio Code at the same time without worrying about RPG Maker overwriting the bundled file with outdated data.
 
 **Long explanation**
 
-RPG Maker loads all data (including the game's scripts) at startup when the editor is launched, that's why you can modify the scripts inside their built-in script editor and the modification will be saved into the bundled data file (Scripts.(rxdata/rvdata/rvdata2)), this happens with every modification you do inside their editor, from maps to the whole database, they are saved into the appropiate data file.
+RPG Maker loads all data (including the game's scripts) at startup when the editor is launched, that's why you can modify the scripts inside their built-in script editor and the modification will be saved into the bundled data file (``Scripts.rxdata``, ``Scripts.rvdata`` or ``Scripts.rvdata2``), this happens with every modification you do inside their editor, from maps to the whole database, they are saved into the appropiate data file.
 
-The problem is that RPG Maker does not save this modifications individually, all files are saved at the same time, this means that even if you do not make any modification to the game's scripts and modified something else (for example: the database) all scripts will be overwritten with the initial data that was loaded.
+The problem is that RPG Maker does not save these modifications individually, all files are saved at the same time, this means that even if you do not change anything in the game's scripts and modified something else (for example: the database) all scripts will be overwritten with the initial data that was loaded.
 
 This produces an incompatibility with any external script editor or Visual Studio Code extension that works by overwriting the Scripts bundle data file since the editor will overwrite it everytime the project is saved, so basically the easy solution is not having the editor and the external script editor opened and working at the same time. 
 
 This extension tries to circumvent this limitation by overwriting the script bundle data file with a script loader that will load external scripts inside a relative path within the project's folder.
 
-It also allows to specify a load order and even organize the scripts inside folders, the script loader will read the ``load_order.txt`` file and load each script until end of line is reached.
+It also allows to specify a load order, skip specific scripts and load all Ruby files inside a folder recursively if you want to organize the scripts inside subfolders, the script loader will read the load_order.txt file and load each script/folder until end of line is reached.
 
-For security reasons, a backup scripts bundle data file is created when the extraction is done.
+As a security measure, the extension will not allow overwriting the script bundle file (``Scripts.rxdata``, ``Scripts.rvdata`` or ``Scripts.rvdata2``) with the script loader if there are still scripts inside of it that have not yet been extracted.
 
 ## Features
 
