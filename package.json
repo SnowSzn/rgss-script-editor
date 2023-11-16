@@ -2,14 +2,18 @@
   "icon": "./icons/icon.png",
   "name": "rgss-script-editor",
   "displayName": "RGSS Script Editor",
-  "description": "It allows to edit RPG Maker ruby script files extracting them from the Scripts bundled data file",
+  "description": "A VSCode extension that allows to extract scripts files from RPG Maker bundle file and load them individually based on a load order",
   "author": {"name": "SnowSzn", "url": "https://github.com/SnowSzn"},
   "publisher": "SnowSzn",
   "license": "MIT",
   "keywords": [
     "Ruby Game Scripting System",
     "RGSS",
+    "RGSS1",
+    "RGSS2",
+    "RGSS3",
     "RPG Maker Script Editor",
+    "RPG Maker Script Extractor",
     "RPGMaker",
     "RPG Maker XP",
     "RPG Maker VX",
@@ -56,7 +60,7 @@
       },
       {
         "command": "rgss-script-editor.createScriptLoader",
-        "title": "Create Script Loader",
+        "title": "Create Script Loader Bundle File",
         "category": "RGSS Script Editor",
         "icon": "$(note)"
       },

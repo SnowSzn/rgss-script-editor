@@ -133,32 +133,41 @@ export async function createScriptLoaderBundle(
     createBackUp(bundleFile, backUpsFolderPath);
     // Formats script loader Ruby script
     let loaderScriptsFolder = pathResolve.resolveRPG(scriptFolder);
-    let loadOrderFile = pathResolve.joinRPG(scriptFolder, LOAD_ORDER_FILE_NAME);
-    let loader = `# encoding: utf-8
-#==============================================================================
+    let loaderScript = `#==============================================================================
 # ** ${LOADER_SCRIPT_NAME}
 #------------------------------------------------------------------------------
-# Version: 1.1.0
+# Version: 1.1.1
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
 #------------------------------------------------------------------------------
-# This is script is used to load all external script files from the scripts
-# folder that was created using the VSCode extension.
+# This script is used to load all external script files from the scripts folder
+# that was created using the VSCode extension.
 #
 # You don't have to modify anything here, the extension automatically creates
 # this script after the extraction process is done successfully.
 #
-# IMPORTANT: In the case that you do one of these situations:
-#   1. Moved/Renamed the scripts folder.
-#   2. Moved/Renamed/Deleted the load order TXT file ('${LOAD_ORDER_FILE_NAME}').
-# You MUST change the value of the constants in the configuration module
-# to reflect the change, otherwise the script will fail and raise an exception.
-#   - SCRIPTS_FOLDER_PATH: Path to the scripts folder
-#   - LOAD_ORDER_FILE_PATH: Path to the load order file (including extension)
+# Keep in mind that you shouldn't move or rename neither the scripts folder nor
+# the load order TXT file used to load the scripts, since they are used to load
+# all scripts files, otherwise this script won't know where to look for scripts.
 #
-# If you don't want to change it here, you can also re-create the loader using
-# the appropiate command in the VSCode extension.
+# If for some reason, you want to move the scripts folder to another location
+# and you have already extracted the scripts to the default path, you should
+# follow these steps:
+#   1. Go to the VSCode extension settings and modify the scripts folder path
+#     - This option ID is: 'rgss-script-editor.external.scriptsFolder'
+#   This is important, since if you don't do it properly, the extension will
+#   be working with the same path as before.
+#
+#   2. Move the folder to the desired location.
+#
+#   3. Change this script's target folder location.
+#   You must change the location where this script will look for script files.
+#   You can do this in two ways:
+#     - Changing the "SCRIPTS_PATH" value here in the ScriptLoaderConfiguration
+#       module.
+#     - Using the VSCode extension to re-create the script loader bundle file.
+#       The command is: "Create Script Loader Bundle File"
 #
 # In case you accidentally deleted the scripts folder, you can recover use the
 # backup file that was created before the extraction process was initialized
@@ -169,35 +178,54 @@ export async function createScriptLoaderBundle(
 # VSCode Extension configuration
 #
 module ScriptLoaderConfiguration
-  # Path to the scripts folder
-  SCRIPTS_FOLDER_PATH = "${loaderScriptsFolder}"
-  # Path to the loader text file
-  LOAD_ORDER_FILE_PATH = "${loadOrderFile}"
+  #
+  # Relative path to the scripts folder inside the game project's folder.
+  #
+  SCRIPTS_PATH = "${loaderScriptsFolder}"
 end
 
-# DO NOT MODIFY ANYTHING BELOW THIS LINE IF YOU DO NOT WHAT YOU ARE DOING
-# DO NOT MODIFY ANYTHING BELOW THIS LINE IF YOU DO NOT WHAT YOU ARE DOING
+###############################################################################
+#   DO NOT MODIFY ANYTHING BELOW THIS LINE IF YOU DO NOT WHAT YOU ARE DOING   #
+#   DO NOT MODIFY ANYTHING BELOW THIS LINE IF YOU DO NOT WHAT YOU ARE DOING   #
+#   DO NOT MODIFY ANYTHING BELOW THIS LINE IF YOU DO NOT WHAT YOU ARE DOING   #
+###############################################################################
 
 #
 # Script loader
 #
 module ScriptLoader
   include ScriptLoaderConfiguration
-
+  
+  # Script loader error message.
+  LOAD_ERROR_MSG = "If you are reading this it's because something went "\\
+  "horribly wrong when loading scripts.\\n\\nThe game couldn't load a single "\\
+  "script file so that's why it will close after closing this message "\\
+  "instantly.\\n\\nCheck the load order TXT file to make sure scripts written "\\
+  "there exists!"
+  
+  # Array used to determine whether a script has been already loaded or not.
+  @cache = []
+  
   #
   # Loader run logic
   #
   def self.run
-    @cache = []
-    load_order = File.read(LOAD_ORDER_FILE_PATH).split("\\n")
+    # Prepares run
+    log("Running script loader...")
+    @cache.clear
+    load_order_path = File.join(SCRIPTS_PATH, '${LOAD_ORDER_FILE_NAME}')
+    log("Scripts folder path is: '#{SCRIPTS_PATH}'")
+    log("Load order file path is: '#{load_order_path}'")
+    log("Reading load order file...")
+    load_order = File.read(load_order_path).split("\\n")
+    # Start load order processing
     load_order.each do |script|
-      # Skips ignored ruby files
-      if(script.start_with?("#"))
-        log("Skipping script: #{script}")
-      else
-        script_path = File.join(SCRIPTS_FOLDER_PATH, script)
-        load_script(script_path)
-      end
+      load_script(script)
+    end
+    # Post-load logic
+    if @cache.empty?
+      # Not a single script was loaded?
+      raise StandardError.new(LOAD_ERROR_MSG)
     end
   end
 
@@ -207,43 +235,86 @@ module ScriptLoader
   # @param path [String] Script path
   #
   def self.load_script(path)
-    # Checks if script was already loaded
-    if(@cache.include?(path))
-      log("Skipping: '#{path}' because it was already loaded!")
-      return
-    end
-    # Load script
-    if File.directory?(path)
-      log("Directory detected: '#{path}'")
-      # Recursively loads all entries
-      Dir.entries(path).each do |entry|
+    # Processes path
+    script = process_path(path)
+    # Handles the script
+    if valid_script?(script)
+      log("Loading script: '#{format_path(script)}'")
+      @cache << script
+      Kernel.send(:load, script)
+    elsif valid_directory?(script)
+      log("Valid directory detected: '#{format_path(script)}'")
+      Dir.entries(script).each do |entry|
         next if ['.', '..'].include?(entry)
-        load_script(File.join(path, entry))
+        load_script(File.join(script, entry))
       end
-    elsif valid_script?(path)
-      log("Loading script: '#{path}'")
-      @cache << path
-      Kernel.send(:load, path)
     else
-      log("Cannot load: '#{path}'")
+      log("Skipping: '#{format_path(script)}' (invalid)")
     end
+  end
+
+  #
+  # Process the given path.
+  #
+  # @param path [String] Path.
+  #
+  # @return [String] Processed path.
+  #
+  def self.process_path(path)
+    # Removes trailing whitespaces
+    new_path = path.strip
+    # Adds working directory if not present
+    unless File.dirname(new_path).include?(Dir.pwd)
+      new_path = File.join(Dir.pwd, SCRIPTS_PATH, new_path) 
+    end
+    # Returns processed path
+    return new_path
+  end
+  
+  #
+  # Formats the given path for the loader logging.
+  #
+  # @param path [String] Path.
+  #
+  # @return [String] Processed path.
+  #
+  def self.format_path(path)
+    return path.gsub(File.join(Dir.pwd, SCRIPTS_PATH) + '/', '')
   end
 
   #
   # Checks if the given file is a valid Ruby script file.
   #
-  # @param file_path [String] File path.
+  # @param path [String] Path.
   #
   # @return [Boolean] Script validness.
   #
-  def self.valid_script?(script_file)
-    return false unless File.file?(script_file)
-    return false unless File.extname(script_file).downcase == '.rb'
+  def self.valid_script?(path)
+    return false if path[0] == '#'
+    return false if @cache.include?(path)
+    return false unless File.file?(path)
+    return false unless File.extname(path).downcase == '.rb'
+    return true
+  end
+  
+  #
+  # Checks if the given path is a valid directory.
+  #
+  # @param path [String] Path.
+  #
+  # @return [Boolean] Directory validness.
+  #
+  def self.valid_directory?(path)
+    return false if path[0] == '#'
+    return false unless File.directory?(path)
+    return false unless Dir.entries(path).any? { |entry| valid_script?(entry) }
     return true
   end
 
   #
-  # Checks if at least a script was loaded onto the game.
+  # Checks cache validness.
+  #
+  # At least a script should have been loaded to ensure validness.
   #
   # @return [Boolean] Cache validness.
   #
@@ -252,35 +323,52 @@ module ScriptLoader
   end
 
   #
+  # Checks if the project's version is RGSS1
+  #
+  # @return [Boolean] Project is RGSS1.
+  #
+  def self.rgss1?
+    File.file?("Data/Scripts.rxdata")
+  end
+
+  #
+  # Checks if the project's version is RGSS2
+  #
+  # @return [Boolean] Project is RGSS2.
+  #
+  def self.rgss2?
+    File.file?("Data/Scripts.rvdata")
+  end
+  
+  #
+  # Checks if the project's version is RGSS1
+  #
+  # @return [Boolean] Project is RGSS1.
+  #
+  def self.rgss3?
+    File.file?("Data/Scripts.rvdata2")
+  end
+  
+  #
   # Logs the message.
+  #
+  # Logging is deactivated in RGSS1 and RGSS2 to avoid message box spam.
   #
   # @param message [String] Message.
   #
   def self.log(message)
-    print "[RGSS Script Editor Loader] #{message}\\n"
+    print "[RGSS Script Editor Loader] #{message}\\n" if rgss3?
   end
 end
 
-# Starts loader
+# Start loader processing
 ScriptLoader.run
-
-# No scripts were loaded?
-unless ScriptLoader.cache?
-  msgbox(
-  "If you are seeing this it's because something went horribly wrong when
-  loading scripts.
-  
-  The game couldn't load a single script file so that's why it closes instantly.
-  
-  Check the load order TXT file to make sure scripts written there exists!"
-  )
-end
 `;
     // Format data
     let bundle: any[][] = [[]];
     bundle[0][0] = LOADER_SCRIPT_SECTION;
     bundle[0][1] = LOADER_SCRIPT_NAME;
-    bundle[0][2] = zlib.deflateSync(loader, {
+    bundle[0][2] = zlib.deflateSync(loaderScript, {
       level: zlib.constants.Z_BEST_COMPRESSION,
       finishFlush: zlib.constants.Z_FINISH,
     });

@@ -89,44 +89,66 @@ This extension contributes the following settings:
 
 ## Known Issues
 
-There are some issues that may happen when running this extension, I suspect that they happen due to way ``Kernel.load`` loads files in Ruby 1.9.
+There are some issues that may happen when running this extension, you may encounter them depending on the RPG Maker version you are using.
 
-If you don't use special characters on scripts files in their names or inside the script's contents nothing will happen, but if it does these are the issues that I've encountered:
+**All problems listed here have been found while using ``RPG Maker VX Ace``.**
+
+RPG Maker VX Ace is the only RPG Maker editor running RGSS3 which it is based on Ruby 1.9+.
+
+The other versions of the engine (XP and VX) runs with older versions of Ruby in which ``$KCODE`` is supported, this global variable is used to determine the encoding of a script file when Ruby is trying to load it.
+
+So basically, when using RPG Maker VX Ace, errors may occur because Ruby 1.9+ does not *"detect"* the script file encoding, so it fails when trying to load it using ``Kernel.load``.
+
+**The other RPG Maker editors (``RPG Maker XP`` and ``RPG Maker VX``) seems to work fine on my end.**
+
+
+I have listed here all errors I have encountered while testing the extension along with their respective solution.
+
+If you find an issue not listed here, feel free to report it back.
 
 * > [SyntaxError] Invalid Multibyte char (US-ASCII) Exception
 
-This may happen in some scripts that are loaded because Ruby 1.9 does not automatically "detect" the file's encoding
-so it fails when trying to load a script file that has special characters.
+It may happen if using RPG Maker VX Ace.
 
-This is easily fixed by adding ``# encoding: utf-8`` in the script.
+This exception is easily fixed by adding ``# encoding: utf-8`` in the first line of the script contents.
 
-The extension will add this line in *every script* that it is extracted from the bundle file automatically so you won't have to, but for new scripts you may have to add it yourself if it crashes.
+Like I said before, this workaround is not needed for older versions of RPG Maker that still uses ``$KCODE``, but to avoid problems, I have made the extension add this line in *every script* that it is extracted from the bundle file automatically so you won't have to.
+
+**For new scripts you may have to add it yourself if it crashes!**
 
 * > [LoadError] no such file to load -- Exception
 
 This exception may happen for a number of reasons:
 
-**The file trying to load does not exists**
+**The file trying to load simply does not exists**
 
 Make sure that **all files** within the text file that defines the load order **exists** in the specified path.
 
 If you don't want to load a script file you can simply remove it from the load order TXT file or ignore it with a `#` character at the start of the line, like:
 ```txt
-./Scripts/script.rb
-./Scripts/another script.rb
-#./Scripts/skipped script.rb
-#./Scripts/another skipped script.rb
+script.rb
+another script.rb
+Subfolder/
+#skipped script.rb
+#another skipped script.rb
+#Skipped Subfolder/
 ```
 
 **The file exists, but it still crashes**
 
-If the file exists and RPG Maker still crashes you should make sure the path to the script file does not have special characters, specially in the script's name.
+If the file exists and RPG Maker still crashes you may be using RPG Maker VX Ace.
 
-I made sure to remove all of them that I know from all scripts when extraction is done, but to be 100 % try not to use special characters to name your scripts.
+You should make sure the path to the script file does not have special characters, specially in the script's name.
 
-For example, these characters, that RPG Maker uses in their built-in editor are invalid:
+I made sure to remove all of them that I know from all scripts when extraction is done, but to be fully sure try not to use special characters to name your scripts.
+
+These characters, that RPG Maker uses in their built-in editor are invalid:
   - '▼': Character used to define sections.
   - '■': Some plugins may have this character too.
+
+For example:
+  - "./Scripts/ 0000 - ▼ Modules.rb"
+  - "./Scripts/ 0010 - ■ My Ruby Script ■.rb"
 
 ## Release Notes
 
