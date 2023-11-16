@@ -11,9 +11,6 @@ import * as manager from './modules/manager';
         Guarda todos los scripts separados de una carpeta en un fichero 'bundle' de scripts en el directorio del proeycto
           -> Este metodo NO SOBREESCRIBIRÁ el fichero 'bundle' dummy que se creó
             -> Se usará para crear un fichero para la distribución del juego.
-      - 2. Overwrite bundle script file
-        Guarda todos los scripts separados de una carpeta en un fichero 'bundle'.
-          -> Este comando SI SOBREESCRIBIRÁ el fichero 'bundle' dummy con un fichero nuevo creado a partir de los ficheros sueltos
 
       Crear una forma de ordenar la carga de ficheros cuando se cree el dummy 'bundle' file, dos formas:
         - 1. Crear una vista dentro del editor de vscode para ordenar ficheros (dificil)
@@ -52,7 +49,18 @@ export function activate(context: vscode.ExtensionContext) {
           })
           .then((value) => {
             if (value) {
-              manager.setProjectFolder(value.uri);
+              manager
+                .setProjectFolder(value.uri)
+                .then(() => {
+                  vscode.window.showInformationMessage(
+                    `Folder: '${value.name}' opened succesfully!`
+                  );
+                })
+                .catch(() => {
+                  vscode.window.showInformationMessage(
+                    `Failed to open the folder: '${value.name}', it isn't a valid RPG Maker project!`
+                  );
+                });
             }
           });
       }

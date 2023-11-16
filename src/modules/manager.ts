@@ -13,44 +13,75 @@ import { logger } from './utils/logger';
  * It scans the current opened folders to start the extension:
  *  - If only one folder exists it is a RPG Maker project it is opened.
  *  - If more than one folder exists it enables the 'choose folder' ui element on the status bar.
+ * @returns A promise
  */
 export async function quickStart() {
-  let folders = vscode.workspace.workspaceFolders;
-  if (folders && configuration.getConfigQuickstart()) {
-    let validFolders = [];
-    // Check valid folders
-    for (let folder of folders) {
-      if (configuration.checkFolderValidness(folder.uri)) {
-        validFolders.push(folder);
-      }
-    }
-    // Opens the folder if there is only one valid
-    if (validFolders.length === 1) {
-      let folder = validFolders[0];
-      vscode.window.showInformationMessage(
-        `Detected '${folder.name}' as a RPG Maker project!`
-      );
-      await setProjectFolder(folder.uri);
-    } else {
-      vscode.window.showInformationMessage(
-        `Several RPG Maker project folders detected!`
-      );
-      // Enables 'choose project folder' button on the status bar
-      uiElements.controller.controlStatusBar({ setProjectFolder: true });
-    }
-  } else {
-    // Quickstart disabled, let folder be selected via command palette
+  // Checks if quickstart is enabled first.
+  if (!configuration.getConfigQuickstart()) {
     uiElements.controller.hideAllStatusBars();
+    return;
+  }
+  logger.logInfo('Quickstarting RGSS Script Editor extension...');
+  let folders = vscode.workspace.workspaceFolders;
+  // Checks if there is any folder opened
+  if (!folders) {
+    logger.logWarning('No folders detected in the VSCode workspace.');
+    logger.logInfo('Open a RPG Maker folder to start the extension');
+    return;
+  }
+  let validFolders = [];
+  for (let folder of folders) {
+    if (configuration.checkFolderValidness(folder.uri)) {
+      validFolders.push(folder);
+    }
+  }
+  // Evaluates valid folders
+  if (validFolders.length === 1) {
+    // Opens the folder if there is only one valid
+    let folder = validFolders[0];
+    logger.logInfo(`Detected '${folder.name}' as a RPG Maker project!`);
+    vscode.window.showInformationMessage(
+      `Detected '${folder.name}' as a RPG Maker project!`
+    );
+    await setProjectFolder(folder.uri);
+  } else if (validFolders.length > 1) {
+    // Several valid RPG Maker projects were opened
+    logger.logInfo(
+      'Several valid RPG Maker folders were detected in the current workspace!'
+    );
+    // Enables 'choose project folder' button on the status bar
+    uiElements.controller.controlStatusBar({ setProjectFolder: true });
+    // Shows a info message with a callback
+    vscode.window
+      .showInformationMessage(
+        `Several folders were detected in the workspace. You can select one as the active folder by clicking the button.`,
+        'Set RPG Maker Project Folder'
+      )
+      .then((value) => {
+        if (value) {
+          vscode.commands.executeCommand('rgss-script-editor.setProjectFolder');
+        }
+      });
+  } else {
+    logger.logWarning(
+      'No valid RPG Maker folder was detected in the current workspace'
+    );
   }
 }
 
 /**
- * Sets the extension working folder to the given one
+ * Sets the extension working folder to the given one.
+ *
+ * If the folder is valid the promise is resolved and the folder is set as active.
+ *
+ * If the folder is invalid the promise is rejected.
  * @param projectFolder Project folder Uri
+ * @returns A promise
  */
 export async function setProjectFolder(projectFolder: vscode.Uri) {
-  logger.logInfo(`Changing project folder to: '${projectFolder.fsPath}'...`);
   try {
+    logger.logInfo(`Changing project folder to: '${projectFolder.fsPath}'...`);
+    // If the folder is invalid an error is thrown
     const project = await configuration.setProjectFolder(projectFolder);
 
     // Deletes log file in the new project folder if logging is enabled
@@ -95,12 +126,13 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
     logger.logErrorUnknown(error);
     context.setValidProjectFolder(false);
     context.setExtractedScripts(false);
-    quickStart();
+    throw error;
   }
 }
 
 /**
- * Opens the working RPG Maker project folder
+ * Opens the working RPG Maker project folder.
+ * @returns A promise
  */
 export async function openProjectFolder() {
   let folderPath = configuration.getProjectFolderPath();
@@ -118,7 +150,8 @@ export async function openProjectFolder() {
 }
 
 /**
- * Extracts all scripts from the bundled file into the script folder
+ * Extracts all scripts from the bundled file into the script folder.
+ * @returns A promise
  */
 export async function extractScripts() {
   logger.logInfo('Extracting scripts from the bundled file...');
