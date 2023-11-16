@@ -138,7 +138,7 @@ export async function createScriptLoaderBundle(
 #==============================================================================
 # ** ${LOADER_SCRIPT_NAME}
 #------------------------------------------------------------------------------
-# Version: 1.1
+# Version: 1.1.0
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor

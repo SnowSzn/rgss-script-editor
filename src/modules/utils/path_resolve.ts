@@ -60,6 +60,35 @@ export function dirname(rPath: vscode.Uri | string): string {
 }
 
 /**
+ * Gets the extension of the given path.
+ * @param urifPath Uri path or string path
+ * @returns The file extension
+ */
+export function extname(rPath: vscode.Uri | string): string {
+  switch (process.platform) {
+    case 'win32':
+      if (rPath instanceof vscode.Uri) {
+        return path.win32.extname(rPath.fsPath);
+      } else {
+        return path.win32.extname(rPath);
+      }
+    case 'darwin':
+    case 'linux':
+      if (rPath instanceof vscode.Uri) {
+        return path.posix.extname(rPath.fsPath);
+      } else {
+        return path.posix.extname(rPath);
+      }
+    default:
+      if (rPath instanceof vscode.Uri) {
+        return path.extname(rPath.fsPath);
+      } else {
+        return path.extname(rPath);
+      }
+  }
+}
+
+/**
  * Normalizes the given path based on the current platform (OS)
  * @param urifPath Uri path or string path
  * @returns The resolved path

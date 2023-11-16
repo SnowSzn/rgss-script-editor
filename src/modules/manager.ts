@@ -239,11 +239,13 @@ export async function createLoadOrder() {
 export async function runGame() {
   logger.logInfo('Trying to run the game executable...');
   let gameWorkingDir = configuration.getProjectFolderPath();
-  let gameExecutablePath = configuration.getGameExePath();
+  let gameExecutablePath = configuration.getConfigGameExeRelativePath();
   let gameExecutableArgs = configuration.determineGameExeArguments();
+  let useWine = configuration.getConfigUseWine();
   logger.logInfo(`Executable working directory: '${gameWorkingDir}'`);
   logger.logInfo(`Executable path: '${gameExecutablePath}'`);
   logger.logInfo(`Executable arguments: '${gameExecutableArgs}'`);
+  logger.logInfo(`Uses Wine (Linux Only): '${useWine}'`);
   // Evaluates validness
   if (!gameWorkingDir || !gameExecutablePath || !gameExecutableArgs) {
     logger.logError(`Cannot run the executable due to invalid values.`);
@@ -251,11 +253,20 @@ export async function runGame() {
   }
   // Run logic
   try {
+    // Creates process
     let gameProcess = await gameplay.runExecutable(gameExecutablePath, {
       cwd: gameWorkingDir,
       args: gameExecutableArgs,
+      useWine: useWine,
     });
-    gameProcess.unref();
+    // Handle events
+    gameProcess.stdin?.end();
+    gameProcess.on('exit', (code, signal) => {
+      logger.logInfo(
+        `Game execution finished with code: ${code}, signal: ${signal}`
+      );
+    });
+    gameProcess.on('beforeExit', () => gameProcess.kill());
   } catch (error) {
     logger.logErrorUnknown(error);
   }
