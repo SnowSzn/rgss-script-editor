@@ -7,11 +7,6 @@ import * as manager from './modules/manager';
 /*
       Crear una extension de VSCode que hara los siguientes comandos:
 
-      - 1. Create a bundled script file
-        Guarda todos los scripts separados de una carpeta en un fichero 'bundle' de scripts en el directorio del proeycto
-          -> Este metodo NO SOBREESCRIBIRÁ el fichero 'bundle' dummy que se creó
-            -> Se usará para crear un fichero para la distribución del juego.
-
       Crear una forma de ordenar la carga de ficheros cuando se cree el dummy 'bundle' file, dos formas:
         - 1. Crear una vista dentro del editor de vscode para ordenar ficheros (dificil)
           -> Un editor que haga mas facil crear el orden de carga de los scripts
