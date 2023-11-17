@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as zlib from 'zlib';
 import * as marshal from '@hyrious/marshal';
 import * as pathResolve from '../utils/path_resolve';
+import { readDir, readDirRecursive } from '../utils/read_dir';
 
 /**
  * Determines that the RPG Maker scripts bundle file was not extracted.
@@ -16,12 +17,20 @@ export const SCRIPTS_EXTRACTED = 200;
 /**
  * Determines if the script loader bundle was created.
  */
-export const LOADER_BUNDLE_CREATED = 150;
+export const LOADER_BUNDLE_CREATED = 300;
 
 /**
  * Determines if the bundle file using the extracted scripts was created.
  */
-export const BUNDLE_CREATED = 350;
+export const BUNDLE_CREATED = 400;
+
+/**
+ * Read Ruby script files options
+ */
+export type ReadFolderOptions = {
+  recursive?: boolean;
+  absolute?: boolean;
+};
 
 /**
  * Unique script section for this extension's external scripts loader script.
@@ -45,8 +54,10 @@ const INVALID_CHARACTERS = /[\\/:\*\?"<>\|▼■]/g;
 
 /**
  * Regexp to deformat a external script name.
+ *
+ * Case insensitive.
  */
-const DEFORMAT_SCRIPT_NAME = /.*?-\s*(.*?)\.rb/;
+const DEFORMAT_SCRIPT_NAME = /(?:.*-.*?)?(.*?)\.rb$/i;
 
 /**
  * Maximum value to generate a script section
@@ -406,23 +417,28 @@ ScriptLoader.run
  * If the load order file creation was successful it resolves the promise with the load order file path.
  *
  * If the load order couldn't be created it rejects the promise with an error.
- * @param scriptFolder Absolute path to the external scripts folder
+ * @param scriptsFolder Absolute path to the external scripts folder
  * @returns A promise
  */
 export async function createLoadOrderFile(
-  scriptFolder: string
+  scriptsFolder: string
 ): Promise<string> {
-  let filePath = pathResolve.join(scriptFolder, LOAD_ORDER_FILE_NAME);
-  let entries = readDirRecursive(scriptFolder);
-  let file = fs.openSync(filePath, 'w');
-  entries.forEach((entry) => {
-    if (isRubyScript(entry, scriptFolder)) {
-      let script = pathResolve.resolveRPG(entry);
-      fs.writeSync(file, `${script}\n`);
-    }
-  });
-  fs.closeSync(file);
-  return filePath;
+  try {
+    let loadOrderPath = pathResolve.join(scriptsFolder, LOAD_ORDER_FILE_NAME);
+    let scripts = readAllRubyScripts(scriptsFolder, {
+      recursive: true,
+      absolute: false,
+    });
+    let file = fs.openSync(loadOrderPath, 'w');
+    scripts.forEach((script) => {
+      let scriptRelative = pathResolve.resolveRPG(script);
+      fs.writeSync(file, `${scriptRelative}\n`);
+    });
+    fs.closeSync(file);
+    return loadOrderPath;
+  } catch (error) {
+    throw error;
+  }
 }
 
 /**
@@ -442,23 +458,22 @@ export async function createBundleFile(
   }
   // Starts bundle creation
   let sections: number[] = [];
-  let files = readDirRecursive(scriptsFolder, true);
+  let scripts = readAllRubyScripts(scriptsFolder, { recursive: true });
   let bundle: any[][] = [];
   // Create bundle file
-  for (let i = 0; i < files.length; i++) {
-    const file = files[i];
-    if (isRubyScript(file)) {
-      let section = generateScriptSection(sections);
-      let code = fs.readFileSync(file, { encoding: 'utf8' });
-      bundle[i] = [];
-      bundle[i][0] = section;
-      bundle[i][1] = deformatScriptName(pathResolve.basename(file));
-      bundle[i][2] = zlib.deflateSync(code, {
-        level: zlib.constants.Z_BEST_COMPRESSION,
-        finishFlush: zlib.constants.Z_FINISH,
-      });
-      sections.push(section);
-    }
+  for (let i = 0; i < scripts.length; i++) {
+    const script = scripts[i];
+    let section = generateScriptSection(sections);
+    let code = fs.readFileSync(script, { encoding: 'utf8' });
+    // Creates bundle file.
+    bundle[i] = [];
+    bundle[i][0] = section;
+    bundle[i][1] = deformatScriptName(script);
+    bundle[i][2] = zlib.deflateSync(code, {
+      level: zlib.constants.Z_BEST_COMPRESSION,
+      finishFlush: zlib.constants.Z_FINISH,
+    });
+    sections.push(section);
   }
   // Marshalizes the bundle file contents
   let bundleMarshalized = marshal.dump(bundle, {
@@ -472,13 +487,73 @@ export async function createBundleFile(
 }
 
 /**
+ * Reads all Ruby script files from the given base directory.
+ *
+ * The flag 'recursive' can be set to read all subdirectories from 'base' directory.
+ *
+ * The flag 'absolute' can be set to make all entries be absolute paths instead of relative paths from the 'base' directory.
+ *
+ * The 'absolute' flag is true by default.
+ *
+ * If the given directory does not exists it throws an error.
+ * @param base Base path
+ * @param options Read options
+ * @returns A list of script paths
+ */
+export function readAllRubyScripts(
+  base: string,
+  options: ReadFolderOptions
+): string[] {
+  // Gets all ruby scripts.
+  let scripts = readScriptsFolder(base, options, (entries) => {
+    return entries.filter((entry) => isRubyScript(entry));
+  });
+  return scripts;
+}
+
+/**
+ * Reads all entries from the given base directory.
+ *
+ * The flag 'recursive' can be set to read all subdirectories from 'base' directory.
+ *
+ * The flag 'absolute' can be set to make all entries be absolute paths instead of relative paths from the 'base' directory.
+ *
+ * The 'absolute' flag is true by default.
+ *
+ * A callback function can be given that will be called to process the entries and return whatever the callback function returns.
+ *
+ * If the given directory does not exists it throws an error.
+ * @param base Base path
+ * @param options Read options
+ * @returns A list of script paths
+ */
+export function readScriptsFolder(
+  base: string,
+  options: ReadFolderOptions,
+  callback?: (entries: string[]) => string[]
+): string[] {
+  // Checks base path validness
+  if (!fs.existsSync(base)) {
+    throw new Error(
+      `Cannot read script folder from: '${base}' because it does not exists!`
+    );
+  }
+  // Valid directory.
+  let files: string[] = options.recursive
+    ? readDirRecursive(base, options.absolute)
+    : readDir(base, options.absolute);
+  // Call callback if available
+  return callback ? callback(files) : files;
+}
+
+/**
  * Checks if the extraction process is valid or not.
  *
  * Returns true if there are scripts in the bundle file that were not extracted previously.
  * @param bundle Bundle (marshalized)
  * @returns Whether extraction is valid or not
  */
-function checkValidExtraction(bundle: any[][]): boolean {
+export function checkValidExtraction(bundle: any[][]): boolean {
   // Only a script file exists, check if it is the loader
   return bundle.some((script) => {
     // Checks if it exists at least a valid script in the bundle array that is not a loader
@@ -497,7 +572,7 @@ function checkValidExtraction(bundle: any[][]): boolean {
  *
  * This function can throw errors.
  */
-function createScriptFolder(scriptsFolderPath: string) {
+export function createScriptFolder(scriptsFolderPath: string) {
   if (!fs.existsSync(scriptsFolderPath)) {
     fs.mkdirSync(scriptsFolderPath, { recursive: true });
   } else {
@@ -513,7 +588,7 @@ function createScriptFolder(scriptsFolderPath: string) {
  * @param filePath Absolute path to the file.
  * @param backUpsFolder Absolute path to the destination folder.
  */
-function createBackUp(filePath: string, backUpsFolder: string) {
+export function createBackUp(filePath: string, backUpsFolder: string) {
   // Checks if the given file exists first
   if (!fs.existsSync(filePath)) {
     throw new Error(`Failed to copy: '${filePath}', file does not exist!`);
@@ -539,7 +614,7 @@ function createBackUp(filePath: string, backUpsFolder: string) {
  * @param bundleFile Bundle file absolute path
  * @returns The bundle data
  */
-function readBundleFile(bundleFile: string): any[][] {
+export function readBundleFile(bundleFile: string): any[][] {
   let output: any[][] = [];
   let textDecoder = new TextDecoder('utf8');
   // Read binary data
@@ -558,42 +633,11 @@ function readBundleFile(bundleFile: string): any[][] {
 }
 
 /**
- * Recursively reads the given directory.
- *
- * It returns a list of all elements inside the base directory.
- *
- * If the 'absolute' flag is set to true the contents are all joined with the base directory.
- *
- * By default 'absolute' flag is set to false.
- *
- * If the given directory does not exists it raises an exception.
- * @param base Base directory
- * @param absolute Absolute path flag
- * @returns List of files
- */
-function readDirRecursive(base: string, absolute = false): string[] {
-  let elements: string[] = [];
-  fs.readdirSync(base).forEach((value) => {
-    let valuePath = pathResolve.join(base, value);
-    if (fs.statSync(valuePath).isDirectory()) {
-      elements = elements.concat(...readDirRecursive(valuePath, absolute));
-    } else {
-      if (absolute) {
-        elements = elements.concat(valuePath);
-      } else {
-        elements = elements.concat(value);
-      }
-    }
-  });
-  return elements;
-}
-
-/**
  * Checks if the given script section corresponds to the extension's loader script.
  * @param scriptSection Section of the script
  * @returns Whether it is the script loader or not
  */
-function isLoaderScript(scriptSection: number) {
+export function isLoaderScript(scriptSection: number) {
   return scriptSection === LOADER_SCRIPT_SECTION;
 }
 
@@ -605,7 +649,7 @@ function isLoaderScript(scriptSection: number) {
  * @param base Base path
  * @returns Whether the path is a Ruby file or not.
  */
-function isRubyScript(file: string, base?: string): boolean {
+export function isRubyScript(file: string, base?: string): boolean {
   // Resolves path
   let path = base ? pathResolve.join(base, file) : file;
   // Checks if path exists
@@ -624,6 +668,37 @@ function isRubyScript(file: string, base?: string): boolean {
 }
 
 /**
+ * Checks if the given file is a folder containing ruby files.
+ *
+ * If a base path is given, it is joined with the given file before checking the file.
+ * @param folder Folder path
+ * @param base Base path
+ * @returns Whether the path is a valid folder or not.
+ */
+export function isRubyFolder(folder: string, base?: string): boolean {
+  // Resolves path
+  let path = base ? pathResolve.join(base, folder) : folder;
+  // Checks if path exists
+  if (!fs.existsSync(path)) {
+    return false;
+  }
+  // Checks if path is a file
+  if (!fs.statSync(path).isDirectory()) {
+    return false;
+  }
+  // Checks files
+  let files = readAllRubyScripts(path, { recursive: false, absolute: true });
+  if (
+    !files.some((value) => {
+      return isRubyScript(value);
+    })
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Processes the external script name and returns it.
  *
  * This function makes sure it does not have invalid characters for the OS.
@@ -631,7 +706,10 @@ function isRubyScript(file: string, base?: string): boolean {
  * @param scriptIndex Script index number
  * @returns The processed script name
  */
-function formatScriptName(scriptName: string, scriptIndex: number): string {
+export function formatScriptName(
+  scriptName: string,
+  scriptIndex: number
+): string {
   let index = scriptIndex.toString();
   // Removes any invalid characters
   let name = scriptName.replace(INVALID_CHARACTERS, '');
@@ -649,13 +727,16 @@ function formatScriptName(scriptName: string, scriptIndex: number): string {
 /**
  * Deformats the given script name.
  *
+ * If a path is given, it will get the basename first before deformatting it.
+ *
  * It returns the same script name if deformatting cannot be done.
- * @param scriptName Script name
+ * @param script Script
  * @returns Deformatted script name
  */
-function deformatScriptName(scriptName: string): string {
-  let match = scriptName.match(DEFORMAT_SCRIPT_NAME);
-  return match ? match[1] : scriptName;
+export function deformatScriptName(script: string): string {
+  let baseName = pathResolve.basename(script);
+  let match = baseName.match(DEFORMAT_SCRIPT_NAME);
+  return match ? match[1] : baseName;
 }
 
 /**
@@ -665,7 +746,7 @@ function deformatScriptName(scriptName: string): string {
  * @param sections List of sections IDs
  * @returns A valid section
  */
-function generateScriptSection(sections: number[]): number {
+export function generateScriptSection(sections: number[]): number {
   let section = 0;
   do {
     section = Math.floor(Math.random() * SECTION_MAX_VAL);
@@ -680,7 +761,7 @@ function generateScriptSection(sections: number[]): number {
  * @param scriptCode Code of the script
  * @returns The script code processed
  */
-function processScriptCode(scriptCode: string): string {
+export function processScriptCode(scriptCode: string): string {
   let script = '';
   if (!scriptCode.includes('# encoding: utf-8')) {
     script = `# encoding: utf-8\n${scriptCode}`;
@@ -695,7 +776,7 @@ function processScriptCode(scriptCode: string): string {
  * Formats the current date and returns it as a string
  * @returns Formatted date
  */
-function currentDate(): string {
+export function currentDate(): string {
   let date = new Date();
   const day = date.getDate().toString().padStart(2, '0');
   const month = (date.getMonth() + 1).toString().padStart(2, '0');

@@ -6,10 +6,10 @@ import * as pathResolve from './path_resolve';
  * Return type when changing project folder
  */
 export type ConfigChangeFolder = {
-  oldProjectFolder?: vscode.Uri | undefined;
+  oldProjectFolder?: string | undefined;
   oldProjectFolderName?: string | undefined;
   oldRgssVersion?: string | undefined;
-  curProjectFolder: vscode.Uri;
+  curProjectFolder: string;
   curProjectFolderName: string;
   curRgssVersion: string;
 };
@@ -180,36 +180,38 @@ class Configuration {
     if (this.valid() && projectFolder === this.projectFolder) {
       // If config is valid, there is no way attributes are undefined
       return {
-        oldProjectFolder: this.projectFolder,
+        oldProjectFolder: pathResolve.resolve(this.projectFolder),
         oldProjectFolderName: pathResolve.basename(this.projectFolder),
         oldRgssVersion: this.rgssVersion,
-        curProjectFolder: this.projectFolder,
+        curProjectFolder: pathResolve.resolve(this.projectFolder),
         curProjectFolderName: pathResolve.basename(this.projectFolder),
         curRgssVersion: this.rgssVersion!,
       };
     } else {
-      let oldProjectFolder = this.projectFolder;
+      let oldProjectFolder = this.projectFolder
+        ? pathResolve.resolve(this.projectFolder)
+        : this.projectFolder;
       let oldRgssVersion = this.rgssVersion;
       this.projectFolder = projectFolder;
       this.rgssVersion = this.findRGSSVersion(projectFolder);
+      // Checks if RGSS version detection was successful
       if (this.rgssVersion === undefined) {
         // Reject promise if RGSS could not be found
         throw new Error(
           `Cannot determine RGSS version in folder '${this.projectFolder.fsPath}', 
             Scripts bundle file is missing, fix the problem and try opening the folder again`
         );
-      } else {
-        return {
-          oldProjectFolder: oldProjectFolder,
-          oldProjectFolderName: oldProjectFolder
-            ? pathResolve.basename(oldProjectFolder)
-            : oldProjectFolder,
-          oldRgssVersion: oldRgssVersion,
-          curProjectFolder: this.projectFolder,
-          curProjectFolderName: pathResolve.basename(this.projectFolder),
-          curRgssVersion: this.rgssVersion,
-        };
       }
+      return {
+        oldProjectFolder: oldProjectFolder,
+        oldProjectFolderName: oldProjectFolder
+          ? pathResolve.basename(oldProjectFolder)
+          : oldProjectFolder,
+        oldRgssVersion: oldRgssVersion,
+        curProjectFolder: pathResolve.resolve(this.projectFolder),
+        curProjectFolderName: pathResolve.basename(this.projectFolder),
+        curRgssVersion: this.rgssVersion,
+      };
     }
   }
 
@@ -252,6 +254,19 @@ class Configuration {
   getProjectFolderPath(): string | undefined {
     if (this.valid()) {
       return pathResolve.resolve(this.projectFolder!);
+    }
+    return undefined;
+  }
+
+  /**
+   * Gets the project folder name.
+   *
+   * It returns undefined if the name cannot be determined.
+   * @returns Project folder name
+   */
+  getProjectFolderName(): string | undefined {
+    if (this.valid()) {
+      return pathResolve.basename(this.projectFolder!);
     }
     return undefined;
   }

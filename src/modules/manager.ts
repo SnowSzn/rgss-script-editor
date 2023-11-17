@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import * as context from './context/context_controller';
-import * as uiElements from './ui/ui_elements';
 import * as gameplay from './processes/run_game';
 import * as workingFolder from './processes/open_folder';
 import * as scripts from './processes/scripts_controller';
+import { uiController } from './ui/ui_controller';
 import { config as configuration } from './utils/configuration';
 import { logger } from './utils/logger';
 
@@ -18,7 +18,7 @@ import { logger } from './utils/logger';
 export async function quickStart() {
   // Checks if quickstart is enabled first.
   if (!configuration.getConfigQuickstart()) {
-    uiElements.controller.hideAllStatusBars();
+    uiController.hideAllStatusBars();
     return;
   }
   logger.logInfo('Quickstarting RGSS Script Editor extension...');
@@ -50,7 +50,7 @@ export async function quickStart() {
       'Several valid RPG Maker folders were detected in the current workspace!'
     );
     // Enables 'choose project folder' button on the status bar
-    uiElements.controller.controlStatusBar({ setProjectFolder: true });
+    uiController.controlStatusBar({ setProjectFolder: true });
     // Shows a info message with a callback
     vscode.window
       .showInformationMessage(
@@ -90,7 +90,7 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
     }
 
     // Updates extension folder context
-    logger.logInfo(`'${project.curProjectFolder.fsPath}' opened successfully!`);
+    logger.logInfo(`'${project.curProjectFolder}' opened successfully!`);
     logger.logInfo(`RGSS Version detected: '${project.curRgssVersion}'`);
     context.setValidProjectFolder(true);
 
@@ -120,8 +120,8 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
     }
 
     // Process UI elements
-    uiElements.controller.updateProjectName(project.curProjectFolderName);
-    uiElements.controller.showAllStatusBars();
+    uiController.updateProjectFolder();
+    uiController.showAllStatusBars();
   } catch (error) {
     logger.logErrorUnknown(error);
     context.setValidProjectFolder(false);

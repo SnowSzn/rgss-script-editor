@@ -5,9 +5,7 @@ import * as manager from './modules/manager';
 
 // TODO: Create extension
 /*
-      Crear una extension de VSCode que hara los siguientes comandos:
-
-      Crear una forma de ordenar la carga de ficheros cuando se cree el dummy 'bundle' file, dos formas:
+      1. Crear una forma de ordenar la carga de ficheros cuando se cree el dummy 'bundle' file, dos formas:
         - 1. Crear una vista dentro del editor de vscode para ordenar ficheros (dificil)
           -> Un editor que haga mas facil crear el orden de carga de los scripts
         - 2. Crear un fichero txt (load.txt) dentro de la carpeta donde estaran todos los nombres de los scripts a cargar en orden
@@ -19,9 +17,14 @@ import * as manager from './modules/manager';
             - Modules/module3.rb
             - Addons/Actors/actor.rb
             - etc ...
-        Info: https://code.visualstudio.com/api/references/contribution-points (contributes.customEditors)
       
-      Hacer que la extension pueda leer opciones de un fichero JSON en la carpeta del proyecto
+      2. Crear un script dentro de './ui', que funcionara como un controlador para todo lo que sea la interfaz de la extension.
+        -> Juntará en una misma clase las views de la extension y los elementos del status bar.
+      
+      3. Crear un nuevo comando para crear un fichero bundle con los scritps que esten dentro del load_oder.txt
+        -> Ya existe un comando para crear un fichero bundle pero este lo hace con todos los scripts del directorio
+      
+      Opcional: Hacer que la extension pueda leer opciones de un fichero JSON en la carpeta del proyecto
       por ejemplo: un fichero 'rgss-script-editor.json' que sobreescribirá al configuracion
       de VSCode (en configuration.ts), si gameName en VSCode es 'Game.exe'
       en el fichero local se podria cambiar el gameName a 'Juego.exe' y la extension
@@ -31,6 +34,8 @@ import * as manager from './modules/manager';
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
+  // **********************************************************
+  // VSCode Configuration
   // **********************************************************
   // Set project folder command
   context.subscriptions.push(
