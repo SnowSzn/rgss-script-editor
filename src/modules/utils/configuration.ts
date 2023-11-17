@@ -392,6 +392,33 @@ class Configuration {
   }
 
   /**
+   * Determines the path to the bundle file created from the extracted scripts.
+   * @returns Path to the new bundle file
+   */
+  determineCreatedBundleFile(): string | undefined {
+    if (!this.valid()) {
+      return undefined;
+    }
+    // Formats path to the bundle file
+    switch (this.rgssVersion) {
+      case RGSSVersions.RGSS1: {
+        let bundleFile = pathResolve.basename(RGSSBundleScriptsPath.RGSS1);
+        return pathResolve.join(this.projectFolder!, bundleFile);
+      }
+      case RGSSVersions.RGSS2: {
+        let bundleFile = pathResolve.basename(RGSSBundleScriptsPath.RGSS2);
+        return pathResolve.join(this.projectFolder!, bundleFile);
+      }
+      case RGSSVersions.RGSS3: {
+        let bundleFile = pathResolve.basename(RGSSBundleScriptsPath.RGSS3);
+        return pathResolve.join(this.projectFolder!, bundleFile);
+      }
+      default:
+        return undefined;
+    }
+  }
+
+  /**
    * Gets the configuration value from the VS Code settings.
    *
    * If the key is not found it returns undefined.

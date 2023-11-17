@@ -65,16 +65,16 @@
         "icon": "$(note)"
       },
       {
+        "command": "rgss-script-editor.createBundleFile",
+        "title": "Create Bundle File From Extracted Scripts",
+        "category": "RGSS Script Editor",
+        "icon": "$(gear)"
+      },
+      {
         "command": "rgss-script-editor.runGame",
         "title": "Run Game",
         "category": "RGSS Script Editor",
         "icon": "$(run)"
-      },
-      {
-        "command": "rgss-script-editor.createCustomSettings",
-        "title": "Create Custom JSON Settings",
-        "category": "RGSS Script Editor",
-        "icon": "$(gear)"
       }
     ],
     "configuration": [

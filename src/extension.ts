@@ -104,6 +104,16 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
   // **********************************************************
+  // Create bundle file from extracted scripts
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.createBundleFile',
+      () => {
+        manager.createBundleFile();
+      }
+    )
+  );
+  // **********************************************************
   // Run game command
   context.subscriptions.push(
     vscode.commands.registerCommand('rgss-script-editor.runGame', () => {

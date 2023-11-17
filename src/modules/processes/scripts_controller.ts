@@ -19,6 +19,11 @@ export const SCRIPTS_EXTRACTED = 200;
 export const LOADER_BUNDLE_CREATED = 150;
 
 /**
+ * Determines if the bundle file using the extracted scripts was created.
+ */
+export const BUNDLE_CREATED = 350;
+
+/**
  * Unique script section for this extension's external scripts loader script.
  */
 const LOADER_SCRIPT_SECTION = 133_769_420;
@@ -41,7 +46,14 @@ const INVALID_CHARACTERS = /[\\/:\*\?"<>\|▼■]/g;
 /**
  * Regexp to deformat a external script name.
  */
-const DEFORMAT_SCRIPT_NAME = /^\d+\s*-\s*(.+?)\.rb$/;
+const DEFORMAT_SCRIPT_NAME = /.*?-\s*(.*?)\.rb/;
+
+/**
+ * Maximum value to generate a script section
+ *
+ * Sets as the maximum of the script loader to avoid a double section ID
+ */
+const SECTION_MAX_VAL = 133_769_420;
 
 /**
  * Asynchronously checks if the current RPG Maker project has extracted the bundle file previously.
@@ -372,6 +384,7 @@ ScriptLoader.run
       level: zlib.constants.Z_BEST_COMPRESSION,
       finishFlush: zlib.constants.Z_FINISH,
     });
+    // Marshalizes the bundle file contents
     let bundleMarshalized = marshal.dump(bundle, {
       hashStringKeysToSymbol: true,
     });
@@ -403,13 +416,59 @@ export async function createLoadOrderFile(
   let entries = readDirRecursive(scriptFolder);
   let file = fs.openSync(filePath, 'w');
   entries.forEach((entry) => {
-    if (entry.endsWith('.rb')) {
+    if (isRubyScript(entry, scriptFolder)) {
       let script = pathResolve.resolveRPG(entry);
       fs.writeSync(file, `${script}\n`);
     }
   });
   fs.closeSync(file);
   return filePath;
+}
+
+/**
+ * Creates a RPG Maker bundle file based on the RGSS version from all of the extracted scripts files.
+ * @param scriptsFolder Absolute path to the external scripts folder
+ * @param destination Destination file path
+ * @returns A promise
+ */
+export async function createBundleFile(
+  scriptsFolder: string,
+  destination: string
+): Promise<number> {
+  if (!fs.existsSync(scriptsFolder)) {
+    throw new Error(
+      `Cannot create bundle file from extracted scripts because the given script folder: ${scriptsFolder} does not exists!`
+    );
+  }
+  // Starts bundle creation
+  let sections: number[] = [];
+  let files = readDirRecursive(scriptsFolder, true);
+  let bundle: any[][] = [];
+  // Create bundle file
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    if (isRubyScript(file)) {
+      let section = generateScriptSection(sections);
+      let code = fs.readFileSync(file, { encoding: 'utf8' });
+      bundle[i] = [];
+      bundle[i][0] = section;
+      bundle[i][1] = deformatScriptName(pathResolve.basename(file));
+      bundle[i][2] = zlib.deflateSync(code, {
+        level: zlib.constants.Z_BEST_COMPRESSION,
+        finishFlush: zlib.constants.Z_FINISH,
+      });
+      sections.push(section);
+    }
+  }
+  // Marshalizes the bundle file contents
+  let bundleMarshalized = marshal.dump(bundle, {
+    hashStringKeysToSymbol: true,
+  });
+  // Creates bundle file
+  fs.writeFileSync(destination, bundleMarshalized, {
+    flag: 'w',
+  });
+  return BUNDLE_CREATED;
 }
 
 /**
@@ -539,6 +598,32 @@ function isLoaderScript(scriptSection: number) {
 }
 
 /**
+ * Checks if the given file is a Ruby script file.
+ *
+ * If a base path is given, it is joined with the given file before checking the file.
+ * @param file File path
+ * @param base Base path
+ * @returns Whether the path is a Ruby file or not.
+ */
+function isRubyScript(file: string, base?: string): boolean {
+  // Resolves path
+  let path = base ? pathResolve.join(base, file) : file;
+  // Checks if path exists
+  if (!fs.existsSync(path)) {
+    return false;
+  }
+  // Checks if path is a file
+  if (!fs.statSync(path).isFile()) {
+    return false;
+  }
+  // Checks file extension
+  if (!(pathResolve.extname(path).toLowerCase() === '.rb')) {
+    return false;
+  }
+  return true;
+}
+
+/**
  * Processes the external script name and returns it.
  *
  * This function makes sure it does not have invalid characters for the OS.
@@ -570,7 +655,22 @@ function formatScriptName(scriptName: string, scriptIndex: number): string {
  */
 function deformatScriptName(scriptName: string): string {
   let match = scriptName.match(DEFORMAT_SCRIPT_NAME);
-  return match ? match[0] : scriptName;
+  return match ? match[1] : scriptName;
+}
+
+/**
+ * Generates a number for a script's section.
+ *
+ * The generated section won't be any of the given list of sections IDs.
+ * @param sections List of sections IDs
+ * @returns A valid section
+ */
+function generateScriptSection(sections: number[]): number {
+  let section = 0;
+  do {
+    section = Math.floor(Math.random() * SECTION_MAX_VAL);
+  } while (sections.includes(section));
+  return section;
 }
 
 /**
@@ -584,6 +684,9 @@ function processScriptCode(scriptCode: string): string {
   let script = '';
   if (!scriptCode.includes('# encoding: utf-8')) {
     script = `# encoding: utf-8\n${scriptCode}`;
+  } else {
+    // Code already contains encoding comment
+    script = scriptCode;
   }
   return script;
 }

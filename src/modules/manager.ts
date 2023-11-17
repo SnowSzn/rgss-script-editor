@@ -191,10 +191,34 @@ export async function extractScripts() {
         "Extraction not needed, there aren't scripts left in the bundle file"
       );
     } else {
+      context.setExtractedScripts(false);
       logger.logWarning(`Extraction returned an unknown code: '${extraction}'`);
     }
   } catch (error: unknown) {
     context.setExtractedScripts(false);
+    logger.logErrorUnknown(error);
+  }
+}
+
+/**
+ * Creates the load order file within the current scripts folder path
+ * @returns A promise
+ */
+export async function createLoadOrder() {
+  let scriptsFolder = configuration.getScriptsFolderPath();
+  if (!scriptsFolder) {
+    logger.logError(
+      `Cannot create load order file because the scripts folder path: '${scriptsFolder}' is invalid!`
+    );
+    return;
+  }
+  try {
+    logger.logInfo('Creating load order file...');
+    const loadOrderPath = await scripts.createLoadOrderFile(scriptsFolder);
+    logger.logInfo(
+      `Load order file created succesfully at: '${loadOrderPath}'`
+    );
+  } catch (error) {
     logger.logErrorUnknown(error);
   }
 }
@@ -236,30 +260,39 @@ export async function createScriptLoader() {
     );
     if (loaderStatus === scripts.LOADER_BUNDLE_CREATED) {
       logger.logInfo('Script loader bundle file created successfully!');
+    } else {
+      logger.logError(
+        `Script loader bundle file creation reported an unknown code!`
+      );
     }
   } catch (error) {
     logger.logErrorUnknown(error);
   }
 }
-
 /**
- * Creates the load order file within the current scripts folder path
+ * Creates a bundle file from the extracted scripts folder.
  * @returns A promise
  */
-export async function createLoadOrder() {
-  let scriptsFolder = configuration.getScriptsFolderPath();
-  if (!scriptsFolder) {
-    logger.logError(
-      `Cannot create load order file because the scripts folder path: '${scriptsFolder}' is invalid!`
-    );
-    return;
-  }
+export async function createBundleFile() {
   try {
-    logger.logInfo('Creating load order file...');
-    const loadOrderPath = await scripts.createLoadOrderFile(scriptsFolder);
-    logger.logInfo(
-      `Load order file created succesfully at: '${loadOrderPath}'`
-    );
+    logger.logInfo('Creating a bundle file from the scripts folder...');
+    let scriptsFolder = configuration.getScriptsFolderPath();
+    let destination = configuration.determineCreatedBundleFile();
+    logger.logInfo(`Extracted scripts folder path: ${scriptsFolder}`);
+    logger.logInfo(`Destination bundle file: ${destination}`);
+    // Checks validness
+    if (!scriptsFolder || !destination) {
+      logger.logError(
+        `Cannot create bundle file because due to invalid values.`
+      );
+      return;
+    }
+    let response = await scripts.createBundleFile(scriptsFolder, destination);
+    if (response === scripts.BUNDLE_CREATED) {
+      logger.logInfo(`Bundle file created successfully at: ${destination}`);
+    } else {
+      logger.logError(`Bundle file creation reported an unknown code!`);
+    }
   } catch (error) {
     logger.logErrorUnknown(error);
   }
