@@ -57,7 +57,7 @@ const INVALID_CHARACTERS = /[\\/:\*\?"<>\|▼■]/g;
  *
  * Case insensitive.
  */
-const DEFORMAT_SCRIPT_NAME = /(?:.*-.*?)?(.*?)\.rb$/i;
+const DEFORMAT_SCRIPT_NAME = /(?:\d+\s*-.*?)?(.*?)\.rb$/i;
 
 /**
  * Maximum value to generate a script section
