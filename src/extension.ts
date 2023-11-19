@@ -20,9 +20,9 @@ import * as manager from './modules/manager';
       
       2. Crear un script dentro de './ui', que funcionara como un controlador para todo lo que sea la interfaz de la extension.
         -> Juntará en una misma clase las views de la extension y los elementos del status bar.
-      
-      3. Crear un nuevo comando para crear un fichero bundle con los scritps que esten dentro del load_oder.txt
-        -> Ya existe un comando para crear un fichero bundle pero este lo hace con todos los scripts del directorio
+    
+      4. Hacer que la extension sea capaz de recargarse si se cambia algunos de los valores criticos
+      de la configuracion de la extension (por ejemplo, Scripts Folder Path)
       
       Opcional: Hacer que la extension pueda leer opciones de un fichero JSON en la carpeta del proyecto
       por ejemplo: un fichero 'rgss-script-editor.json' que sobreescribirá al configuracion
@@ -35,7 +35,15 @@ import * as manager from './modules/manager';
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
   // **********************************************************
-  // VSCode Configuration
+  // VSCode Configuration change event.
+  vscode.workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration('rgssScriptEditor.external.scriptsFolder')) {
+      vscode.window.showInformationMessage(
+        'External scripts folder path change detected!'
+      );
+      manager.restart();
+    }
+  });
   // **********************************************************
   // Set project folder command
   context.subscriptions.push(
@@ -60,6 +68,7 @@ export function activate(context: vscode.ExtensionContext) {
                   vscode.window.showInformationMessage(
                     `Failed to open the folder: '${value.name}', it isn't a valid RPG Maker project!`
                   );
+                  manager.restart();
                 });
             }
           });
@@ -121,8 +130,8 @@ export function activate(context: vscode.ExtensionContext) {
     })
   );
   // **********************************************************
-  // Falls to the quickstart
-  manager.quickStart();
+  // Start extension
+  manager.restart();
   // **********************************************************
 }
 
