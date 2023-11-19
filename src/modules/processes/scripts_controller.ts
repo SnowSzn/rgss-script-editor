@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as zlib from 'zlib';
 import * as marshal from '@hyrious/marshal';
 import * as pathResolve from '../utils/path_resolve';
-import { readDir, readDirRecursive } from '../utils/read_dir';
+import { readDirectory } from '../utils/directories';
 
 /**
  * Determines that the RPG Maker scripts bundle file was not extracted.
@@ -23,14 +23,6 @@ export const LOADER_BUNDLE_CREATED = 300;
  * Determines if the bundle file using the extracted scripts was created.
  */
 export const BUNDLE_CREATED = 400;
-
-/**
- * Read Ruby script files options
- */
-export type ReadFolderOptions = {
-  recursive?: boolean;
-  absolute?: boolean;
-};
 
 /**
  * Unique script section for this extension's external scripts loader script.
@@ -409,6 +401,7 @@ ScriptLoader.run
   }
 }
 
+// TODO: Function must be adapted for tree view support.
 /**
  * Asynchronously creates a load order.
  *
@@ -425,10 +418,13 @@ export async function createLoadOrderFile(
 ): Promise<string> {
   try {
     let loadOrderPath = pathResolve.join(scriptsFolder, LOAD_ORDER_FILE_NAME);
-    let scripts = readAllRubyScripts(scriptsFolder, {
-      recursive: true,
-      absolute: false,
-    });
+    let scripts = readDirectory(
+      scriptsFolder,
+      { recursive: true, relative: true },
+      (entries) => {
+        return entries.filter((entry) => isRubyScript(entry, scriptsFolder));
+      }
+    );
     let file = fs.openSync(loadOrderPath, 'w');
     scripts.forEach((script) => {
       let scriptRelative = pathResolve.resolveRPG(script);
@@ -441,6 +437,7 @@ export async function createLoadOrderFile(
   }
 }
 
+// TODO: Function must change to allow user select save path with vscode API
 /**
  * Creates a RPG Maker bundle file based on the RGSS version from all of the extracted scripts files.
  * @param scriptsFolder Absolute path to the external scripts folder
@@ -457,8 +454,10 @@ export async function createBundleFile(
     );
   }
   // Starts bundle creation
-  let sections: number[] = [];
-  let scripts = readAllRubyScripts(scriptsFolder, { recursive: true });
+  let sections: number[] = [LOADER_SCRIPT_SECTION];
+  let scripts = readDirectory(scriptsFolder, { recursive: true }, (entries) => {
+    return entries.filter((entry) => isRubyScript(entry));
+  });
   let bundle: any[][] = [];
   // Create bundle file
   for (let i = 0; i < scripts.length; i++) {
@@ -484,66 +483,6 @@ export async function createBundleFile(
     flag: 'w',
   });
   return BUNDLE_CREATED;
-}
-
-/**
- * Reads all Ruby script files from the given base directory.
- *
- * The flag 'recursive' can be set to read all subdirectories from 'base' directory.
- *
- * The flag 'absolute' can be set to make all entries be absolute paths instead of relative paths from the 'base' directory.
- *
- * The 'absolute' flag is true by default.
- *
- * If the given directory does not exists it throws an error.
- * @param base Base path
- * @param options Read options
- * @returns A list of script paths
- */
-export function readAllRubyScripts(
-  base: string,
-  options: ReadFolderOptions
-): string[] {
-  // Gets all ruby scripts.
-  let scripts = readScriptsFolder(base, options, (entries) => {
-    return entries.filter((entry) => isRubyScript(entry));
-  });
-  return scripts;
-}
-
-/**
- * Reads all entries from the given base directory.
- *
- * The flag 'recursive' can be set to read all subdirectories from 'base' directory.
- *
- * The flag 'absolute' can be set to make all entries be absolute paths instead of relative paths from the 'base' directory.
- *
- * The 'absolute' flag is true by default.
- *
- * A callback function can be given that will be called to process the entries and return whatever the callback function returns.
- *
- * If the given directory does not exists it throws an error.
- * @param base Base path
- * @param options Read options
- * @returns A list of script paths
- */
-export function readScriptsFolder(
-  base: string,
-  options: ReadFolderOptions,
-  callback?: (entries: string[]) => string[]
-): string[] {
-  // Checks base path validness
-  if (!fs.existsSync(base)) {
-    throw new Error(
-      `Cannot read script folder from: '${base}' because it does not exists!`
-    );
-  }
-  // Valid directory.
-  let files: string[] = options.recursive
-    ? readDirRecursive(base, options.absolute)
-    : readDir(base, options.absolute);
-  // Call callback if available
-  return callback ? callback(files) : files;
 }
 
 /**
@@ -642,9 +581,9 @@ export function isLoaderScript(scriptSection: number) {
 }
 
 /**
- * Checks if the given file is a Ruby script file.
+ * Checks if the given ``file`` is a Ruby script file.
  *
- * If a base path is given, it is joined with the given file before checking the file.
+ * If a ``base`` path is given, it is joined with the given ``file`` before the check.
  * @param file File path
  * @param base Base path
  * @returns Whether the path is a Ruby file or not.
@@ -668,9 +607,9 @@ export function isRubyScript(file: string, base?: string): boolean {
 }
 
 /**
- * Checks if the given file is a folder containing ruby files.
+ * Checks if the given ``file`` is actually a folder containing ruby files.
  *
- * If a base path is given, it is joined with the given file before checking the file.
+ * If a ``base`` path is given, it is joined with the given ``file`` before the check.
  * @param folder Folder path
  * @param base Base path
  * @returns Whether the path is a valid folder or not.
@@ -682,17 +621,15 @@ export function isRubyFolder(folder: string, base?: string): boolean {
   if (!fs.existsSync(path)) {
     return false;
   }
-  // Checks if path is a file
+  // Checks if path is a directory
   if (!fs.statSync(path).isDirectory()) {
     return false;
   }
-  // Checks files
-  let files = readAllRubyScripts(path, { recursive: false, absolute: true });
-  if (
-    !files.some((value) => {
-      return isRubyScript(value);
-    })
-  ) {
+  // Checks if it has (at least) a ruby script
+  let rubyScripts = readDirectory(path, { recursive: false }, (entries) => {
+    return entries.filter((entry) => isRubyScript(entry));
+  });
+  if (rubyScripts.length <= 0) {
     return false;
   }
   return true;

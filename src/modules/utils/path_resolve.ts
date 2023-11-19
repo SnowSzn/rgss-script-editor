@@ -89,6 +89,29 @@ export function extname(rPath: vscode.Uri | string): string {
 }
 
 /**
+ * Gets the relative path between the two given paths.
+ * @param rPathFrom From path
+ * @param rPathTo To path
+ * @returns Returns the relative path
+ */
+export function relative(
+  rPathFrom: vscode.Uri | string,
+  rPathTo: vscode.Uri | string
+): string {
+  let from = rPathFrom instanceof vscode.Uri ? rPathFrom.fsPath : rPathFrom;
+  let to = rPathTo instanceof vscode.Uri ? rPathTo.fsPath : rPathTo;
+  switch (process.platform) {
+    case 'win32':
+      return path.win32.relative(from, to);
+    case 'darwin':
+    case 'linux':
+      return path.posix.relative(from, to);
+    default:
+      return path.posix.relative(from, to);
+  }
+}
+
+/**
  * Normalizes the given path based on the current platform (OS)
  * @param urifPath Uri path or string path
  * @returns The resolved path
