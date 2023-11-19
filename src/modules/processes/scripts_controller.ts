@@ -441,47 +441,73 @@ export async function createLoadOrderFile(
   return loadOrderPath;
 }
 
-// TODO: Function must change to allow user select save path with vscode API
 /**
  * Creates a RPG Maker bundle file based on the RGSS version from all of the extracted scripts files.
- * @param scriptsFolder Absolute path to the external scripts folder
- * @param destination Destination file path
+ * @param destination Destination path
  * @returns A promise
  */
-export async function createBundleFile(
-  scriptsFolder: string,
-  destination: string
-): Promise<number> {
-  if (!fs.existsSync(scriptsFolder)) {
+export async function createBundleFile(destination: string): Promise<number> {
+  let scriptsFolder = configuration.getScriptsFolderPath();
+  logger.logInfo(`Scripts folder path: '${scriptsFolder}'`);
+  if (!scriptsFolder) {
     throw new Error(
-      `Cannot create bundle file from extracted scripts because the given script folder: ${scriptsFolder} does not exists!`
+      `Cannot create bundle file from extracted scripts because the scripts folder: ${scriptsFolder} is invalid!`
     );
   }
-  // Starts bundle creation
-  let sections: number[] = [LOADER_SCRIPT_SECTION];
-  let scripts = directories.readDirectory(
+  // Checks load order validness
+  let loadOrder = fs
+    .readFileSync(pathResolve.join(scriptsFolder, LOAD_ORDER_FILE_NAME), {
+      encoding: 'utf8',
+    })
+    .split('\n');
+  if (loadOrder.length <= 0) {
+    throw new Error(
+      `Failed to create bundle file because load order file is empty!`
+    );
+  }
+  // Read script files
+  let entries = directories.readDirectory(
     scriptsFolder,
     { recursive: true },
     (entries) => {
       return entries.filter((entry) => isRubyScript(entry));
     }
   );
+  // Process scripts in the order of the load order file
+  let scripts: string[] = [];
+  loadOrder.forEach((isLoaded) => {
+    // Avoids empty lines
+    if (isLoaded.length > 0) {
+      // Try to find a script that matches the load order line
+      let script = entries.find((entry) => {
+        let basename = pathResolve.basename(entry);
+        let normalized = pathResolve.resolve(isLoaded);
+        let relative = pathResolve.relative(scriptsFolder!, entry);
+        let result = pathResolve.relative(normalized, relative);
+        return result === '' || result === basename;
+      });
+      // Push new script absolute path
+      if (script) {
+        scripts.push(script);
+      }
+    }
+  });
+  // Bundle file creation
+  let usedSections = [LOADER_SCRIPT_SECTION];
   let bundle: any[][] = [];
-  // Create bundle file
-  for (let i = 0; i < scripts.length; i++) {
-    const script = scripts[i];
-    let section = generateScriptSection(sections);
+  scripts.forEach((script, index) => {
+    let section = generateScriptSection(usedSections);
     let code = fs.readFileSync(script, { encoding: 'utf8' });
-    // Creates bundle file.
-    bundle[i] = [];
-    bundle[i][0] = section;
-    bundle[i][1] = deformatScriptName(script);
-    bundle[i][2] = zlib.deflateSync(code, {
+    // Create new bundle section
+    bundle[index] = [];
+    bundle[index][0] = section;
+    bundle[index][1] = deformatScriptName(script);
+    bundle[index][2] = zlib.deflateSync(code, {
       level: zlib.constants.Z_BEST_COMPRESSION,
       finishFlush: zlib.constants.Z_FINISH,
     });
-    sections.push(section);
-  }
+    usedSections.push(section);
+  });
   // Marshalizes the bundle file contents
   let bundleMarshalized = marshal.dump(bundle, {
     hashStringKeysToSymbol: true,

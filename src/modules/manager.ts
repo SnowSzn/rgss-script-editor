@@ -267,21 +267,29 @@ export async function createScriptLoader() {
  */
 export async function createBundleFile() {
   try {
+    // Gets destination folder
+    let folder = await vscode.window.showOpenDialog({
+      canSelectFiles: false,
+      canSelectMany: false,
+      canSelectFolders: true,
+    });
     logger.logInfo('Creating a bundle file from the scripts folder...');
-    let scriptsFolder = configuration.getScriptsFolderPath();
-    let destination = configuration.determineCreatedBundleFile();
-    logger.logInfo(`Extracted scripts folder path: ${scriptsFolder}`);
-    logger.logInfo(`Destination bundle file: ${destination}`);
-    // Checks validness
-    if (!scriptsFolder || !destination) {
-      logger.logError(
-        `Cannot create bundle file because due to invalid values.`
-      );
+    logger.logInfo(`Bundle file chosen path: ${folder}`);
+    if (!folder) {
+      logger.logError(`You must select a folder to save the bundle file!`);
       return;
     }
-    let response = await scripts.createBundleFile(scriptsFolder, destination);
-    if (response === scripts.BUNDLE_CREATED) {
-      logger.logInfo(`Bundle file created successfully at: ${destination}`);
+    // Process destination RGSS-based
+    let destination = configuration.determineBundleFilePath(folder[0]);
+    logger.logInfo(`Destination bundle file: ${destination}`);
+    if (!destination) {
+      logger.logError(`Cannot create bundle file due to invalid values.`);
+      return;
+    }
+    // Create bundle file
+    let bundleResponse = await scripts.createBundleFile(destination);
+    if (bundleResponse === scripts.BUNDLE_CREATED) {
+      logger.logInfo(`Bundle file created successfully at: '${destination}'`);
     } else {
       logger.logError(`Bundle file creation reported an unknown code!`);
     }
