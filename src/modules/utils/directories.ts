@@ -2,22 +2,76 @@ import * as fs from 'fs';
 import * as pathResolve from './path_resolve';
 
 /**
- * Read options
+ * Base options.
  */
-export type ReadOptions = {
+export type Options = {
   /**
    * Recursive flag.
-   *
-   * Allows to read the given directory recursively.
    */
   recursive?: boolean;
+};
+
+/**
+ * Read options.
+ */
+export type ReadOptions = {
   /**
    * Relative flag.
    *
    * Formats all entries to be relative of the given directory.
    */
   relative?: boolean;
-};
+} & Options;
+
+/**
+ * Write options.
+ */
+export type WriteOptions = {
+  /**
+   * Overwrite flag.
+   */
+  overwrite?: boolean;
+} & Options;
+
+/**
+ * Creates a folder in the given path.
+ *
+ * This function may throw errors.
+ * @param folderPath Path to the folder.
+ * @param options Options.
+ */
+export function createFolder(folderPath: string, options?: WriteOptions) {
+  if (!fs.existsSync(folderPath)) {
+    fs.mkdirSync(folderPath, { recursive: options?.recursive });
+  }
+}
+/**
+ * Copies the file located in ``source`` to ``destination``.
+ *
+ * If the file already exists it throws an error if ``overwrite`` flag is disabled.
+ *
+ * If ``recursive`` flag is enabled it will create the destination directory if it does not exists.
+ * @param source Source file path
+ * @param destination Destination file path
+ * @param options Options.
+ */
+export function copyFile(
+  source: string,
+  destination: string,
+  options?: WriteOptions
+) {
+  let destinationPath = pathResolve.dirname(destination);
+  // Create directory if possible
+  if (!fs.existsSync(destinationPath) && options?.recursive) {
+    createFolder(destinationPath, options);
+  }
+  // Copy file
+  fs.copyFileSync(
+    source,
+    destination,
+    options?.overwrite ? undefined : fs.constants.COPYFILE_EXCL
+  );
+}
 
 /**
  * Reads all entries of the given directory specified by ``base``.
@@ -61,11 +115,11 @@ function readDir(base: string, recursive?: boolean) {
   let entries: string[] = [];
   fs.readdirSync(base).forEach((entry) => {
     let fullPath = pathResolve.join(base, entry);
+    // Inserts entry
+    entries.push(fullPath);
     // Process recursiveness
     if (fs.statSync(fullPath).isDirectory() && recursive) {
       entries = entries.concat(...readDir(fullPath, recursive));
-    } else {
-      entries.push(fullPath);
     }
   });
   return entries;

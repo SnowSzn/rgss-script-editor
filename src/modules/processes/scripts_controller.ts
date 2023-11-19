@@ -2,7 +2,9 @@ import * as fs from 'fs';
 import * as zlib from 'zlib';
 import * as marshal from '@hyrious/marshal';
 import * as pathResolve from '../utils/path_resolve';
-import { readDirectory } from '../utils/directories';
+import * as directories from '../utils/directories';
+import { config as configuration } from '../utils/configuration';
+import { logger } from '../utils/logger';
 
 /**
  * Determines that the RPG Maker scripts bundle file was not extracted.
@@ -61,68 +63,66 @@ const SECTION_MAX_VAL = 133_769_420;
 /**
  * Asynchronously checks if the current RPG Maker project has extracted the bundle file previously.
  *
- * The promise is resolved when the extraction is done with a code number.
+ * **The promise is resolved when the extraction is done with a code number.**
  *
- * If the check fails it rejects the promise with an error instance.
- * @param bundleFile Absolute path to the bundle file
- * @param scriptFolder Absolute path to the script folder
+ * **If the check fails it rejects the promise with an error instance.**
  * @returns A promise
  */
-export async function checkExtractedScripts(
-  bundleFile: string
-): Promise<number> {
-  try {
-    let bundle = readBundleFile(bundleFile);
-    // Checks if there is scripts left
-    if (checkValidExtraction(bundle)) {
-      return SCRIPTS_NOT_EXTRACTED;
-    } else {
-      return SCRIPTS_EXTRACTED;
-    }
-  } catch (error) {
-    throw error;
+export async function checkExtractedScripts(): Promise<number> {
+  // Gets path to the bundle file
+  let bundleFile = configuration.getBundleScriptsPath();
+  logger.logInfo(`Bundle file path is: '${bundleFile}'`);
+  // Check bundle file validness
+  if (!bundleFile) {
+    throw new Error(`The path to the bundle file: '${bundleFile}' is invalid!`);
+  }
+  let bundle = readBundleFile(bundleFile);
+  // Checks if there is scripts left
+  if (checkValidExtraction(bundle)) {
+    return SCRIPTS_NOT_EXTRACTED;
+  } else {
+    return SCRIPTS_EXTRACTED;
   }
 }
 
 /**
  * Asynchronously extracts the given RPG Maker bundle file to the scripts directory.
  *
- * The promise is resolved when the extraction is done with a code number.
+ * **The promise is resolved when the extraction is done with a code number.**
  *
- * If the extraction was impossible it rejects the promise with an error.
- * @param bundleFile Absolute path to the RPG Maker bundle file
- * @param scriptFolder Absolute path to the script folder
+ * **If the extraction was impossible it rejects the promise with an error.**
  * @returns A promise
  */
-export async function extractScripts(
-  bundleFile: string,
-  scriptFolder: string
-): Promise<number> {
-  try {
-    let bundle = readBundleFile(bundleFile);
-    // Only perform extraction logic once
-    if (checkValidExtraction(bundle)) {
-      // Create scripts folder if it does not exists (throws error)
-      createScriptFolder(scriptFolder);
-      // Perform extraction
-      for (let i = 0; i < bundle.length; i++) {
-        let section = bundle[i][0];
-        let name = formatScriptName(bundle[i][1], i);
-        let code = processScriptCode(bundle[i][2]);
-        // Checks if the current script is the loader to avoid extracting it
-        if (isLoaderScript(section)) {
-          continue;
-        } else {
-          let scriptPath = pathResolve.join(scriptFolder, name);
-          fs.writeFileSync(scriptPath, code, { encoding: 'utf8' });
-        }
+export async function extractScriptsFromBundle(): Promise<number> {
+  let bundleFile = configuration.getBundleScriptsPath();
+  let scriptsFolder = configuration.getScriptsFolderPath();
+  logger.logInfo(`RPG Maker bundle file path: '${bundleFile}'`);
+  logger.logInfo(`Scripts folder path: '${scriptsFolder}'`);
+  // Check validness
+  if (!bundleFile || !scriptsFolder) {
+    throw new Error(`Cannot extract scripts due to invalid values!`);
+  }
+  let bundle = readBundleFile(bundleFile);
+  // Only perform extraction logic once
+  if (checkValidExtraction(bundle)) {
+    // Create scripts folder if it does not exists
+    directories.createFolder(scriptsFolder);
+    // Perform extraction
+    for (let i = 0; i < bundle.length; i++) {
+      let section = bundle[i][0];
+      // Checks if the current script is the loader to avoid extracting it
+      if (isLoaderScript(section)) {
+        continue;
       }
-      return SCRIPTS_EXTRACTED;
-    } else {
-      return SCRIPTS_NOT_EXTRACTED;
+      // Create scripts contents
+      let name = formatScriptName(bundle[i][1], i);
+      let code = processScriptCode(bundle[i][2]);
+      let scriptPath = pathResolve.join(scriptsFolder, name);
+      fs.writeFileSync(scriptPath, code, { encoding: 'utf8' });
     }
-  } catch (error) {
-    throw error; // Auto. rejects the promise with the thrown error
+    return SCRIPTS_EXTRACTED;
+  } else {
+    return SCRIPTS_NOT_EXTRACTED;
   }
 }
 
@@ -131,24 +131,36 @@ export async function extractScripts(
  *
  * For security reasons, it always creates a backup file of the bundle file inside the given folder.
  *
- * The promise is resolved when the creation is done with a code number.
+ * **The promise is resolved when the creation is done with a code number.**
  *
- * If something is wrong the promise is rejected with an error.
- * @param bundleFile Absolute path to the RPG Maker bundle file
- * @param backUpsFolderPath Absolute path to the backups folder
- * @param scriptFolder Relative path to the external scripts folder
+ * **If the creation was impossible it rejects the promise with an error.**
+ * @returns A promise
  */
-export async function createScriptLoaderBundle(
-  bundleFile: string,
-  backUpsFolderPath: string,
-  scriptFolder: string
-): Promise<number> {
-  try {
-    // Creates the backup file
-    createBackUp(bundleFile, backUpsFolderPath);
-    // Formats script loader Ruby script
-    let loaderScriptsFolder = pathResolve.resolveRPG(scriptFolder);
-    let loaderScript = `#==============================================================================
+export async function createScriptLoaderBundle(): Promise<number> {
+  let bundleFile = configuration.getBundleScriptsPath();
+  let scriptsFolder = configuration.getScriptsFolderPath();
+  let backUpsFolderPath = configuration.getBackUpsFolderPath();
+  logger.logInfo(`RPG Maker bundle file path: '${bundleFile}'`);
+  logger.logInfo(`Scripts folder path: '${scriptsFolder}'`);
+  logger.logInfo(`Back ups folder path: '${backUpsFolderPath}'`);
+  // Check validness
+  if (!bundleFile || !scriptsFolder || !backUpsFolderPath) {
+    throw new Error(
+      `Cannot create script loader bundle file due to invalid values`
+    );
+  }
+  // Creates the backup file
+  directories.copyFile(
+    bundleFile,
+    pathResolve.join(
+      backUpsFolderPath,
+      `${pathResolve.basename(bundleFile)} - ${currentDate()}.bak`
+    ),
+    { recursive: true, overwrite: true }
+  );
+  // Formats script loader Ruby script
+  let loaderScriptsFolder = pathResolve.resolveRPG(scriptsFolder);
+  let loaderScript = `#==============================================================================
 # ** ${LOADER_SCRIPT_NAME}
 #------------------------------------------------------------------------------
 # Version: 1.1.1
@@ -379,62 +391,54 @@ end
 # Start loader processing
 ScriptLoader.run
 `;
-    // Format data
-    let bundle: any[][] = [[]];
-    bundle[0][0] = LOADER_SCRIPT_SECTION;
-    bundle[0][1] = LOADER_SCRIPT_NAME;
-    bundle[0][2] = zlib.deflateSync(loaderScript, {
-      level: zlib.constants.Z_BEST_COMPRESSION,
-      finishFlush: zlib.constants.Z_FINISH,
-    });
-    // Marshalizes the bundle file contents
-    let bundleMarshalized = marshal.dump(bundle, {
-      hashStringKeysToSymbol: true,
-    });
-    // Overwrite bundle data
-    fs.writeFileSync(bundleFile, bundleMarshalized, {
-      flag: 'w',
-    });
-    return LOADER_BUNDLE_CREATED;
-  } catch (error) {
-    throw error;
-  }
+  // Format data
+  let bundle: any[][] = [[]];
+  bundle[0][0] = LOADER_SCRIPT_SECTION;
+  bundle[0][1] = LOADER_SCRIPT_NAME;
+  bundle[0][2] = zlib.deflateSync(loaderScript, {
+    level: zlib.constants.Z_BEST_COMPRESSION,
+    finishFlush: zlib.constants.Z_FINISH,
+  });
+  // Marshalizes the bundle file contents
+  let bundleMarshalized = marshal.dump(bundle, {
+    hashStringKeysToSymbol: true,
+  });
+  // Overwrite bundle data
+  fs.writeFileSync(bundleFile, bundleMarshalized, {
+    flag: 'w',
+  });
+  return LOADER_BUNDLE_CREATED;
 }
 
-// TODO: Function must be adapted for tree view support.
 /**
  * Asynchronously creates a load order.
  *
- * It looks for all ruby files inside the base directory and writes their relative path into the load order file.
+ * It creates a load order TXT file and writes each given script in ``scripts``
  *
  * If the load order file creation was successful it resolves the promise with the load order file path.
  *
  * If the load order couldn't be created it rejects the promise with an error.
- * @param scriptsFolder Absolute path to the external scripts folder
+ * @param scriptsList List of paths to the script files
  * @returns A promise
  */
 export async function createLoadOrderFile(
-  scriptsFolder: string
+  scriptsList: string[]
 ): Promise<string> {
-  try {
-    let loadOrderPath = pathResolve.join(scriptsFolder, LOAD_ORDER_FILE_NAME);
-    let scripts = readDirectory(
-      scriptsFolder,
-      { recursive: true, relative: true },
-      (entries) => {
-        return entries.filter((entry) => isRubyScript(entry, scriptsFolder));
-      }
-    );
-    let file = fs.openSync(loadOrderPath, 'w');
-    scripts.forEach((script) => {
-      let scriptRelative = pathResolve.resolveRPG(script);
-      fs.writeSync(file, `${scriptRelative}\n`);
-    });
-    fs.closeSync(file);
-    return loadOrderPath;
-  } catch (error) {
-    throw error;
+  let scriptsFolder = configuration.getScriptsFolderPath();
+  logger.logInfo(`Scripts folder path: '${scriptsFolder}'`);
+  if (!scriptsFolder) {
+    throw new Error(`Cannot create load order file due to invalid values!`);
   }
+  let scripts = scriptsList.map((script) => {
+    return pathResolve.relative(scriptsFolder!, script);
+  });
+  let loadOrderPath = pathResolve.join(scriptsFolder, LOAD_ORDER_FILE_NAME);
+  let loadOrderFile = fs.openSync(loadOrderPath, 'w');
+  scripts.forEach((script) => {
+    fs.writeSync(loadOrderFile, `${script}\n`);
+  });
+  fs.closeSync(loadOrderFile);
+  return loadOrderPath;
 }
 
 // TODO: Function must change to allow user select save path with vscode API
@@ -455,9 +459,13 @@ export async function createBundleFile(
   }
   // Starts bundle creation
   let sections: number[] = [LOADER_SCRIPT_SECTION];
-  let scripts = readDirectory(scriptsFolder, { recursive: true }, (entries) => {
-    return entries.filter((entry) => isRubyScript(entry));
-  });
+  let scripts = directories.readDirectory(
+    scriptsFolder,
+    { recursive: true },
+    (entries) => {
+      return entries.filter((entry) => isRubyScript(entry));
+    }
+  );
   let bundle: any[][] = [];
   // Create bundle file
   for (let i = 0; i < scripts.length; i++) {
@@ -485,99 +493,60 @@ export async function createBundleFile(
   return BUNDLE_CREATED;
 }
 
-/**
- * Checks if the extraction process is valid or not.
- *
- * Returns true if there are scripts in the bundle file that were not extracted previously.
- * @param bundle Bundle (marshalized)
- * @returns Whether extraction is valid or not
- */
-export function checkValidExtraction(bundle: any[][]): boolean {
-  // Only a script file exists, check if it is the loader
-  return bundle.some((script) => {
-    // Checks if it exists at least a valid script in the bundle array that is not a loader
-    let scriptSection = script[0];
-    if (isLoaderScript(scriptSection)) {
-      return false; // It is the loader
-    } else if (typeof scriptSection === 'number') {
-      return true; // At least a 'true' is needed
+export function createTreeData(scriptsFolder: string): string[] {
+  let data = directories.readDirectory(
+    scriptsFolder,
+    { relative: false, recursive: true },
+    (entries) => {
+      return entries.filter(
+        (entry) =>
+          isRubyFolder(entry, scriptsFolder) ||
+          isRubyScript(entry, scriptsFolder)
+      );
     }
-    return false;
-  });
-}
-
-/**
- * Creates the scripts folder at the given path.
- *
- * This function can throw errors.
- */
-export function createScriptFolder(scriptsFolderPath: string) {
-  if (!fs.existsSync(scriptsFolderPath)) {
-    fs.mkdirSync(scriptsFolderPath, { recursive: true });
-  } else {
-  }
-}
-
-/**
- * Creates a back up of the given file in the backup folder.
- *
- * Automatically creates the backup folder path if it does not exists already.
- *
- * This function can throw errors
- * @param filePath Absolute path to the file.
- * @param backUpsFolder Absolute path to the destination folder.
- */
-export function createBackUp(filePath: string, backUpsFolder: string) {
-  // Checks if the given file exists first
-  if (!fs.existsSync(filePath)) {
-    throw new Error(`Failed to copy: '${filePath}', file does not exist!`);
-  }
-  // Makes sure backup directory exists
-  if (!fs.existsSync(backUpsFolder)) {
-    fs.mkdirSync(backUpsFolder, { recursive: true });
-  }
-  // Copy file to destination folder
-  let backUpFilePath = pathResolve.join(
-    backUpsFolder,
-    `${pathResolve.basename(filePath)} - ${currentDate()}.bak`
   );
-  fs.copyFileSync(filePath, backUpFilePath);
+  return data;
 }
 
 /**
- * Reads the RPG Maker bundle file from the given path and marshalizes it.
+ * Processes the external script name and returns it.
  *
- * It returns the bundle data converted.
- *
- * This function may throw exceptions if the file does not exists.
- * @param bundleFile Bundle file absolute path
- * @returns The bundle data
+ * This function makes sure it does not have invalid characters for the OS.
+ * @param scriptName Script name
+ * @param scriptIndex Script index number
+ * @returns The processed script name
  */
-export function readBundleFile(bundleFile: string): any[][] {
-  let output: any[][] = [];
-  let textDecoder = new TextDecoder('utf8');
-  // Read binary data
-  let bundleContents = fs.readFileSync(bundleFile);
-  // Marshalizes the bundle file contents
-  let bundleMarshalized = marshal.load(bundleContents, {
-    string: 'binary',
-  }) as Array<Array<any>>;
-  for (let i = 0; i < bundleMarshalized.length; i++) {
-    output[i] = [];
-    output[i][0] = bundleMarshalized[i][0];
-    output[i][1] = textDecoder.decode(bundleMarshalized[i][1]);
-    output[i][2] = zlib.inflateSync(bundleMarshalized[i][2]).toString('utf8');
+export function formatScriptName(
+  scriptName: string,
+  scriptIndex: number
+): string {
+  let index = scriptIndex.toString();
+  // Removes any invalid characters
+  let name = scriptName.replace(INVALID_CHARACTERS, '');
+  // Removes any whitespace left in the start
+  name = name.trim();
+  // Adds script index
+  name = `${index.padStart(4, '0')} - ${name}`;
+  // Concatenates the ruby extension if it isn't already
+  if (!name.includes('.rb')) {
+    return name.concat('.rb');
   }
-  return output;
+  return name;
 }
 
 /**
- * Checks if the given script section corresponds to the extension's loader script.
- * @param scriptSection Section of the script
- * @returns Whether it is the script loader or not
+ * Deformats the given script name.
+ *
+ * If a path is given, it will get the basename first before deformatting it.
+ *
+ * It returns the same script name if deformatting cannot be done.
+ * @param script Script
+ * @returns Deformatted script name
  */
-export function isLoaderScript(scriptSection: number) {
-  return scriptSection === LOADER_SCRIPT_SECTION;
+export function deformatScriptName(script: string): string {
+  let baseName = pathResolve.basename(script);
+  let match = baseName.match(DEFORMAT_SCRIPT_NAME);
+  return match ? match[1] : baseName;
 }
 
 /**
@@ -626,9 +595,13 @@ export function isRubyFolder(folder: string, base?: string): boolean {
     return false;
   }
   // Checks if it has (at least) a ruby script
-  let rubyScripts = readDirectory(path, { recursive: false }, (entries) => {
-    return entries.filter((entry) => isRubyScript(entry));
-  });
+  let rubyScripts = directories.readDirectory(
+    path,
+    { recursive: false },
+    (entries) => {
+      return entries.filter((entry) => isRubyScript(entry));
+    }
+  );
   if (rubyScripts.length <= 0) {
     return false;
   }
@@ -636,44 +609,60 @@ export function isRubyFolder(folder: string, base?: string): boolean {
 }
 
 /**
- * Processes the external script name and returns it.
- *
- * This function makes sure it does not have invalid characters for the OS.
- * @param scriptName Script name
- * @param scriptIndex Script index number
- * @returns The processed script name
+ * Checks if the given script section corresponds to the extension's loader script.
+ * @param scriptSection Section of the script
+ * @returns Whether it is the script loader or not
  */
-export function formatScriptName(
-  scriptName: string,
-  scriptIndex: number
-): string {
-  let index = scriptIndex.toString();
-  // Removes any invalid characters
-  let name = scriptName.replace(INVALID_CHARACTERS, '');
-  // Removes any whitespace left in the start
-  name = name.trim();
-  // Adds script index
-  name = `${index.padStart(4, '0')} - ${name}`;
-  // Concatenates the ruby extension if it isn't already
-  if (!name.includes('.rb')) {
-    return name.concat('.rb');
-  }
-  return name;
+function isLoaderScript(scriptSection: number) {
+  return scriptSection === LOADER_SCRIPT_SECTION;
 }
 
 /**
- * Deformats the given script name.
+ * Checks if the scripts extraction process from the given ``bundle`` file is valid or not.
  *
- * If a path is given, it will get the basename first before deformatting it.
- *
- * It returns the same script name if deformatting cannot be done.
- * @param script Script
- * @returns Deformatted script name
+ * Returns true if there are scripts in the bundle file that were not extracted previously.
+ * @param bundle Bundle (marshalized)
+ * @returns Whether extraction is valid or not
  */
-export function deformatScriptName(script: string): string {
-  let baseName = pathResolve.basename(script);
-  let match = baseName.match(DEFORMAT_SCRIPT_NAME);
-  return match ? match[1] : baseName;
+function checkValidExtraction(bundle: any[][]): boolean {
+  // Only a script file exists, check if it is the loader
+  return bundle.some((script) => {
+    // Checks if it exists at least a valid script in the bundle array that is not a loader
+    let scriptSection = script[0];
+    if (isLoaderScript(scriptSection)) {
+      return false; // It is the loader
+    } else if (typeof scriptSection === 'number') {
+      return true; // At least a 'true' is needed
+    }
+    return false;
+  });
+}
+
+/**
+ * Reads the RPG Maker bundle file from the given path and marshalizes it.
+ *
+ * It returns the bundle data converted.
+ *
+ * This function may throw exceptions if the file does not exists.
+ * @param bundleFile Bundle file absolute path
+ * @returns The bundle data
+ */
+function readBundleFile(bundleFile: string): any[][] {
+  let output: any[][] = [];
+  let textDecoder = new TextDecoder('utf8');
+  // Read binary data
+  let bundleContents = fs.readFileSync(bundleFile);
+  // Marshalizes the bundle file contents
+  let bundleMarshalized = marshal.load(bundleContents, {
+    string: 'binary',
+  }) as Array<Array<any>>;
+  for (let i = 0; i < bundleMarshalized.length; i++) {
+    output[i] = [];
+    output[i][0] = bundleMarshalized[i][0];
+    output[i][1] = textDecoder.decode(bundleMarshalized[i][1]);
+    output[i][2] = zlib.inflateSync(bundleMarshalized[i][2]).toString('utf8');
+  }
+  return output;
 }
 
 /**
@@ -683,7 +672,7 @@ export function deformatScriptName(script: string): string {
  * @param sections List of sections IDs
  * @returns A valid section
  */
-export function generateScriptSection(sections: number[]): number {
+function generateScriptSection(sections: number[]): number {
   let section = 0;
   do {
     section = Math.floor(Math.random() * SECTION_MAX_VAL);
@@ -698,7 +687,7 @@ export function generateScriptSection(sections: number[]): number {
  * @param scriptCode Code of the script
  * @returns The script code processed
  */
-export function processScriptCode(scriptCode: string): string {
+function processScriptCode(scriptCode: string): string {
   let script = '';
   if (!scriptCode.includes('# encoding: utf-8')) {
     script = `# encoding: utf-8\n${scriptCode}`;
@@ -713,7 +702,7 @@ export function processScriptCode(scriptCode: string): string {
  * Formats the current date and returns it as a string
  * @returns Formatted date
  */
-export function currentDate(): string {
+function currentDate(): string {
   let date = new Date();
   const day = date.getDate().toString().padStart(2, '0');
   const month = (date.getMonth() + 1).toString().padStart(2, '0');

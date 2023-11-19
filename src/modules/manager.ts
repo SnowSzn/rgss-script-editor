@@ -8,6 +8,24 @@ import { config as configuration } from './utils/configuration';
 import { logger } from './utils/logger';
 
 /**
+ * Extension re-start logic.
+ * @returns A promise.
+ */
+export async function restart() {
+  let projectFolder = configuration.getProjectFolderPath();
+  // Checks if a folder project is opened already
+  if (projectFolder) {
+    // Project folder opened already.
+    logger.logInfo('Restarting RGSS Script Editor...');
+    uiController.update();
+  } else {
+    // No project folder, falls to quickstart
+    logger.logInfo('Starting RGSS Script Editor...');
+    quickStart();
+  }
+}
+
+/**
  * Quickstart extension.
  *
  * It scans the current opened folders to start the extension:
@@ -18,7 +36,7 @@ import { logger } from './utils/logger';
 export async function quickStart() {
   // Checks if quickstart is enabled first.
   if (!configuration.getConfigQuickstart()) {
-    uiController.hideAllStatusBars();
+    uiController.hideStatusbar();
     return;
   }
   logger.logInfo('Quickstarting RGSS Script Editor extension...');
@@ -95,9 +113,8 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
     context.setValidProjectFolder(true);
 
     // Updates extension extracted scripts context
-    let bundleFile = configuration.getBundleScriptsPath();
-    logger.logInfo(`Checking bundle scripts file status: '${bundleFile}'`);
-    const projectScripts = await scripts.checkExtractedScripts(bundleFile!);
+    logger.logInfo(`Checking project's bundle scripts file status...`);
+    const projectScripts = await scripts.checkExtractedScripts();
     if (projectScripts === scripts.SCRIPTS_EXTRACTED) {
       context.setExtractedScripts(true);
       logger.logInfo(
@@ -120,10 +137,18 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
     }
 
     // Process UI elements
-    uiController.updateProjectFolder();
-    uiController.showAllStatusBars();
+    uiController.update();
+    uiController.showStatusBar();
+
+    // TODO: Move to its own script and update the working folder there.
+    // TODO: Maybe moving it to scripts_controller.ts?
+    // let watcher = vscode.workspace.createFileSystemWatcher('**');
+    // watcher.onDidChange((uri) => logger.logInfo(`Change: ${uri.fsPath}`));
+    // watcher.onDidCreate((uri) => logger.logInfo(`Create: ${uri.fsPath}`));
+    // watcher.onDidDelete((uri) => logger.logInfo(`Delete: ${uri.fsPath}`));
   } catch (error) {
     logger.logErrorUnknown(error);
+    uiController.update();
     context.setValidProjectFolder(false);
     context.setExtractedScripts(false);
     throw error;
@@ -155,44 +180,26 @@ export async function openProjectFolder() {
  */
 export async function extractScripts() {
   logger.logInfo('Extracting scripts from the bundled file...');
-  let scriptsFolderRel = configuration.getConfigScriptsFolderRelativePath();
-  let bundleFile = configuration.getBundleScriptsPath();
-  let scriptsFolder = configuration.getScriptsFolderPath();
-  let backFolder = configuration.getBackUpsFolderPath();
-  // Check validness
-  if (!bundleFile || !scriptsFolder || !backFolder) {
-    logger.logError('Failed to extract RPG Maker scripts bundle file');
-    logger.logError(`RPG Maker bundle file path: '${bundleFile}'`);
-    logger.logError(`Backup folder path: '${backFolder}'`);
-    logger.logError(`Scripts folder path: '${scriptsFolder}'`);
-    return;
-  }
-  logger.logInfo(`RPG Maker bundle file path: '${bundleFile}'`);
-  logger.logInfo(`Scripts folder path: '${scriptsFolder}'`);
-  logger.logInfo(`Relative scripts path: '${scriptsFolderRel}'`);
-  logger.logInfo(`Backup folder path: '${backFolder}'`);
   try {
     // Extracts all scripts
-    let extraction = await scripts.extractScripts(bundleFile, scriptsFolder);
+    let extractionResponse = await scripts.extractScriptsFromBundle();
     // Evaluate extraction
-    if (extraction === scripts.SCRIPTS_EXTRACTED) {
+    if (extractionResponse === scripts.SCRIPTS_EXTRACTED) {
       logger.logInfo('Scripts extracted successfully!');
       // Overwrites the bundle file with the loader
-      await scripts.createScriptLoaderBundle(
-        bundleFile,
-        backFolder,
-        scriptsFolderRel!
-      );
-      // Creates a load order
-      await scripts.createLoadOrderFile(scriptsFolder);
+      await scripts.createScriptLoaderBundle();
+      // TODO: Delegate load order creation to the tree view
+      // await scripts.createLoadOrderFile();
       context.setExtractedScripts(true);
-    } else if (extraction === scripts.SCRIPTS_NOT_EXTRACTED) {
+    } else if (extractionResponse === scripts.SCRIPTS_NOT_EXTRACTED) {
       logger.logInfo(
         "Extraction not needed, there aren't scripts left in the bundle file"
       );
     } else {
       context.setExtractedScripts(false);
-      logger.logWarning(`Extraction returned an unknown code: '${extraction}'`);
+      logger.logWarning(
+        `Extraction returned an unknown code: '${extractionResponse}'`
+      );
     }
   } catch (error: unknown) {
     context.setExtractedScripts(false);
@@ -205,22 +212,23 @@ export async function extractScripts() {
  * @returns A promise
  */
 export async function createLoadOrder() {
-  let scriptsFolder = configuration.getScriptsFolderPath();
-  if (!scriptsFolder) {
-    logger.logError(
-      `Cannot create load order file because the scripts folder path: '${scriptsFolder}' is invalid!`
-    );
-    return;
-  }
-  try {
-    logger.logInfo('Creating load order file...');
-    const loadOrderPath = await scripts.createLoadOrderFile(scriptsFolder);
-    logger.logInfo(
-      `Load order file created succesfully at: '${loadOrderPath}'`
-    );
-  } catch (error) {
-    logger.logErrorUnknown(error);
-  }
+  // TODO: Delegate load order creation to the tree view
+  // let scriptsFolder = configuration.getScriptsFolderPath();
+  // if (!scriptsFolder) {
+  //   logger.logError(
+  //     `Cannot create load order file because the scripts folder path: '${scriptsFolder}' is invalid!`
+  //   );
+  //   return;
+  // }
+  // try {
+  //   logger.logInfo('Creating load order file...');
+  //   const loadOrderPath = await scripts.createLoadOrderFile(scriptsFolder);
+  //   logger.logInfo(
+  //     `Load order file created succesfully at: '${loadOrderPath}'`
+  //   );
+  // } catch (error) {
+  //   logger.logErrorUnknown(error);
+  // }
 }
 
 /**
@@ -229,21 +237,9 @@ export async function createLoadOrder() {
  */
 export async function createScriptLoader() {
   logger.logInfo('Creating script loader bundle file...');
-  let bundleFile = configuration.getBundleScriptsPath();
-  let backFolder = configuration.getBackUpsFolderPath();
-  let scriptsFolder = configuration.getConfigScriptsFolderRelativePath();
-  // Check validness
-  if (!bundleFile || !scriptsFolder || !backFolder) {
-    logger.logError('Failed to create script loader bundle file');
-    logger.logError(`RPG Maker bundle file path: '${bundleFile}'`);
-    logger.logError(`Backup folder path: '${backFolder}'`);
-    logger.logError(`Scripts folder path: '${scriptsFolder}'`);
-    return;
-  }
-  // Perform creation
   try {
-    let bundleStatus = await scripts.checkExtractedScripts(bundleFile);
-    if (bundleStatus === scripts.SCRIPTS_NOT_EXTRACTED) {
+    let extractedResponse = await scripts.checkExtractedScripts();
+    if (extractedResponse === scripts.SCRIPTS_NOT_EXTRACTED) {
       logger.logError(
         'Cannot create script loader bundle file because RPG Maker bundle file still has valid scripts inside of it!'
       );
@@ -253,12 +249,8 @@ export async function createScriptLoader() {
       return;
     }
     // Overwrite bundle file
-    let loaderStatus = await scripts.createScriptLoaderBundle(
-      bundleFile,
-      backFolder,
-      scriptsFolder
-    );
-    if (loaderStatus === scripts.LOADER_BUNDLE_CREATED) {
+    let loaderResponse = await scripts.createScriptLoaderBundle();
+    if (loaderResponse === scripts.LOADER_BUNDLE_CREATED) {
       logger.logInfo('Script loader bundle file created successfully!');
     } else {
       logger.logError(
@@ -270,7 +262,7 @@ export async function createScriptLoader() {
   }
 }
 /**
- * Creates a bundle file from the extracted scripts folder.
+ * Creates a bundle file based on the load order file.
  * @returns A promise
  */
 export async function createBundleFile() {
