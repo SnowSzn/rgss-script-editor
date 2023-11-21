@@ -19,15 +19,15 @@ export async function openFolder(folderPath: string): Promise<cp.ChildProcess> {
   let command = '';
   switch (process.platform) {
     case 'win32': {
-      command = `explorer ${folderPath}`;
+      command = `explorer "${folderPath}"`;
       break;
     }
     case 'linux': {
-      command = `xdg-open ${folderPath}`;
+      command = `xdg-open "${folderPath}"`;
       break;
     }
     case 'darwin': {
-      command = `open ${folderPath}`;
+      command = `open "${folderPath}" -R`;
       break;
     }
     default: {
