@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as zlib from 'zlib';
 import * as marshal from '@hyrious/marshal';
+import * as vscode from 'vscode';
 import * as pathResolve from '../utils/path_resolve';
 import * as directories from '../utils/directories';
 import { config as configuration } from '../utils/configuration';
@@ -51,14 +52,14 @@ const INVALID_CHARACTERS = /[\\/:\*\?"<>\|▼■]/g;
  *
  * Case insensitive.
  */
-const DEFORMAT_SCRIPT_NAME = /(?:\d+\s*-.*?)?(.*?)\.rb$/i;
+const DEFORMAT_SCRIPT_NAME = /(?:\d+\s*-\s*)?(.*?)\.rb$/i;
 
 /**
  * Maximum value to generate a script section
  *
  * Sets as the maximum of the script loader to avoid a double section ID
  */
-const SECTION_MAX_VAL = 133_769_420;
+const SECTION_MAX_VAL = 133_769_419;
 
 /**
  * Asynchronously checks if the current RPG Maker project has extracted the bundle file previously.
@@ -163,7 +164,7 @@ export async function createScriptLoaderBundle(): Promise<number> {
   let loaderScript = `#==============================================================================
 # ** ${LOADER_SCRIPT_NAME}
 #------------------------------------------------------------------------------
-# Version: 1.1.1
+# Version: 1.1.2
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
@@ -265,7 +266,9 @@ module ScriptLoader
     # Processes path
     script = process_path(path)
     # Handles the script
-    if valid_script?(script)
+    if script == nil
+      log("Skipping: '#{path}'")
+    elsif valid_script?(script)
       log("Loading script: '#{format_path(script)}'")
       @cache << script
       Kernel.send(:load, script)
@@ -276,12 +279,14 @@ module ScriptLoader
         load_script(File.join(script, entry))
       end
     else
-      log("Skipping: '#{format_path(script)}' (invalid)")
+      log("Cannot load: '#{format_path(script)}' (invalid entry)")
     end
   end
 
   #
   # Process the given path.
+  #
+  # It returns nil if the path is skipped.
   #
   # @param path [String] Path.
   #
@@ -290,6 +295,8 @@ module ScriptLoader
   def self.process_path(path)
     # Removes trailing whitespaces
     new_path = path.strip
+    # Checks if path is skipped
+    return nil if new_path[0] == '#'
     # Adds working directory if not present
     unless File.dirname(new_path).include?(Dir.pwd)
       new_path = File.join(Dir.pwd, SCRIPTS_PATH, new_path) 
@@ -317,7 +324,7 @@ module ScriptLoader
   # @return [Boolean] Script validness.
   #
   def self.valid_script?(path)
-    return false if path[0] == '#'
+    return false if path == nil
     return false if @cache.include?(path)
     return false unless File.file?(path)
     return false unless File.extname(path).downcase == '.rb'
@@ -332,9 +339,11 @@ module ScriptLoader
   # @return [Boolean] Directory validness.
   #
   def self.valid_directory?(path)
-    return false if path[0] == '#'
+    return false if path == nil
     return false unless File.directory?(path)
-    return false unless Dir.entries(path).any? { |entry| valid_script?(entry) }
+    return false unless Dir.entries(path).any? { |entry|
+      valid_script?(File.join(path, entry))
+    }
     return true
   end
 
@@ -430,7 +439,11 @@ export async function createLoadOrderFile(
     throw new Error(`Cannot create load order file due to invalid values!`);
   }
   let scripts = scriptsList.map((script) => {
-    return pathResolve.relative(scriptsFolder!, script);
+    if (script.includes(scriptsFolder!)) {
+      return pathResolve.relative(scriptsFolder!, script);
+    } else {
+      return script;
+    }
   });
   let loadOrderPath = pathResolve.join(scriptsFolder, LOAD_ORDER_FILE_NAME);
   let loadOrderFile = fs.openSync(loadOrderPath, 'w');
@@ -517,21 +530,6 @@ export async function createBundleFile(destination: string): Promise<number> {
     flag: 'w',
   });
   return BUNDLE_CREATED;
-}
-
-export function createTreeData(scriptsFolder: string): string[] {
-  let data = directories.readDirectory(
-    scriptsFolder,
-    { relative: false, recursive: true },
-    (entries) => {
-      return entries.filter(
-        (entry) =>
-          isRubyFolder(entry, scriptsFolder) ||
-          isRubyScript(entry, scriptsFolder)
-      );
-    }
-  );
-  return data;
 }
 
 /**
