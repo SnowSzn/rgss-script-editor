@@ -11,7 +11,7 @@ import * as fs from 'fs';
  * @returns A child process instance
  */
 export async function openFolder(folderPath: string): Promise<cp.ChildProcess> {
-  // Checks if the folder exists
+  // Checks if path exists
   if (!fs.existsSync(folderPath)) {
     throw new Error(`The given folder path: '${folderPath}' does not exists!`);
   }
@@ -19,7 +19,7 @@ export async function openFolder(folderPath: string): Promise<cp.ChildProcess> {
   let command = '';
   switch (process.platform) {
     case 'win32': {
-      command = `explorer "${folderPath}"`;
+      command = `start "RGSS Script Editor" "${folderPath}"`;
       break;
     }
     case 'linux': {
@@ -27,7 +27,7 @@ export async function openFolder(folderPath: string): Promise<cp.ChildProcess> {
       break;
     }
     case 'darwin': {
-      command = `open "${folderPath}" -R`;
+      command = `open "${folderPath}"`;
       break;
     }
     default: {
