@@ -1,24 +1,24 @@
 # RGSS Script Editor
 
-This is an extension for Visual Studio Code that makes VSCode usable as the script editor for RPG Maker series based on RGSS framework:
+This is an extension for Visual Studio Code that makes VSCode usable as the script editor for any RPG Maker editor based on the RGSS framework:
 - RPG Maker XP
 - RPG Maker VX
 - RPG Maker VX Ace
 
-In a nutshell, this extension extracts each script in the bundle file that RPG Maker uses into individual ruby files.
-Once the extraction is done, it creates a backup of the original bundle file (``Scripts.rxdata``, ``Scripts.rvdata`` or ``Scripts.rvdata2``) as a security measure and overwrites it with a script loader bundle file that loads ruby scripts inside a relative folder based on a text file that dictates the loading order.
+In a nutshell, this extension extracts each script from the bundle file that RPG Maker uses into individual ruby files.
+Once the extraction is done, it creates a backup of the original bundle file (``Scripts.rxdata``, ``Scripts.rvdata`` or ``Scripts.rvdata2``) as a security measure, subsequently it overwrites the original bundle file with a script loader bundle file that loads ruby scripts inside a relative folder based on a text file that dictates the loading order.
 
 Since this extension uses a different approach for loading scripts, you can use the RPG Maker editor and edit scripts in Visual Studio Code at the same time without worrying about RPG Maker overwriting the bundled file with outdated data.
 
 **Long explanation**
 
-RPG Maker loads all data (including the game's scripts) at startup when the editor is launched, that's why you can modify the scripts inside their built-in script editor and the modification will be saved into the bundled data file (``Scripts.rxdata``, ``Scripts.rvdata`` or ``Scripts.rvdata2``), this happens with every modification you do inside their editor, from maps to the whole database, they are saved into the appropiate data file.
+RPG Maker loads all data (database, maps, scripts...) at startup when the editor is launched, so you can modify anything of the project and save it into their appropiate data file (scripts are saved into: ``Scripts.rxdata``, ``Scripts.rvdata`` or ``Scripts.rvdata2``), this happens with every modification you do inside the editor.
 
 The problem is that RPG Maker does not save these modifications individually, all files are saved at the same time, this means that even if you do not change anything in the game's scripts and modified something else (for example: the database) all scripts will be overwritten with the initial data that was loaded.
 
-This produces an incompatibility with any external script editor or Visual Studio Code extension that works by overwriting the Scripts bundle data file since the editor will overwrite it everytime the project is saved, so basically the easy solution is not having the editor and the external script editor opened and working at the same time. 
+This produces an incompatibility with any external script editor or Visual Studio Code extension that works by overwriting the Scripts bundle data file since the editor will overwrite it everytime the project is saved, so the easy solution is not working with the RPG Maker editor and the external script editor at the same time. 
 
-This extension tries to circumvent this limitation by overwriting the script bundle data file with a script loader that will load external scripts inside a relative path within the project's folder.
+This extension tries to circumvent this limitation by overwriting the script bundle data file with a script loader that will load external scripts inside a relative path within the project's folder, this way you can work on your project inside the RPG Maker at the same time you are creating/modifying the game's scripts externally.
 
 It also allows to specify a load order, skip specific scripts and load all Ruby files inside a folder recursively if you want to organize the scripts inside subfolders, the script loader will read the load_order.txt file and load each script/folder until end of line is reached.
 
@@ -33,6 +33,7 @@ As a security measure, the extension will not allow overwriting the script bundl
 - **Script Loader:** The game will load all scripts files individually based on a load order
   - You can ignore to load any script by adding a `#` character before the script path.
 - **Workspace Support**: You can change the active folder easily in a workspace.
+- TODO: Finish features with RGSS Script Editor container and bundle file creation
 
 TODO: Add some GIFs or screenshots
 
@@ -48,7 +49,7 @@ using: \!\[feature X\]\(images/feature-x.png\)
 - [Visual Studio Code](https://code.visualstudio.com/)
 - [Wine](https://www.winehq.org/) (preferably the latest version)
   - To take full advantage of the extension you should have wine available on your system, which will be used to run the Windows game executable.
-  - You check if Wine is installed in your system with: ``wine --version``
+  - You can check if Wine is installed in your system with: ``wine --version``
   - **IMPORTANT: If you use MKXP-Z for Linux and you have created a Linux executable for your game, you won't need to install Wine.** 
     - Wine is only required for RPG Maker base executables.
 ### macOS
