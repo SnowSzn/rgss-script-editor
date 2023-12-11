@@ -327,7 +327,6 @@
     "@hyrious/marshal": "^0.3.2"
   },
   "devDependencies": {
-    "@types/heap": "^0.2.34",
     "@types/mocha": "^10.0.3",
     "@types/node": "^18.19.3",
     "@types/vscode": "^1.84.0",
