@@ -1,40 +1,65 @@
 import * as vscode from 'vscode';
 
 /**
- * Type to show/hide status bars
+ * Status bar control options type.
  */
-export type ConfigStatusBar = {
+export type StatusBarControl = {
+  /**
+   * Open project folder status bar item visibility status.
+   */
   setProjectFolder?: boolean;
+
+  /**
+   * Current project folder status bar item visibility status.
+   */
   currentProjectFolder?: boolean;
+
+  /**
+   * Extract scripts bar item visibility status.
+   */
   extractScripts?: boolean;
+
+  /**
+   * Run game executable status bar item visibility status.
+   */
   runGame?: boolean;
 };
 
 /**
- * Class that creates all UI elements for VSCode
+ * Status bar options type.
+ */
+export type StatusBarOptions = {
+  /**
+   * Project folder shown in the status bar.
+   */
+  projectFolder: string;
+};
+
+/**
+ * Status bar UI items class.
  */
 export class StatusBarItems {
   /**
-   * Status bar set project folder item
+   * Status bar set project folder item.
    */
   private itemSetProjectFolder: vscode.StatusBarItem;
   /**
-   * Status bar project folder item
+   * Status bar project folder item.
    */
   private itemProjectFolder: vscode.StatusBarItem;
   /**
-   * Status bar extract scripts item
+   * Status bar extract scripts item.
    */
   private itemExtractScripts: vscode.StatusBarItem;
   /**
-   * Status bar run game item
+   * Status bar run game item.
    */
   private itemRunGame: vscode.StatusBarItem;
 
   /**
-   * Constructor
+   * Constructor.
    */
-  constructor() {
+  constructor(options?: StatusBarOptions) {
     this.itemSetProjectFolder = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left
     );
@@ -47,16 +72,18 @@ export class StatusBarItems {
     this.itemRunGame = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left
     );
-    // Initializes UI configuration
-    this.initializeConfig();
+    this.initializeItems();
+    if (options) {
+      this.update(options);
+    }
   }
 
   /**
-   * Updates status bar project folder information
-   * @param projectFolder Project folder
+   * Updates status bar instance with the given options.
+   * @param options Status bar options.
    */
-  updateProjectFolder(projectFolder: string): void {
-    this.itemProjectFolder.text = `$(folder) RGSS Script Editor active project: ${projectFolder}`;
+  update(options: StatusBarOptions): void {
+    this.itemProjectFolder.text = `$(folder) RPG Maker Active Project: ${options.projectFolder}`;
   }
 
   /**
@@ -65,7 +92,7 @@ export class StatusBarItems {
    * If no options are given, it hides all items.
    * @param options Status bar options
    */
-  controlStatusBar(options?: ConfigStatusBar): void {
+  controlStatusBar(options?: StatusBarControl): void {
     // Updates set project folder item visibility
     options?.setProjectFolder
       ? this.itemSetProjectFolder.show()
@@ -83,21 +110,39 @@ export class StatusBarItems {
   }
 
   /**
-   * Initializes the UI configuration
+   * Disposes all items from the status bar.
    */
-  private initializeConfig(): void {
+  dispose() {
+    this.itemSetProjectFolder.dispose();
+    this.itemProjectFolder.dispose();
+    this.itemExtractScripts.dispose();
+    this.itemRunGame.dispose();
+  }
+
+  /**
+   * Initializes the status bar configuration.
+   */
+  private initializeItems(): void {
+    // Set Project Folder item
+    this.itemSetProjectFolder.name = 'RGSS Script Editor: Set Project Folder';
     this.itemSetProjectFolder.text =
-      '$(folder-library) Choose RPG Maker project folder';
+      '$(folder-library) Choose RPG Maker Project Folder';
     this.itemSetProjectFolder.tooltip =
-      'Choose a RPG Maker project folder from the current workspace';
+      'Choose a RPG Maker project folder from the current workspace to activate it';
     this.itemSetProjectFolder.command = 'rgss-script-editor.setProjectFolder';
-    this.itemProjectFolder.text = '$(folder) RPG Maker active project: None';
+    // Opened Project Folder item
+    this.itemProjectFolder.name = 'RGSS Script Editor: Active Project Folder';
+    this.itemProjectFolder.text = '$(folder) RPG Maker Active Project: None';
     this.itemProjectFolder.tooltip =
-      'Opens the currently working RPG Maker project folder';
+      'Opens the current active RPG Maker project folder';
     this.itemProjectFolder.command = 'rgss-script-editor.openProjectFolder';
+    // Run Game item
+    this.itemRunGame.name = 'RGSS Script Editor: Run Game';
     this.itemRunGame.text = '$(run) Run Game';
     this.itemRunGame.tooltip = 'Runs the game executable';
     this.itemRunGame.command = 'rgss-script-editor.runGame';
+    // Extract Scripts item
+    this.itemExtractScripts.name = 'RGSS Script Editor: Extract Scripts';
     this.itemExtractScripts.text = '$(arrow-down) Extract Scripts';
     this.itemExtractScripts.tooltip =
       'Extracts all scripts from the bundled RPG Maker scripts file';

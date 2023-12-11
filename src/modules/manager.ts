@@ -1,23 +1,66 @@
 import * as vscode from 'vscode';
-import * as context from './context/context_controller';
-import * as gameplay from './processes/run_game';
-import * as workingFolder from './processes/open_folder';
-import * as scripts from './processes/scripts_controller';
-import { uiController } from './ui/ui_controller';
-import { config as configuration } from './utils/configuration';
+import * as context from './context/vscode_context';
+import * as events from './utils/events_handler';
+import { Configuration } from './utils/configuration';
 import { logger } from './utils/logger';
+import { openFolder } from './processes/open_folder';
+import { GameplayController } from './processes/gameplay_controller';
+import {
+  ScriptsController,
+  EditorSection,
+} from './processes/scripts_controller';
+import { ExtensionUI } from './ui/ui_extension';
+
+/**
+ * Extension extensionConfig.
+ */
+const extensionConfig: Configuration = new Configuration();
+
+/**
+ * Extension scripts controller.
+ */
+const extensionScripts: ScriptsController = new ScriptsController();
+
+/**
+ * Extension gameplay controller.
+ */
+const extensionGameplay: GameplayController = new GameplayController();
+
+/**
+ * Extension extensionUI.
+ */
+const extensionUI: ExtensionUI = new ExtensionUI();
+
+/**
+ * Register refresh event.
+ */
+events.registerEvent(events.EVENT_REFRESH, (treeItem: EditorSection) => {
+  refresh(treeItem);
+});
 
 /**
  * Extension re-start logic.
  * @returns A promise.
  */
 export async function restart() {
-  let projectFolder = configuration.getProjectFolderPath();
   // Checks if a folder project is opened already
-  if (projectFolder) {
+  let folder = extensionConfig.getInfo();
+  if (folder) {
     // Project folder opened already.
     logger.logInfo('Restarting RGSS Script Editor...');
-    uiController.update();
+    extensionGameplay.update(extensionConfig);
+    // TODO: Make extensionScripts get the config instance instead
+    let folder = extensionConfig.getInfo();
+    if (folder) {
+      extensionScripts.update(extensionConfig);
+      extensionGameplay.update(extensionConfig);
+      // TODO: Make sure root is not undefined!
+      extensionUI.update({
+        dragAndDropController: extensionScripts,
+        treeRoot: extensionScripts.root!,
+        statusBarOptions: { projectFolder: folder.projectFolderName },
+      });
+    }
   } else {
     // No project folder, falls to quickstart
     logger.logInfo('Starting RGSS Script Editor...');
@@ -35,21 +78,21 @@ export async function restart() {
  */
 export async function quickStart() {
   // Checks if quickstart is enabled first.
-  if (!configuration.getConfigQuickstart()) {
-    uiController.hideStatusbar();
+  if (!extensionConfig.configQuickstart()) {
+    // TODO: extensionUI.hideStatusBar();
     return;
   }
   logger.logInfo('Quickstarting RGSS Script Editor extension...');
   let folders = vscode.workspace.workspaceFolders;
   // Checks if there is any folder opened
   if (!folders) {
-    logger.logWarning('No folders detected in the VSCode workspace.');
+    logger.logWarning('No opened folders detected in the VSCode workspace.');
     logger.logInfo('Open a RPG Maker folder to start the extension');
     return;
   }
   let validFolders = [];
   for (let folder of folders) {
-    if (configuration.checkFolderValidness(folder.uri)) {
+    if (extensionConfig.checkFolderValidness(folder.uri)) {
       validFolders.push(folder);
     }
   }
@@ -68,7 +111,7 @@ export async function quickStart() {
       'Several valid RPG Maker folders were detected in the current workspace!'
     );
     // Enables 'choose project folder' button on the status bar
-    uiController.controlStatusBar({ setProjectFolder: true });
+    extensionUI.controlStatusBar({ setProjectFolder: true });
     // Shows a info message with a callback
     vscode.window
       .showInformationMessage(
@@ -100,27 +143,42 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
   try {
     logger.logInfo(`Changing project folder to: '${projectFolder.fsPath}'...`);
     // If the folder is invalid an error is thrown
-    const project = await configuration.setProjectFolder(projectFolder);
+    const folder = await extensionConfig.setProjectFolder(projectFolder);
 
-    // Deletes log file in the new project folder if logging is enabled
-    if (configuration.getConfigLogFile()) {
-      logger.deleteLogFile();
-    }
+    // Updates extension logger
+    logger.update(extensionConfig);
 
-    // Updates extension folder context
-    logger.logInfo(`'${project.curProjectFolder}' opened successfully!`);
-    logger.logInfo(`RGSS Version detected: '${project.curRgssVersion}'`);
+    // Updates extension context
+    logger.logInfo(
+      `'${folder.curProjectFolder.projectFolderPath}' opened successfully!`
+    );
+    logger.logInfo(
+      `RGSS Version detected: '${folder.curProjectFolder.rgssVersion}'`
+    );
     context.setValidProjectFolder(true);
+
+    // Update manager controllers
+    extensionScripts.update(extensionConfig);
+    extensionGameplay.update(extensionConfig);
+    // TODO: Must make sure _root is not undefined here
+    // extensionGameplay.update() must update root.
+    extensionUI.update({
+      dragAndDropController: extensionScripts,
+      treeRoot: extensionScripts.root!,
+      statusBarOptions: {
+        projectFolder: folder.curProjectFolder.projectFolderName,
+      },
+    });
 
     // Updates extension extracted scripts context
     logger.logInfo(`Checking project's bundle scripts file status...`);
-    const projectScripts = await scripts.checkExtractedScripts();
-    if (projectScripts === scripts.SCRIPTS_EXTRACTED) {
+    const scriptsResponse = await extensionScripts.checkScripts();
+    if (scriptsResponse === ScriptsController.SCRIPTS_EXTRACTED) {
       context.setExtractedScripts(true);
       logger.logInfo(
         'Scripts extraction has already been done previously for this project!'
       );
-    } else if (projectScripts === scripts.SCRIPTS_NOT_EXTRACTED) {
+    } else if (scriptsResponse === ScriptsController.SCRIPTS_NOT_EXTRACTED) {
       context.setExtractedScripts(false);
       logger.logWarning('Scripts were detected inside the bundle scripts file');
       logger.logInfo(
@@ -132,26 +190,16 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
     } else {
       context.setExtractedScripts(false);
       logger.logWarning(
-        `The bundle scripts file check reported an unknown code: ${projectScripts}`
+        `The bundle scripts file check reported an unknown code: ${scriptsResponse}`
       );
     }
 
-    // Process UI elements
-    uiController.update();
-    uiController.showStatusBar();
-
-    // TODO: Move to its own script and update the working folder there.
-    // TODO: Maybe moving it to scripts_controller.ts?
-    // let watcher = vscode.workspace.createFileSystemWatcher('**');
-    // watcher.onDidChange((uri) => logger.logInfo(`Change: ${uri.fsPath}`));
-    // watcher.onDidCreate((uri) => logger.logInfo(`Create: ${uri.fsPath}`));
-    // watcher.onDidDelete((uri) => logger.logInfo(`Delete: ${uri.fsPath}`));
+    // Update UI visibility
+    extensionUI.showStatusBar();
   } catch (error) {
     logger.logErrorUnknown(error);
-    uiController.update();
     context.setValidProjectFolder(false);
     context.setExtractedScripts(false);
-    throw error;
   }
 }
 
@@ -160,10 +208,10 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
  * @returns A promise
  */
 export async function openProjectFolder() {
-  let folderPath = configuration.getProjectFolderPath();
+  let folderPath = extensionConfig.getProjectFolderPath();
   if (folderPath) {
     try {
-      let folderProcess = await workingFolder.openFolder(folderPath);
+      let folderProcess = await openFolder(folderPath);
     } catch (error) {
       logger.logErrorUnknown(error);
     }
@@ -182,16 +230,16 @@ export async function extractScripts() {
   logger.logInfo('Extracting scripts from the bundled file...');
   try {
     // Extracts all scripts
-    let extractionResponse = await scripts.extractScriptsFromBundle();
+    let extractionResponse = await extensionScripts.extractScripts();
     // Evaluate extraction
-    if (extractionResponse === scripts.SCRIPTS_EXTRACTED) {
+    if (extractionResponse === ScriptsController.SCRIPTS_EXTRACTED) {
       logger.logInfo('Scripts extracted successfully!');
-      // Overwrites the bundle file with the loader
-      await scripts.createScriptLoaderBundle();
-      // TODO: Delegate load order creation to the tree view
-      // await scripts.createLoadOrderFile();
+      // Overwrites the bundle file with the loader script
+      let loaderResponse = await extensionScripts.createLoader(
+        GameplayController.GAME_OUTPUT_FILE
+      );
       context.setExtractedScripts(true);
-    } else if (extractionResponse === scripts.SCRIPTS_NOT_EXTRACTED) {
+    } else if (extractionResponse === ScriptsController.SCRIPTS_NOT_EXTRACTED) {
       logger.logInfo(
         "Extraction not needed, there aren't scripts left in the bundle file"
       );
@@ -208,27 +256,47 @@ export async function extractScripts() {
 }
 
 /**
- * Creates the load order file within the current scripts folder path
+ * Opens the load order file within the current scripts folder path.
  * @returns A promise
  */
-export async function createLoadOrder() {
-  // TODO: Delegate load order creation to the tree view
-  // let scriptsFolder = configuration.getScriptsFolderPath();
-  // if (!scriptsFolder) {
-  //   logger.logError(
-  //     `Cannot create load order file because the scripts folder path: '${scriptsFolder}' is invalid!`
-  //   );
-  //   return;
-  // }
-  // try {
-  //   logger.logInfo('Creating load order file...');
-  //   const loadOrderPath = await scripts.createLoadOrderFile(scriptsFolder);
-  //   logger.logInfo(
-  //     `Load order file created succesfully at: '${loadOrderPath}'`
-  //   );
-  // } catch (error) {
-  //   logger.logErrorUnknown(error);
-  // }
+export async function openLoadOrderFile() {
+  try {
+    let loadOrderFile = extensionScripts.getLoadOrderFilePath();
+    if (loadOrderFile) {
+      vscode.commands.executeCommand(
+        'vscode.open',
+        vscode.Uri.file(loadOrderFile)
+      );
+    }
+  } catch (error) {
+    logger.logErrorUnknown(error);
+  }
+}
+
+/**
+ * Creates the load order file within the current scripts folder path.
+ * @returns A promise
+ */
+export async function createLoadOrderFile() {
+  try {
+    let response = await extensionScripts.createLoadOrderFile();
+    logger.logInfo('Load order TXT file updated successfully!');
+    if (response === 0) {
+      logger.logWarning('Load order TXT file is empty!');
+      logger.logWarning(
+        'You should use the RGSS Script Editor view in VSCode to load scripts'
+      );
+      logger.logWarning(
+        'If load order TXT file is left empty, the game will not work at all!'
+      );
+    } else {
+      logger.logInfo(
+        `${response} entries were written in the load order TXT file.`
+      );
+    }
+  } catch (error) {
+    logger.logErrorUnknown(error);
+  }
 }
 
 /**
@@ -236,10 +304,9 @@ export async function createLoadOrder() {
  * @returns A promise
  */
 export async function createScriptLoader() {
-  logger.logInfo('Creating script loader bundle file...');
   try {
-    let extractedResponse = await scripts.checkExtractedScripts();
-    if (extractedResponse === scripts.SCRIPTS_NOT_EXTRACTED) {
+    let extractedResponse = await extensionScripts.checkScripts();
+    if (extractedResponse === ScriptsController.SCRIPTS_NOT_EXTRACTED) {
       logger.logError(
         'Cannot create script loader bundle file because RPG Maker bundle file still has valid scripts inside of it!'
       );
@@ -249,8 +316,10 @@ export async function createScriptLoader() {
       return;
     }
     // Overwrite bundle file
-    let loaderResponse = await scripts.createScriptLoaderBundle();
-    if (loaderResponse === scripts.LOADER_BUNDLE_CREATED) {
+    let loaderResponse = await extensionScripts.createLoader(
+      GameplayController.GAME_OUTPUT_FILE
+    );
+    if (loaderResponse === ScriptsController.LOADER_BUNDLE_CREATED) {
       logger.logInfo('Script loader bundle file created successfully!');
     } else {
       logger.logError(
@@ -261,6 +330,7 @@ export async function createScriptLoader() {
     logger.logErrorUnknown(error);
   }
 }
+
 /**
  * Creates a bundle file based on the load order file.
  * @returns A promise
@@ -268,27 +338,20 @@ export async function createScriptLoader() {
 export async function createBundleFile() {
   try {
     // Gets destination folder
-    let folder = await vscode.window.showOpenDialog({
-      canSelectFiles: false,
-      canSelectMany: false,
-      canSelectFolders: true,
+    let destination = await vscode.window.showSaveDialog({
+      filters: {
+        'RPG Maker VX Ace': ['rvdata2'],
+        'RPG Maker VX': ['rvdata'],
+        'RPG Maker XP': ['rxdata'],
+      },
     });
-    logger.logInfo('Creating a bundle file from the scripts folder...');
-    logger.logInfo(`Bundle file chosen path: ${folder}`);
-    if (!folder) {
-      logger.logError(`You must select a folder to save the bundle file!`);
-      return;
-    }
-    // Process destination RGSS-based
-    let destination = configuration.determineBundleFilePath(folder[0]);
-    logger.logInfo(`Destination bundle file: ${destination}`);
     if (!destination) {
-      logger.logError(`Cannot create bundle file due to invalid values.`);
+      logger.logError(`You must select a valid path to save the bundle file!`);
       return;
     }
     // Create bundle file
-    let bundleResponse = await scripts.createBundleFile(destination);
-    if (bundleResponse === scripts.BUNDLE_CREATED) {
+    let response = await extensionScripts.createBundle(destination);
+    if (response === ScriptsController.BUNDLE_CREATED) {
       logger.logInfo(`Bundle file created successfully at: '${destination}'`);
     } else {
       logger.logError(`Bundle file creation reported an unknown code!`);
@@ -303,37 +366,187 @@ export async function createBundleFile() {
  * @returns A promise
  */
 export async function runGame() {
-  logger.logInfo('Trying to run the game executable...');
-  let gameWorkingDir = configuration.getProjectFolderPath();
-  let gameExecutablePath = configuration.getConfigGameExeRelativePath();
-  let gameExecutableArgs = configuration.determineGameExeArguments();
-  let useWine = configuration.getConfigUseWine();
-  logger.logInfo(`Executable working directory: '${gameWorkingDir}'`);
-  logger.logInfo(`Executable path: '${gameExecutablePath}'`);
-  logger.logInfo(`Executable arguments: '${gameExecutableArgs}'`);
-  logger.logInfo(`Uses Wine (Linux Only): '${useWine}'`);
-  // Evaluates validness
-  if (!gameWorkingDir || !gameExecutablePath || !gameExecutableArgs) {
-    logger.logError(`Cannot run the executable due to invalid values.`);
-    return;
-  }
-  // Run logic
   try {
-    // Creates process
-    let gameProcess = await gameplay.runExecutable(gameExecutablePath, {
-      cwd: gameWorkingDir,
-      args: gameExecutableArgs,
-      useWine: useWine,
-    });
-    // Handle events
-    gameProcess.stdin?.end();
-    gameProcess.on('exit', (code, signal) => {
-      logger.logInfo(
-        `Game execution finished with code: ${code}, signal: ${signal}`
-      );
-    });
-    gameProcess.on('beforeExit', () => gameProcess.kill());
+    let pid = await extensionGameplay.runGame();
+    if (pid) {
+      logger.logInfo(`Game launched successfully with PID: ${pid}`);
+    }
   } catch (error) {
     logger.logErrorUnknown(error);
   }
+}
+
+/**
+ * Asynchronously process the exception got from the last game session.
+ * @returns A promise.
+ */
+export async function processGameException() {
+  logger.logInfo('Processing game exception...');
+  let exception = extensionGameplay.lastException;
+  if (exception) {
+    let option = await vscode.window.showWarningMessage(
+      'An exception was reported in the last game session...',
+      'Peek Backtrace',
+      'Close'
+    );
+    if (option === 'Peek Backtrace') {
+      // Shows the exception in a new text document besides the main editor if allowed.
+      if (extensionConfig.configGameExceptionShowInEditor()) {
+        let doc = await vscode.workspace.openTextDocument({
+          language: 'text',
+          content: exception.document(),
+        });
+        await vscode.window.showTextDocument(
+          doc,
+          vscode.ViewColumn.Beside,
+          true
+        );
+      }
+      // Opens the peek menu to backtrace.
+      await vscode.commands.executeCommand(
+        'editor.action.peekLocations',
+        vscode.Uri.file(exception.backtrace[0].file),
+        new vscode.Position(exception.backtrace[0].line, 0),
+        exception.backtrace.map((info) => {
+          return new vscode.Location(
+            vscode.Uri.file(info.file),
+            new vscode.Position(info.line - 1, 0)
+          );
+        }),
+        'gotoAndPeek',
+        'Not Found'
+      );
+    }
+  } else {
+    logger.logInfo('No exception was reported in the last game session!');
+    vscode.window.showInformationMessage(
+      'No exception was reported in the last game session!'
+    );
+  }
+}
+
+/**
+ * Updates the selected script section on the tree view to match the file opened in the given text editor.
+ *
+ * Extension auto-reveal functionality must be enabled.
+ * @param editor Text editor instance.
+ * @returns A promise.
+ */
+export async function updateActiveFile(editor: vscode.TextEditor | undefined) {
+  if (editor && extensionConfig.configAutoReveal()) {
+    // TODO: Resolve Uri
+    extensionUI.revealInTreeView(editor.document.uri.fsPath, {
+      select: true,
+      expand: true,
+    });
+  }
+}
+
+// TODO: Needs a refactor
+// Also specify args types
+
+export async function revealScriptSection(what: any) {
+  let selected = extensionUI.getTreeSelection();
+  if (selected && selected.length > 1) {
+    logger.logWarning('You must select a single script section to reveal it!');
+  } else {
+    console.log(`revealing: '${what}'`);
+    let path = vscode.Uri.file((what as EditorSection).path);
+    vscode.commands.executeCommand('revealInExplorer', path);
+  }
+}
+
+export async function createScriptSection(what: any, option: any) {
+  // Creating from root?
+  if (!(what instanceof EditorSection)) {
+    // Root creation
+    console.log(`Created: ${what} in root as a: ${option}`);
+    return;
+  }
+  let selected = extensionUI.getTreeSelection();
+  if (selected && selected.length > 1) {
+    logger.logWarning(
+      'You must select only a single script section to create a new one!'
+    );
+  } else {
+    console.log(`Created: ${what} as a: ${option}`);
+  }
+}
+
+export async function deleteScriptSection(what: any) {
+  let selected = extensionUI.getTreeSelection();
+  if (selected) {
+    console.log(`Deleted: ${selected}`);
+  } else {
+    console.log(`Deleted: ${what}`);
+  }
+}
+
+export async function renameScriptSection(what: any) {
+  let selected = extensionUI.getTreeSelection();
+  if (selected && selected.length > 1) {
+    logger.logWarning(
+      'You must select only a single script section to rename it!'
+    );
+  } else {
+    console.log(`Renamed: ${what}`);
+  }
+}
+
+export async function alternateLoadScriptSection(what: any) {
+  // Alternating from root?
+  // TODO: UI Controller calls this method to alternate single scripts, the format is:
+  // [[ScriptSection1, checkboxState1], [ScriptSection2, checkboxState2], [ScriptSection3, checkboxState3]]
+  // TODO: IMPORTANT
+  // Cuando un tree item se activa o desactiva, hay que actualizar el valor de todos sus hijos.
+  // normalmente VSCode lo haria automaticamente, pero parece ser que cuando un tree item con hijos
+  // esta en estado "Collapsed", no se actualiza bien los hijos y se quedan con el estado anterior
+  // esto provoca que no se actualice bien el load_order.txt
+  // puede que tenga que poner la opcion "manageCheckboxStateManually" del tree view a ``true``
+  // para evitar que VSCode cambie el checkbox de los hijos automaticamente.
+  if (!(what instanceof EditorSection)) {
+    // Root alternation
+    console.log(`Alternating all scripts`);
+  }
+  let selected = extensionUI.getTreeSelection();
+  if (selected && selected.length > 1) {
+    console.log(selected);
+  } else {
+    console.log(what);
+  }
+  // TODO: UI must be refreshed everytime root is changed
+  refresh();
+}
+
+/**
+ * Refreshes the extension UI.
+ *
+ * If a specific tree item is given, it will refresh that tree item and all of its children.
+ *
+ * Call ``refresh()`` with no arguments to force a root refresh.
+ * @param treeItem Tree item to refresh.
+ */
+export async function refresh(treeItem?: EditorSection) {
+  if (treeItem) {
+    // Refresh the given tree item
+    extensionUI.refresh({ treeItem: treeItem });
+  } else {
+    // Force root refresh
+    let root = extensionScripts.root;
+    if (root) {
+      extensionUI.refresh({ treeItem: root, isRoot: true });
+    }
+  }
+}
+
+/**
+ * Disposes the extension upon deactivation.
+ */
+export function dispose() {
+  // Disposes script controller
+  extensionScripts.dispose();
+  // Disposes the game controller
+  extensionGameplay.dispose();
+  // Disposes UI elements
+  extensionUI.dispose();
 }

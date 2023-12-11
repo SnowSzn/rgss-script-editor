@@ -3,7 +3,10 @@
   "name": "rgss-script-editor",
   "displayName": "RGSS Script Editor",
   "description": "A VSCode extension that allows to extract scripts files from RPG Maker bundle file and load them individually based on a load order",
-  "author": {"name": "SnowSzn", "url": "https://github.com/SnowSzn"},
+  "author": {
+    "name": "SnowSzn",
+    "url": "https://github.com/SnowSzn"
+  },
   "publisher": "SnowSzn",
   "license": "MIT",
   "keywords": [
@@ -19,8 +22,12 @@
     "RPG Maker VX",
     "RPG Maker VX Ace"
   ],
-  "repository": {"url": "https://github.com/SnowSzn/rgss-script-editor"},
-  "bugs": {"url": "https://github.com/SnowSzn/rgss-script-editor/issues"},
+  "repository": {
+    "url": "https://github.com/SnowSzn/rgss-script-editor"
+  },
+  "bugs": {
+    "url": "https://github.com/SnowSzn/rgss-script-editor/issues"
+  },
   "version": "0.1.0",
   "engines": {
     "vscode": "^1.80.0"
@@ -53,12 +60,6 @@
         "icon": "$(arrow-down)"
       },
       {
-        "command": "rgss-script-editor.createLoadOrder",
-        "title": "Create Load Order File",
-        "category": "RGSS Script Editor",
-        "icon": "$(list-ordered)"
-      },
-      {
         "command": "rgss-script-editor.createScriptLoader",
         "title": "Create Script Loader Bundle File",
         "category": "RGSS Script Editor",
@@ -68,35 +69,95 @@
         "command": "rgss-script-editor.createBundleFile",
         "title": "Create Bundle File From Extracted Scripts",
         "category": "RGSS Script Editor",
-        "icon": "$(gear)"
+        "icon": "$(package)"
       },
       {
         "command": "rgss-script-editor.runGame",
         "title": "Run Game",
         "category": "RGSS Script Editor",
         "icon": "$(run)"
+      },
+      {
+        "command": "rgss-script-editor.processGameException",
+        "title": "Check Last Game Exception",
+        "category": "RGSS Script Editor",
+        "icon": "$(warning)"
+      },
+      {
+        "command": "rgss-script-editor.openLoadOrder",
+        "title": "Open Load Order File",
+        "category": "RGSS Script Editor",
+        "icon": "$(tasklist)"
+      },
+      {
+        "command": "rgss-script-editor.updateLoadOrder",
+        "title": "Update Load Order File",
+        "category": "RGSS Script Editor",
+        "icon": "$(sync~spin)"
+      },
+      {
+        "command": "rgss-script-editor.revealScriptSection",
+        "title": "Reveal in Explorer...",
+        "category": "RGSS Script Editor",
+        "icon": "$(eye)"
+      },
+      {
+        "command": "rgss-script-editor.createScriptSection",
+        "title": "Create...",
+        "category": "RGSS Script Editor",
+        "icon": "$(new-file)"
+      },
+      {
+        "command": "rgss-script-editor.deleteScriptSection",
+        "title": "Delete...",
+        "category": "RGSS Script Editor",
+        "icon": "$(trash)"
+      },
+      {
+        "command": "rgss-script-editor.renameScriptSection",
+        "title": "Rename...",
+        "category": "RGSS Script Editor",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "rgss-script-editor.alternateLoadScriptSection",
+        "title": "Alternate Load Status...",
+        "category": "RGSS Script Editor",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "rgss-script-editor.refresh",
+        "title": "Refresh...",
+        "category": "RGSS Script Editor",
+        "icon": "sync~spin"
       }
     ],
     "configuration": [
       {
         "title": "_RGSS Script Editor",
         "properties": {
-          "rgssScriptEditor.extension.quickStart": {
-            "type": "boolean",
-            "default": true,
-            "description": "Allows the extension to activate itself by checking whether the opened folder is a valid RPG Maker project or not",
-            "order": 1
-          },
           "rgssScriptEditor.debug.logToConsole": {
             "type": "boolean",
             "default": true,
             "description": "Enables this extension to log information to the Visual Studio Code debug console",
-            "order": 10
+            "order": 0
           },
           "rgssScriptEditor.debug.logToFile": {
             "type": "boolean",
             "default": true,
             "description": "Enables this extension to log information to a file",
+            "order": 1
+          },
+          "rgssScriptEditor.extension.quickStart": {
+            "type": "boolean",
+            "default": true,
+            "description": "Allows the extension to activate itself by checking whether the opened folder is a valid RPG Maker project or not",
+            "order": 10
+          },
+          "rgssScriptEditor.extension.autoReveal": {
+            "type": "boolean",
+            "default": true,
+            "description": "Allows the extension to reveal the active file on the script editor view",
             "order": 11
           },
           "rgssScriptEditor.external.backUpsFolder": {
@@ -146,6 +207,18 @@
             "default": "",
             "description": "Set your own custom arguments here separated by a whitespace (You must disable 'auto. arguments detection' behavior to use this)",
             "order": 63
+          },
+          "rgssScriptEditor.gameplay.gameExceptionAutoProcess": {
+            "type": "boolean",
+            "default": true,
+            "description": "Allows the extension to display a message box reporting the exception that may have occurred during the last game execution.",
+            "order": 70
+          },
+          "rgssScriptEditor.gameplay.gameExceptionShowInEditor": {
+            "type": "boolean",
+            "default": true,
+            "description": "Allows the extension to show a new text document besides the active editor with the last exception information.",
+            "order": 71
           }
         }
       }
@@ -197,7 +270,50 @@
         "contents": "You must extract the contents of the RPG Maker bundled file.\nA folder containing all script files extracted will be created in the currently selected project folder.\nOnce all scripts are extracted, the scripts bundle file will be overwritten with a script loader and you can start using this editor\n[Extract Scripts](command:rgss-script-editor.extractScripts)",
         "when": "rgss-script-editor.validWorkingFolder && !rgss-script-editor.extractedScripts"
       }
-    ]
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "rgss-script-editor.updateLoadOrder",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "navigation"
+        },
+        {
+          "command": "rgss-script-editor.createScriptSection",
+          "when": "view == rgss-script-editor.editorView"
+        },
+        {
+          "command": "rgss-script-editor.alternateLoadScriptSection",
+          "when": "view == rgss-script-editor.editorView"
+        },
+        {
+          "command": "rgss-script-editor.openLoadOrder",
+          "when": "view == rgss-script-editor.editorView"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "rgss-script-editor.revealScriptSection",
+          "when": "view == rgss-script-editor.editorView"
+        },
+        {
+          "command": "rgss-script-editor.createScriptSection",
+          "when": "view == rgss-script-editor.editorView"
+        },
+        {
+          "command": "rgss-script-editor.renameScriptSection",
+          "when": "view == rgss-script-editor.editorView"
+        },
+        {
+          "command": "rgss-script-editor.deleteScriptSection",
+          "when": "view == rgss-script-editor.editorView"
+        },
+        {
+          "command": "rgss-script-editor.alternateLoadScriptSection",
+          "when": "view == rgss-script-editor.editorView"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "yarn run compile",
@@ -207,10 +323,13 @@
     "lint": "eslint src --ext ts",
     "test": "node ./out/test/runTest.js"
   },
+  "dependencies": {
+    "@hyrious/marshal": "^0.3.2"
+  },
   "devDependencies": {
-    "@hyrious/marshal": "^0.3.2",
+    "@types/heap": "^0.2.34",
     "@types/mocha": "^10.0.3",
-    "@types/node": "18.x",
+    "@types/node": "^18.19.3",
     "@types/vscode": "^1.84.0",
     "@typescript-eslint/eslint-plugin": "^6.9.0",
     "@typescript-eslint/parser": "^6.9.0",

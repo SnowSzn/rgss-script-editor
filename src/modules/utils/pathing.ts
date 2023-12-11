@@ -2,6 +2,35 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 
 /**
+ * Parses the given path.
+ * @param urifPath Uri path or string path
+ * @returns Parsed path.
+ */
+export function parse(rPath: vscode.Uri | string) {
+  switch (process.platform) {
+    case 'win32':
+      if (rPath instanceof vscode.Uri) {
+        return path.win32.parse(rPath.fsPath);
+      } else {
+        return path.win32.parse(rPath);
+      }
+    case 'darwin':
+    case 'linux':
+      if (rPath instanceof vscode.Uri) {
+        return path.posix.parse(rPath.fsPath);
+      } else {
+        return path.posix.parse(rPath);
+      }
+    default:
+      if (rPath instanceof vscode.Uri) {
+        return path.parse(rPath.fsPath);
+      } else {
+        return path.parse(rPath);
+      }
+  }
+}
+
+/**
  * Gets the basename from the given path based on the current platform (OS)
  * @param urifPath Uri path or string path
  * @returns The basename
@@ -197,5 +226,21 @@ export function joinRPG(
     return path.posix.join(rPath.fsPath, ...paths);
   } else {
     return path.posix.join(rPath, ...paths);
+  }
+}
+
+/**
+ * Gets the directory separator character based on the OS.
+ * @returns The directory separator
+ */
+export function separator(): string {
+  switch (process.platform) {
+    case 'win32':
+      return path.win32.sep;
+    case 'darwin':
+    case 'linux':
+      return path.posix.sep;
+    default:
+      return path.sep;
   }
 }
