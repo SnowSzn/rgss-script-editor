@@ -129,7 +129,13 @@
         "command": "rgss-script-editor.refresh",
         "title": "Refresh...",
         "category": "RGSS Script Editor",
-        "icon": "sync~spin"
+        "icon": "$(sync~spin)"
+      },
+      {
+        "command": "rgss-script-editor.alternateDropMode",
+        "title": "Alternate Drop Mode",
+        "category": "RGSS Script Editor",
+        "icon": "$(arrow-swap)"
       }
     ],
     "configuration": [
@@ -232,6 +238,11 @@
       {
         "command": "rgss-script-editor.runGame",
         "key": "F12",
+        "when": "rgss-script-editor.validWorkingFolder"
+      },
+      {
+        "command": "rgss-script-editor.alternateDropMode",
+        "key": "F9",
         "when": "rgss-script-editor.validWorkingFolder"
       }
     ],

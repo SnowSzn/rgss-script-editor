@@ -64,7 +64,7 @@ enum EditorSectionType {
 /**
  * Editor section instance configuration type.
  */
-type EditorSectionInfo = {
+type EditorSectionInfoOld = {
   /**
    * Editor section type.
    */
@@ -85,6 +85,33 @@ type EditorSectionInfo = {
    */
   // path?: string;
   path: string;
+
+  /**
+   * Whether editor section is loaded or not.
+   *
+   * Being loaded means that the tree item checkbox is ticked.
+   */
+  loaded?: boolean;
+};
+
+/**
+ * Editor section instance info type.
+ */
+type EditorSectionInfo = {
+  /**
+   * Editor section tree item label.
+   */
+  label?: string;
+
+  /**
+   * Editor section priority.
+   */
+  priority?: number;
+
+  /**
+   * Absolute path to the editor section entry.
+   */
+  path?: vscode.Uri;
 
   /**
    * Whether editor section is loaded or not.
@@ -176,7 +203,7 @@ export class EditorSection extends vscode.TreeItem {
    * Constructor.
    * @param config Script section configuration.
    */
-  constructor(config: EditorSectionInfo) {
+  constructor(config: EditorSectionInfoOld) {
     super(config.label);
     this.type = config.type;
     this._path = config.path;
@@ -436,7 +463,7 @@ export class EditorSection extends vscode.TreeItem {
    * @param config Script section configuration.
    * @returns Child instance.
    */
-  createChild(config: EditorSectionInfo): EditorSection | undefined {
+  createChild(config: EditorSectionInfoOld): EditorSection | undefined {
     // Ensures validness
     if (!this.isFolder() || !this.isRelative(config.path)) {
       return undefined;
@@ -462,7 +489,7 @@ export class EditorSection extends vscode.TreeItem {
    * @param config Script section configuration.
    * @returns The new child
    */
-  createChildren(config: EditorSectionInfo): EditorSection | undefined {
+  createChildren(config: EditorSectionInfoOld): EditorSection | undefined {
     // End reached, children creation must have been done by now.
     if (config.path === '.') {
       return undefined;
@@ -641,44 +668,43 @@ export class EditorSection extends vscode.TreeItem {
 // /**
 //  * Editor section base class.
 //  */
-// export class EditorSectionBase extends vscode.TreeItem {
+// export abstract class EditorSectionBase extends vscode.TreeItem {
+//   /**
+//    * Editor section collapsible states enum.
+//    */
+//   public static Collapsible = vscode.TreeItemCollapsibleState;
+
 //   /**
 //    * Editor section type.
 //    */
-//   private _type: number;
-
-//   /**
-//    * Editor section priority.
-//    */
-//   private _priority: number;
+//   protected _type: number;
 
 //   /**
 //    * Editor section children.
 //    */
-//   private _children: EditorSectionBase[];
+//   protected _children: EditorSectionBase[];
 
 //   /**
-//    * Editor section path.
+//    * Editor section priority.
 //    */
-//   private _path?: string;
+//   protected _priority: number;
 
 //   /**
 //    * Editor section parent.
 //    */
-//   private _parent?: EditorSectionBase;
+//   protected _parent?: EditorSectionBase;
 
 //   /**
 //    * Constructor.
 //    * @param type Editor section type.
 //    * @param label Editor section label.
 //    */
-//   constructor(type: number, label: string, priority: number) {
+//   constructor(type: number, label: string) {
 //     super(label);
-//     vscode.Uri.this.id = '1';
 //     this._type = type;
-//     this._priority = priority;
 //     this._children = [];
-//     this._reset();
+//     this._priority = 0;
+//     this._parent = undefined;
 //   }
 
 //   /**
@@ -703,13 +729,6 @@ export class EditorSection extends vscode.TreeItem {
 //   }
 
 //   /**
-//    * Editor section path.
-//    */
-//   get path() {
-//     return this._path;
-//   }
-
-//   /**
 //    * Editor section parent.
 //    */
 //   get parent() {
@@ -730,6 +749,28 @@ export class EditorSection extends vscode.TreeItem {
 //       }
 //     });
 //     return children;
+//   }
+
+//   /**
+//    * Sets this instance parent reference to the given ``section``.
+//    *
+//    * If the given ``section`` is invalid or ``undefined`` the parent reference is set to ``undefined``.
+//    *
+//    * If this instance parent was set previously and the given ``section`` is valid:
+//    *  - This instance is removed from the parent children list.
+//    *  - The given section parent children list is updated with this instance.
+//    * @param section Editor section instance.
+//    */
+//   setParent(section: EditorSectionBase | undefined) {
+//     // Updates the parent only if this instance is relative to the parent.
+//     if (section?.isInmediate(this.resourceUri)) {
+//       // Removes this instance from the previous parent (if it exists)
+//       this._parent?.deleteChild(this);
+//       // Updates the parent.
+//       this._parent = section;
+//     } else {
+//       this._parent = undefined;
+//     }
 //   }
 
 //   /**
@@ -767,6 +808,22 @@ export class EditorSection extends vscode.TreeItem {
 //   }
 
 //   /**
+//    * Sets this script section collapsible state.
+//    * @param state Collapsible state.
+//    */
+//   setCollapsibleState(state: vscode.TreeItemCollapsibleState | undefined) {
+//     this.collapsibleState = state;
+//   }
+
+//   /**
+//    * Sets this editor section tree item icon.
+//    * @param icon Tree item icon.
+//    */
+//   setIcon(icon: vscode.ThemeIcon | undefined) {
+//     this.iconPath = icon;
+//   }
+
+//   /**
 //    * Checks if this editor section is of the given ``type``.
 //    * @param type Editor section type.
 //    * @returns Whether it is the given type or not.
@@ -776,12 +833,12 @@ export class EditorSection extends vscode.TreeItem {
 //   }
 
 //   /**
-//    * Checks if this editor section path is the given ``path``.
-//    * @param path Path.
+//    * Checks if this editor section path is the given ``uri`` path.
+//    * @param uri Uri path.
 //    * @returns Whether it is the given path or not.
 //    */
-//   isPath(path: string) {
-//     return this._path === path;
+//   isPath(uri: vscode.Uri) {
+//     return this.resourceUri === uri;
 //   }
 
 //   /**
@@ -793,20 +850,62 @@ export class EditorSection extends vscode.TreeItem {
 //   }
 
 //   /**
-//    * Checks if this editor section is inmediate to the given ``path``.
+//    * Checks if the given ``uri`` path is inmediate to this editor section uri path.
 //    *
-//    * Being inmediate means that ``path`` could be a child of this section.
+//    * Being inmediate means that ``uri`` could be a child of this section.
 //    *
-//    * If this editor section does not have a path it returns ``false``.
-//    * @param path Path.
+//    * If this instance does not have a path or the given path is ``undefined`` it returns ``false``.
+//    * @param uri Uri path.
 //    * @returns Whether it is relative of the path or not.
 //    */
-//   isInmediate(path: string) {
-//     let relative = this.relative(path);
+//   isInmediate(uri: vscode.Uri | undefined) {
+//     // Evaluates Uri path validness.
+//     if (!uri) {
+//       return false;
+//     }
+//     // Gets the relative path and check it.
+//     let relative = this.relative(uri);
 //     if (relative) {
 //       return this._tokenize(relative).length === 1;
 //     }
 //     return false;
+//   }
+
+//   /**
+//    * Checks if this editor section instance is the same as the given one.
+//    *
+//    * This method compares the attributes to check equality.
+//    * @param other Editor section instance.
+//    */
+//   isEqual(other: EditorSectionBase) {
+//     return (
+//       this._type === other.type &&
+//       this._priority === other.priority &&
+//       this._parent === other.parent &&
+//       this._children === other.children
+//     );
+//   }
+
+//   /**
+//    * Checks if this instance has ``section`` as a child instance.
+//    * @param section Editor section instance.
+//    * @returns Whether it is a child or not.
+//    */
+//   has(section: EditorSectionBase) {
+//     return this._children.some((child) => {
+//       return child === section;
+//     });
+//   }
+
+//   /**
+//    * Checks if this instance has a child equal to the given ``section``.
+//    * @param section Editor section instance.
+//    * @returns Whether it has an equal child instance or not.
+//    */
+//   hasEqual(section: EditorSectionBase) {
+//     return this._children.some((child) => {
+//       return child.isEqual(section);
+//     });
 //   }
 
 //   /**
@@ -823,48 +922,47 @@ export class EditorSection extends vscode.TreeItem {
 //    * It forces a reset on the instance.
 //    * @param info Editor section path.
 //    */
-//   update(info: EditorSectionInfo) {
+//   update(info: EditorSectionInfoOld) {
 //     this._type = info.type;
 //     this._priority = info.priority;
-//     this._path = info.path;
 //     this._reset();
 //   }
 
 //   /**
-//    * Gets the relative path from this editor section to the given path.
+//    * Gets the relative path from this editor section to the given ``uri`` path.
 //    *
 //    * If this editor section does not have a path it returns ``undefined``.
-//    * @param path Path.
+//    * @param uri Uri Path.
 //    * @returns Relative path.
 //    */
-//   relative(path: string): string | undefined {
-//     if (!this._path) {
+//   relative(uri: vscode.Uri): string | undefined {
+//     if (!this.resourceUri) {
 //       return undefined;
 //     }
-//     return pathing.relative(this._path, path);
+//     return pathing.relative(this.resourceUri, uri);
 //   }
 
 //   /**
-//    * Returns the child instance that matches the given ``path``.
+//    * Returns the child instance that matches the given ``uri`` path.
 //    *
 //    * If the ``nested`` flag is set, it will search each child recursively until found.
 //    *
 //    * If no script section is found, it returns ``undefined``.
-//    * @param path Path.
+//    * @param uri Uri path.
 //    * @param nested Nested flag.
 //    * @returns Child instance.
 //    */
-//   find(path: string, nested?: boolean) {
+//   findChild(uri: vscode.Uri, nested?: boolean) {
 //     let child: EditorSectionBase | undefined = undefined;
-//     if (this.isInmediate(path)) {
+//     if (this.isInmediate(uri)) {
 //       // Child should be an inmediate child
 //       child = this._children.find((section) => {
-//         return section.isPath(path);
+//         return section.isPath(uri);
 //       });
 //     } else if (nested) {
 //       // Child instance can be nested.
 //       child = this.getNestedChildren().find((section) => {
-//         return section.isPath(path);
+//         return section.isPath(uri);
 //       });
 //     }
 //     return child;
@@ -878,7 +976,7 @@ export class EditorSection extends vscode.TreeItem {
 //    * @param nested Nested flag.
 //    * @returns Children instances.
 //    */
-//   filter(
+//   filterChildren(
 //     callback: (
 //       value: EditorSectionBase,
 //       index: number,
@@ -902,11 +1000,38 @@ export class EditorSection extends vscode.TreeItem {
 //    * @param section Editor section
 //    * @returns List of deleted elements.
 //    */
-//   delete(section: EditorSectionBase) {
+//   deleteChild(section: EditorSectionBase) {
 //     let index = this._children.indexOf(section);
 //     if (index !== -1) {
-//       return this._children.splice(index, 1);
+//       return this._children.splice(index, 1).forEach((child) => {
+//         child.setParent(undefined);
+//       });
 //     }
+//   }
+
+//   /**
+//    * Adds the given editor section instance as a child of this one.
+//    *
+//    * Note: For the sake of consistency, the section given must be relative to this instance.
+//    *
+//    * For example:
+//    *  - This instance: *'Folder/Subfolder/'*
+//    *  - Child instance: *'Folder/Subfolder/file.txt'*
+//    *
+//    * Otherwise, this method will throw an error.
+//    * @param section Editor section.
+//    * @throws An error when the section is not valid.
+//    */
+//   addChild(section: EditorSectionBase) {
+//     // Checks for path validness.
+//     if (!this.isInmediate(section.resourceUri)) {
+//       throw new Error(`Cannot add child instance because it is not inmediate!`);
+//     }
+//     // Adds the new child instance.
+//     this._children.push(section);
+//     this._children.sort((a, b) => a.priority - b.priority);
+//     // Updates the parent reference.
+//     section.setParent(this);
 //   }
 
 //   /**
@@ -931,19 +1056,141 @@ export class EditorSection extends vscode.TreeItem {
 //   /**
 //    * Resets the editor section information.
 //    */
-//   private _reset() {
-//     this.description = undefined;
-//     this.tooltip = undefined;
+//   protected _reset() {}
+// }
+
+// /**
+//  * Editor section separator class.
+//  */
+// class EditorSectionSeparator extends EditorSectionBase {
+//   /**
+//    * Constructor.
+//    * @param priority Separator priority.
+//    */
+//   constructor(priority: number) {
+//     super(EditorSectionType.Separator, priority, '');
+//   }
+
+//   /**
+//    * Separator cannot have a checkbox state.
+//    *
+//    * The checkbox will be set to ``undefined``.
+//    * @param state Checkbox state.
+//    */
+//   setCheckboxState(
+//     state: vscode.TreeItemCheckboxState | boolean | undefined | null
+//   ) {
 //     this.checkboxState = undefined;
+//   }
+
+//   /**
+//    * Separator cannot have a collapsible state.
+//    *
+//    * The collapsible state will be set to ``undefined``.
+//    * @param state Collapsible state.
+//    */
+//   setCollapsibleState(state: vscode.TreeItemCollapsibleState | undefined) {
+//     this.collapsibleState = undefined;
+//   }
+
+//   /**
+//    * Separator cannot have an icon.
+//    *
+//    * The icon will be set to ``undefined``.
+//    * @param icon Icon.
+//    */
+//   setIcon(icon: vscode.ThemeIcon | undefined) {
 //     this.iconPath = undefined;
 //   }
 
-//   private addChild(section: EditorSectionBase) {}
+//   /**
+//    * Separator cannot have children.
+//    *
+//    * The children list will be set to ``undefined``.
+//    * @param section Editor section instance.
+//    */
+//   addChild(section: EditorSectionBase) {
+//     this._children = [];
+//   }
+
+//   /**
+//    * Resets the editor section information.
+//    */
+//   protected _reset() {
+//     super._reset();
+//     this.setDescription('Separator');
+//     this.setTooltip('Separator');
+//     this.setCollapsibleState(EditorSectionBase.Collapsible.None);
+//     this.setCheckboxState(undefined);
+//     this.setIcon(undefined);
+//     this.command = undefined;
+//   }
 // }
 
-// class SectionSeparator extends EditorSection {}
-// class SectionScript extends EditorSection {}
-// class SectionFolder extends EditorSection {}
+// /**
+//  * Editor section script class.
+//  */
+// class EditorSectionScript extends EditorSectionBase {
+//   /**
+//    * Constructor.
+//    * @param priority Script priority.
+//    * @param uri Script resource Uri.
+//    */
+//   constructor(priority: number, uri: vscode.Uri) {
+//     super(EditorSectionType.Script, priority, pathing.basename(uri));
+//     this.resourceUri = uri;
+//     this._reset();
+//   }
+
+//   /**
+//    * Sets this script section collapsible state.
+//    * @param state Collapsible state.
+//    */
+//   setCollapsibleState(state: vscode.TreeItemCollapsibleState | undefined) {
+//     this.collapsibleState = undefined;
+//   }
+
+//   /**
+//    * Resets the editor section information.
+//    */
+//   protected _reset() {
+//     super._reset();
+//     this.setDescription('Script file');
+//     this.setTooltip(this.resourceUri?.fsPath);
+//     this.setCollapsibleState(EditorSectionBase.Collapsible.None);
+//     this.command = {
+//       title: 'Open Script File',
+//       command: 'vscode.open',
+//       arguments: [this.resourceUri],
+//     };
+//   }
+// }
+
+// /**
+//  * Editor section folder class.
+//  */
+// class EditorSectionFolder extends EditorSectionBase {
+//   /**
+//    * Constructor.
+//    * @param priority Folder priority.
+//    * @param uri Folder resource Uri.
+//    */
+//   constructor(priority: number, uri: vscode.Uri) {
+//     super(EditorSectionType.Folder, priority, uri.fragment);
+//     this.resourceUri = uri;
+//   }
+
+//   /**
+//    * Resets the editor section information.
+//    */
+//   protected _reset() {
+//     super._reset();
+//     this.setDescription('Folder');
+//     this.setTooltip(this.resourceUri?.fsPath);
+//     this.setCollapsibleState(EditorSectionBase.Collapsible.Collapsed);
+//     this.command = undefined;
+//   }
+// }
 
 /**
  * Scripts controller class.
@@ -1019,7 +1266,7 @@ export class ScriptsController
    * @returns Absolute path to the load oder file.
    */
   getLoadOrderFilePath(): string | undefined {
-    let scriptsFolderPath = this._config?.getScriptsFolderPath();
+    let scriptsFolderPath = this._config?.scriptsFolderPath?.fsPath;
     if (scriptsFolderPath) {
       return pathing.join(scriptsFolderPath, LOAD_ORDER_FILE_NAME);
     }
@@ -1048,14 +1295,13 @@ export class ScriptsController
    * @returns A promise
    */
   async checkScripts(): Promise<number> {
-    logger.logInfo('Checking RPG Maker scripts from bundle file...');
     // Checks configuration validness
     if (!this._config) {
       throw new Error(
         `Script controller has an invalid configuration instance!`
       );
     }
-    let bundleFilePath = this._config.getBundleScriptsPath();
+    let bundleFilePath = this._config.bundleFilePath?.fsPath;
     logger.logInfo(`Bundle file path is: '${bundleFilePath}'`);
     if (!bundleFilePath) {
       throw new Error('Cannot check bundle scripts due to invalid values!');
@@ -1089,8 +1335,8 @@ export class ScriptsController
         `Script controller has an invalid configuration instance!`
       );
     }
-    let bundleFilePath = this._config.getBundleScriptsPath();
-    let scriptsFolderPath = this._config.getScriptsFolderPath();
+    let bundleFilePath = this._config.bundleFilePath?.fsPath;
+    let scriptsFolderPath = this._config.scriptsFolderPath?.fsPath;
     logger.logInfo(`Bundle file path is: '${bundleFilePath}'`);
     logger.logInfo(`Scripts folder path is: '${scriptsFolderPath}'`);
     // Checks bundle file path validness
@@ -1145,8 +1391,8 @@ export class ScriptsController
         `Script controller has an invalid configuration instance!`
       );
     }
-    let bundleFilePath = this._config.getBundleScriptsPath();
-    let backUpsFolderPath = this._config.getBackUpsFolderPath();
+    let bundleFilePath = this._config.bundleFilePath?.fsPath;
+    let backUpsFolderPath = this._config.backUpsFolderPath?.fsPath;
     let scriptsFolderPath = this._config.configScriptsFolder();
     logger.logInfo(`RPG Maker bundle file path: '${bundleFilePath}'`);
     logger.logInfo(`Back ups folder path: '${backUpsFolderPath}'`);
@@ -1223,7 +1469,7 @@ export class ScriptsController
         `Script controller has an invalid configuration instance!`
       );
     }
-    let scriptsFolderPath = this._config.getScriptsFolderPath();
+    let scriptsFolderPath = this._config.scriptsFolderPath?.fsPath;
     logger.logInfo(`Scripts folder path: '${scriptsFolderPath}'`);
     if (!scriptsFolderPath) {
       throw new Error('Cannot create load order file due to invalid values!');
@@ -1267,7 +1513,7 @@ export class ScriptsController
         `Script controller has an invalid configuration instance!`
       );
     }
-    let scriptsFolderPath = this._config.getScriptsFolderPath();
+    let scriptsFolderPath = this._config.scriptsFolderPath?.fsPath;
     logger.logInfo(`Scripts folder path: '${scriptsFolderPath}'`);
     logger.logInfo(`Destination path: ${destination.fsPath}`);
     if (!scriptsFolderPath) {
@@ -1362,7 +1608,7 @@ export class ScriptsController
     }
 
     // Recreates the root script section
-    let scriptsFolderPath = this._config.getScriptsFolderPath()!;
+    let scriptsFolderPath = this._config.scriptsFolderPath!.fsPath;
     this._root = new EditorSection({
       path: scriptsFolderPath,
       label: 'Root',
@@ -1422,7 +1668,7 @@ export class ScriptsController
   private _scan() {
     // TODO: Properly scan the directory
     if (this._root && this._config) {
-      let scriptsFolderPath = this._config.getScriptsFolderPath()!;
+      let scriptsFolderPath = this._config.scriptsFolderPath!.fsPath;
       filesys
         .readDirectory(scriptsFolderPath, {
           relative: false,
@@ -1460,7 +1706,9 @@ export class ScriptsController
   }
 
   /**
-   * Checks if the scripts extraction process from the given ``bundle`` file is valid or not.
+   * Checks the RPG Maker bundle file for any valid scripts left.
+   *
+   * This method ignores the script loader that this extension creates.
    *
    * Returns true if there are scripts in the bundle file that were not extracted previously.
    * @param bundle Bundle (marshalized)
@@ -1736,7 +1984,7 @@ ScriptLoader.run
    */
   private _determineLoadStatus(entry: string): boolean {
     if (this._config) {
-      let scriptsFolderPath = this._config.getScriptsFolderPath()!;
+      let scriptsFolderPath = this._config.scriptsFolderPath!.fsPath;
       let relativePath = pathing.relative(scriptsFolderPath, entry);
       return fs
         .readFileSync(this.getLoadOrderFilePath()!, { encoding: 'utf8' })

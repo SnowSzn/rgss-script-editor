@@ -76,8 +76,8 @@ class Logger {
   deleteLogFile(): void {
     if (this._config) {
       let logFilePath = this._config.joinProject(LOG_FILE_NAME);
-      if (logFilePath && fs.existsSync(logFilePath)) {
-        fs.unlinkSync(logFilePath);
+      if (logFilePath && fs.existsSync(logFilePath.fsPath)) {
+        fs.unlinkSync(logFilePath.fsPath);
       }
     }
   }
@@ -105,7 +105,7 @@ class Logger {
         // Process logging operation
         let logFilePath = this._config.joinProject(LOG_FILE_NAME);
         if (logFilePath) {
-          fs.writeFileSync(logFilePath, msg, { flag: 'a' });
+          fs.writeFileSync(logFilePath.fsPath, msg, { flag: 'a' });
         }
       }
     }

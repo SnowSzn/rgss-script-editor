@@ -1,6 +1,5 @@
 import * as fs from 'fs';
 import * as vscode from 'vscode';
-import * as pathing from './pathing';
 
 /**
  * Project folder information.
@@ -9,12 +8,7 @@ export type FolderInfo = {
   /**
    * Absolute path to the project folder.
    */
-  projectFolderPath: string;
-
-  /**
-   * Project folder name.
-   */
-  projectFolderName: string;
+  projectFolderPath: vscode.Uri;
 
   /**
    * RGSS version.
@@ -24,58 +18,63 @@ export type FolderInfo = {
   /**
    * Absolute path to the RPG Maker bundle file.
    */
-  bundleFilePath: string;
+  bundleFilePath: vscode.Uri;
 
   /**
    * Absolute path to the scripts folder.
    */
-  scriptsFolderPath: string;
+  scriptsFolderPath: vscode.Uri;
 
   /**
    * Absolute path to the back ups folder.
    */
-  backUpsFolderPath: string;
+  backUpsFolderPath: vscode.Uri;
+
+  /**
+   * Absolute path to the game executable.
+   */
+  gameExePath: vscode.Uri;
 };
 
 /**
  * Return type when changing the current project folder.
  */
 export type ConfigChangeFolder = {
-  oldProjectFolder: FolderInfo | undefined;
+  oldProjectFolder?: FolderInfo;
   curProjectFolder: FolderInfo;
 };
 
 /**
- * Enum of valid RGSS versions
+ * Enum of valid RGSS versions.
  */
-export const enum RGSSVersions {
+const enum RGSSVersion {
   RGSS1 = 'RGSS1',
   RGSS2 = 'RGSS2',
   RGSS3 = 'RGSS3',
 }
 
 /**
- * Enum of valid test arguments based on the RGSS version
+ * Enum of valid game test arguments based on the RGSS version.
  */
-export const enum RGSSTestArguments {
+const enum RGSSGameArgsTest {
   RGSS1 = 'debug',
   RGSS2 = 'test',
   RGSS3 = 'test',
 }
 
 /**
- * Enum of valid test arguments based on the RGSS version
+ * Enum of valid game console arguments based on the RGSS version.
  */
-export const enum RGSSConsoleArguments {
+const enum RGSSGameArgsConsole {
   RGSS1 = '',
   RGSS2 = '',
   RGSS3 = 'console',
 }
 
 /**
- * Enum of relative paths to the bundle scripts file based on the RGSS version
+ * Enum of relative paths from the project folder to the bundle scripts file based on the RGSS version.
  */
-export const enum RGSSBundleScriptsPath {
+const enum RGSSBundlePath {
   RGSS1 = 'Data/Scripts.rxdata',
   RGSS2 = 'Data/Scripts.rvdata',
   RGSS3 = 'Data/Scripts.rvdata2',
@@ -86,21 +85,83 @@ export const enum RGSSBundleScriptsPath {
  */
 export class Configuration {
   /**
-   * Project folder URI path.
-   */
-  private projectFolder: vscode.Uri | undefined;
-
-  /**
    * RGSS Version.
    */
-  private rgssVersion: string | undefined;
+  private _rgssVersion?: string;
+
+  /**
+   * Project folder URI path.
+   */
+  private _projectFolderPath?: vscode.Uri;
+
+  /**
+   * RPG Maker bundle file URI path.
+   */
+  private _bundleFilePath?: vscode.Uri;
+
+  /**
+   * External scripts folder URI path.
+   */
+  private _scriptsFolderPath?: vscode.Uri;
+
+  /**
+   * Back ups folder URI path.
+   */
+  private _backUpsFolderPath?: vscode.Uri;
+
+  /**
+   * Game executable URI path.
+   */
+  private _gameExePath?: vscode.Uri;
 
   /**
    * Constructor.
    */
   constructor() {
-    this.projectFolder = undefined;
-    this.rgssVersion = undefined;
+    this._projectFolderPath = undefined;
+    this._rgssVersion = undefined;
+  }
+
+  /**
+   * RGSS Version.
+   */
+  get rgss() {
+    return this._rgssVersion;
+  }
+
+  /**
+   * Project folder URI path.
+   */
+  get projectFolderPath() {
+    return this._projectFolderPath;
+  }
+
+  /**
+   * RPG Maker bundle file URI path.
+   */
+  get bundleFilePath() {
+    return this._bundleFilePath;
+  }
+
+  /**
+   * External scripts folder URI path.
+   */
+  get scriptsFolderPath() {
+    return this._scriptsFolderPath;
+  }
+
+  /**
+   * Back ups folder URI path.
+   */
+  get backUpsFolderPath() {
+    return this._backUpsFolderPath;
+  }
+
+  /**
+   * Game executable URI path.
+   */
+  get gameExePath() {
+    return this._gameExePath;
   }
 
   /**
@@ -209,7 +270,7 @@ export class Configuration {
    * Gets the extension game exception auto process flag.
    * @returns Auto process extension flag.
    */
-  configGameExceptionAutoProcess(): boolean | undefined {
+  configGameErrorAutoProcess(): boolean | undefined {
     return this._getVSCodeConfig<boolean>('gameplay.gameExceptionAutoProcess');
   }
 
@@ -217,75 +278,113 @@ export class Configuration {
    * Gets the extension game exception shows in the editor window flag.
    * @returns Show in the editor flag.
    */
-  configGameExceptionShowInEditor(): boolean | undefined {
+  configGameErrorShowEditor(): boolean | undefined {
     return this._getVSCodeConfig<boolean>('gameplay.gameExceptionShowInEditor');
   }
 
   /**
-   * Checks if a valid RPG Maker project folder is currently opened or not.
+   * Checks if this configuration instance is valid.
    *
-   * Being 'valid' means:
-   *  - A valid RPG Maker project folder is opened.
-   *  - RGSS Version is detected (valid scripts bundle file).
-   * @returns Whether it is valid or not
+   * Being valid means that a folder was opened and the RGSS version was detected.
+   *
+   * If the RGSS version was detected, the rest of attributes are assumed to be valid.
+   * @returns Whether it is valid or not.
    */
   isValid(): boolean {
-    return !!this.rgssVersion && !!this.projectFolder;
+    return !!this._rgssVersion;
   }
 
   /**
-   * Asynchronously sets the extension working folder to the given one.
+   * This method checks if the given ``folder`` is a valid RPG Maker project folder.
    *
-   * If the given folder is the same as the currently opened folder the promise is auto. resolved.
-   *
-   * If the RGSS Version cannot be determined in the new folder the promise is rejected.
-   * @param projectFolder Project folder path
-   * @returns A promise
+   * If the folder is valid, it returns information about the folder, otherwise returns ``null``.
+   * @param folder Folder Uri path.
+   * @returns Folder information.
    */
-  async setProjectFolder(
-    projectFolder: vscode.Uri
-  ): Promise<ConfigChangeFolder> {
-    // Avoids opening the same folder twice if it is valid already
-    if (this.isValid() && projectFolder === this.projectFolder) {
+  checkFolder(folder: vscode.Uri): FolderInfo | null {
+    let backups = this.configBackUpsFolder();
+    let scripts = this.configScriptsFolder();
+    let game = this.configExeGamePath();
+    // Checks for VSCode configuration validness
+    if (!backups || !scripts || !game) {
+      return null;
+    }
+    // Creates paths
+    let backUpsPath = vscode.Uri.joinPath(folder, backups);
+    let scriptsPath = vscode.Uri.joinPath(folder, scripts);
+    let gameExePath = vscode.Uri.joinPath(folder, game);
+    let rgss1 = vscode.Uri.joinPath(folder, RGSSBundlePath.RGSS1);
+    let rgss2 = vscode.Uri.joinPath(folder, RGSSBundlePath.RGSS2);
+    let rgss3 = vscode.Uri.joinPath(folder, RGSSBundlePath.RGSS3);
+    // Formats the folder information based on the RGSS version
+    if (fs.existsSync(rgss1.fsPath)) {
       return {
-        oldProjectFolder: this.getInfo(),
-        curProjectFolder: this.getInfo()!,
+        projectFolderPath: folder,
+        rgssVersion: RGSSVersion.RGSS1,
+        backUpsFolderPath: backUpsPath,
+        scriptsFolderPath: scriptsPath,
+        gameExePath: gameExePath,
+        bundleFilePath: rgss1,
       };
     }
-    // Tries to open the new folder.
-    let oldProjectFolder = this.getInfo();
-    // Updates new folder.
-    this.projectFolder = projectFolder;
-    this.rgssVersion = this._determineRGSSVersion(projectFolder);
-    // Checks if RGSS version detection was successful
-    if (this.rgssVersion === undefined) {
-      // Reject promise if RGSS could not be found
-      throw new Error(
-        `Cannot determine RGSS version in folder '${this.projectFolder.fsPath}', 
-        Scripts bundle file is missing, fix the problem and try opening the folder again`
-      );
+    // Checks for RGSS2
+    if (fs.existsSync(rgss2.fsPath)) {
+      return {
+        projectFolderPath: folder,
+        rgssVersion: RGSSVersion.RGSS2,
+        backUpsFolderPath: backUpsPath,
+        scriptsFolderPath: scriptsPath,
+        gameExePath: gameExePath,
+        bundleFilePath: rgss2,
+      };
     }
-    return {
-      oldProjectFolder: oldProjectFolder,
-      curProjectFolder: this.getInfo()!,
-    };
+    // Checks for RGSS3
+    if (fs.existsSync(rgss3.fsPath)) {
+      return {
+        projectFolderPath: folder,
+        rgssVersion: RGSSVersion.RGSS3,
+        backUpsFolderPath: backUpsPath,
+        scriptsFolderPath: scriptsPath,
+        gameExePath: gameExePath,
+        bundleFilePath: rgss3,
+      };
+    }
+    return null;
   }
 
   /**
-   * Checks if ``folder`` is a valid RPG Maker project folder for this extension.
-   * @param folder Folder Uri path
-   * @returns Whether it is a valid RPG Maker project folder or not.
+   * Asynchronously updates the configuration with the given project folder.
+   *
+   * If the instance is updated successfully it returns information about the folder change.
+   *
+   * If it fails to update the folder it rejects the promise with an error.
+   * @param folder Project Folder.
+   * @throws An error when the given folder is invalid.
+   * @returns A promise.
    */
-  checkFolderValidness(folder: vscode.Uri): boolean {
-    let rgss1 = pathing.join(folder, RGSSBundleScriptsPath.RGSS1);
-    let rgss2 = pathing.join(folder, RGSSBundleScriptsPath.RGSS2);
-    let rgss3 = pathing.join(folder, RGSSBundleScriptsPath.RGSS3);
-    for (let data of [rgss1, rgss2, rgss3]) {
-      if (fs.existsSync(data)) {
-        return true;
-      }
+  async update(folder: vscode.Uri): Promise<ConfigChangeFolder> {
+    let info = this.checkFolder(folder);
+    if (info) {
+      // RGSS version found, valid RPG Maker project folder.
+      let oldProjectFolder = this.getInfo();
+      this._rgssVersion = info.rgssVersion;
+      this._projectFolderPath = info.projectFolderPath;
+      this._backUpsFolderPath = info.backUpsFolderPath;
+      this._scriptsFolderPath = info.scriptsFolderPath;
+      this._bundleFilePath = info.bundleFilePath;
+      this._gameExePath = info.gameExePath;
+      return { oldProjectFolder: oldProjectFolder, curProjectFolder: info };
+    } else {
+      // RGSS version was not found, probably an invalid folder.
+      this._rgssVersion = undefined;
+      this._bundleFilePath = undefined;
+      this._scriptsFolderPath = undefined;
+      this._backUpsFolderPath = undefined;
+      this._gameExePath = undefined;
+      throw new Error(
+        `Cannot update to folder: ${folder.fsPath}. A valid RGSS version was not detected!`
+      );
     }
-    return false;
   }
 
   /**
@@ -297,110 +396,13 @@ export class Configuration {
   getInfo(): FolderInfo | undefined {
     if (this.isValid()) {
       return {
-        projectFolderPath: this.getProjectFolderPath()!,
-        projectFolderName: this.getProjectFolderName()!,
-        rgssVersion: this.getRGSSVersion()!,
-        bundleFilePath: this.getBundleScriptsPath()!,
-        scriptsFolderPath: this.getScriptsFolderPath()!,
-        backUpsFolderPath: this.getBackUpsFolderPath()!,
+        rgssVersion: this._rgssVersion!,
+        projectFolderPath: this._projectFolderPath!,
+        bundleFilePath: this._bundleFilePath!,
+        scriptsFolderPath: this._scriptsFolderPath!,
+        backUpsFolderPath: this._backUpsFolderPath!,
+        gameExePath: this._gameExePath!,
       };
-    }
-    return undefined;
-  }
-
-  /**
-   * Gets the absolute path to the opened project folder.
-   *
-   * The folder is automatically normalized based on the OS.
-   *
-   * It returns ``undefined`` if the path cannot be determined.
-   * @returns Project folder path
-   */
-  getProjectFolderPath(): string | undefined {
-    return this.projectFolder ? pathing.resolve(this.projectFolder) : undefined;
-  }
-
-  /**
-   * Gets the project's RGSS version detected.
-   * @returns RGSS Version
-   */
-  getRGSSVersion(): string | undefined {
-    return this.rgssVersion;
-  }
-
-  /**
-   * Gets the opened project folder name.
-   *
-   * It returns ``undefined`` if the name cannot be determined.
-   * @returns Project folder name
-   */
-  getProjectFolderName(): string | undefined {
-    return this.projectFolder
-      ? pathing.basename(this.projectFolder)
-      : undefined;
-  }
-
-  /**
-   * Gets the absolute path to the back ups folder.
-   *
-   * It returns ``undefined`` if the path cannot be determined.
-   * @returns Back ups folder path
-   */
-  getBackUpsFolderPath(): string | undefined {
-    let backUpsFolder = this.configBackUpsFolder();
-    if (this.isValid() && backUpsFolder) {
-      return pathing.join(this.projectFolder!, backUpsFolder);
-    }
-    return undefined;
-  }
-
-  /**
-   * Gets the absolute path to the extracted scripts folder.
-   *
-   * It returns ``undefined`` if the path cannot be determined.
-   * @returns Scripts folder path
-   */
-  getScriptsFolderPath(): string | undefined {
-    let scriptsFolder = this.configScriptsFolder();
-    if (this.isValid() && scriptsFolder) {
-      return pathing.join(this.projectFolder!, scriptsFolder);
-    }
-    return undefined;
-  }
-
-  /**
-   * Gets the absolute path to the game executable.
-   *
-   * It returns ``undefined`` if the path cannot be determined.
-   * @returns Game executable path
-   */
-  getGameExePath(): string | undefined {
-    let gameRelativePath = this.configExeGamePath();
-    if (this.isValid() && gameRelativePath) {
-      return pathing.join(this.projectFolder!, gameRelativePath);
-    }
-    return undefined;
-  }
-
-  /**
-   * Gets the absolute path to the RPG Maker bundled scripts file.
-   *
-   * It returns ``undefined`` if the path cannot be determined.
-   * @returns Bundled scripts file path
-   */
-  getBundleScriptsPath(): string | undefined {
-    if (this.isValid()) {
-      switch (this.rgssVersion) {
-        case RGSSVersions.RGSS1: {
-          return pathing.join(this.projectFolder!, RGSSBundleScriptsPath.RGSS1);
-        }
-        case RGSSVersions.RGSS2: {
-          return pathing.join(this.projectFolder!, RGSSBundleScriptsPath.RGSS2);
-        }
-        case RGSSVersions.RGSS3: {
-          return pathing.join(this.projectFolder!, RGSSBundleScriptsPath.RGSS3);
-        }
-      }
     }
     return undefined;
   }
@@ -413,41 +415,41 @@ export class Configuration {
    * If the arguments cannot be determined it returns ``undefined``.
    * @returns List of game arguments.
    */
-  getGameExeArguments(): string[] | undefined {
+  determineGameArgs(): string[] | undefined {
     let args: string[] = [];
     // Auto. arguments detection enabled
     if (this.configExeArgsDetection()) {
-      switch (this.rgssVersion) {
-        case RGSSVersions.RGSS1: {
+      switch (this._rgssVersion) {
+        case RGSSVersion.RGSS1: {
           // Test argument
-          if (this.configExeTestMode() && !!RGSSTestArguments.RGSS1) {
-            args.push(RGSSTestArguments.RGSS1);
+          if (this.configExeTestMode() && !!RGSSGameArgsTest.RGSS1) {
+            args.push(RGSSGameArgsTest.RGSS1);
           }
           // Console argument
-          if (this.configExeConsole() && !!RGSSConsoleArguments.RGSS1) {
-            args.push(RGSSConsoleArguments.RGSS1);
+          if (this.configExeConsole() && !!RGSSGameArgsConsole.RGSS1) {
+            args.push(RGSSGameArgsConsole.RGSS1);
           }
           return args;
         }
-        case RGSSVersions.RGSS2: {
+        case RGSSVersion.RGSS2: {
           // Test argument
-          if (this.configExeTestMode() && !!RGSSTestArguments.RGSS2) {
-            args.push(RGSSTestArguments.RGSS2);
+          if (this.configExeTestMode() && !!RGSSGameArgsTest.RGSS2) {
+            args.push(RGSSGameArgsTest.RGSS2);
           }
           // Console argument
-          if (this.configExeConsole() && !!RGSSConsoleArguments.RGSS2) {
-            args.push(RGSSConsoleArguments.RGSS2);
+          if (this.configExeConsole() && !!RGSSGameArgsConsole.RGSS2) {
+            args.push(RGSSGameArgsConsole.RGSS2);
           }
           return args;
         }
-        case RGSSVersions.RGSS3: {
+        case RGSSVersion.RGSS3: {
           // Test argument
-          if (this.configExeTestMode() && !!RGSSTestArguments.RGSS3) {
-            args.push(RGSSTestArguments.RGSS3);
+          if (this.configExeTestMode() && !!RGSSGameArgsTest.RGSS3) {
+            args.push(RGSSGameArgsTest.RGSS3);
           }
           // Console argument
-          if (this.configExeConsole() && !!RGSSConsoleArguments.RGSS3) {
-            args.push(RGSSConsoleArguments.RGSS3);
+          if (this.configExeConsole() && !!RGSSGameArgsConsole.RGSS3) {
+            args.push(RGSSGameArgsConsole.RGSS3);
           }
           return args;
         }
@@ -467,15 +469,15 @@ export class Configuration {
   }
 
   /**
-   * Joins all given paths to the current project folder path.
+   * Joins all given path segments to the current project folder path.
    *
    * If the current project folder is invalid, it returns ``undefined``.
-   * @param paths List of paths.
+   * @param segments List of segments.
    * @returns Joined path.
    */
-  joinProject(...paths: string[]): string | undefined {
+  joinProject(...segments: string[]): vscode.Uri | undefined {
     if (this.isValid()) {
-      return pathing.join(this.projectFolder!, ...paths);
+      return vscode.Uri.joinPath(this._projectFolderPath!, ...segments);
     }
     return undefined;
   }
@@ -483,37 +485,11 @@ export class Configuration {
   /**
    * Gets the configuration value from the VS Code settings.
    *
-   * If the key is not found it returns undefined.
+   * If the key is not found it returns ``undefined``.
    * @param key Configuration key
    * @returns
    */
   private _getVSCodeConfig<T>(key: string): T | undefined {
     return vscode.workspace.getConfiguration('rgssScriptEditor').get<T>(key);
-  }
-
-  /**
-   * Determines the appropiate RGSS version of the given folder.
-   *
-   * If the RGSS version cannot be determined it returns undefined.
-   * @param projectFolder Project folder Uri path
-   * @returns The RGSS version of the given project folder
-   */
-  private _determineRGSSVersion(projectFolder: vscode.Uri): string | undefined {
-    let rgss1 = pathing.join(projectFolder, RGSSBundleScriptsPath.RGSS1);
-    let rgss2 = pathing.join(projectFolder, RGSSBundleScriptsPath.RGSS2);
-    let rgss3 = pathing.join(projectFolder, RGSSBundleScriptsPath.RGSS3);
-    // Checks for RGSS1
-    if (fs.existsSync(rgss1)) {
-      return RGSSVersions.RGSS1;
-    }
-    // Checks for RGSS2
-    if (fs.existsSync(rgss2)) {
-      return RGSSVersions.RGSS2;
-    }
-    // Checks for RGSS3
-    if (fs.existsSync(rgss3)) {
-      return RGSSVersions.RGSS3;
-    }
-    return undefined;
   }
 }

@@ -91,19 +91,7 @@ export function activate(context: vscode.ExtensionContext) {
           })
           .then((value) => {
             if (value) {
-              manager
-                .setProjectFolder(value.uri)
-                .then(() => {
-                  vscode.window.showInformationMessage(
-                    `Folder: '${value.name}' opened succesfully!`
-                  );
-                })
-                .catch(() => {
-                  vscode.window.showInformationMessage(
-                    `Failed to open the folder: '${value.name}', it isn't a valid RPG Maker project!`
-                  );
-                  manager.restart();
-                });
+              manager.setProjectFolder(value.uri);
             }
           });
       }
@@ -222,6 +210,14 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('rgss-script-editor.refresh', () => {
       manager.refresh();
     })
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.alternateDropMode',
+      () => {
+        manager.alternateDropMode();
+      }
+    )
   );
   // Process game exception
   context.subscriptions.push(

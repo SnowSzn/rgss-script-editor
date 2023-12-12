@@ -93,9 +93,9 @@ export class GameException {
   document(): string {
     return (
       'RGSS Script Editor: Last game exception report\n\n' +
-      'This is the document used to show information about the exception reported\n' +
+      'This document is used to show information about the las exception reported\n' +
       'by the game executable in the last game session.\n' +
-      'You can disable this functionality on the extension settings page.\n' +
+      'If you do not want this tab to appear, you can disable it on the extension settings page.\n' +
       'The exception information will be shown in the following lines:\n\n' +
       this.toString()
     );
@@ -208,9 +208,9 @@ export class GameplayController {
       throw new Error('Cannot run the game because it is already running!');
     }
     // Preparation
-    let workingDir = this._config.getProjectFolderPath();
-    let gamePath = this._config.getGameExePath();
-    let gameArgs = this._config.getGameExeArguments();
+    let workingDir = this._config.projectFolderPath?.fsPath;
+    let gamePath = this._config.gameExePath?.fsPath;
+    let gameArgs = this._config.determineGameArgs();
     let exePath = '';
     let exeArgs = [];
     logger.logInfo(`Game working directory: '${workingDir}'`);
@@ -267,13 +267,7 @@ export class GameplayController {
     // Process should not be piped because if 'console' is passed as an argument to a RGSS3
     // executable, when the process spawns, it redirects $stderr to the console window.
     // Making it impossible for the extension to listen to $stderr.
-    // this._executable = cp.spawn(exePath, exeArgs, {
-    //   cwd: workingDir,
-    //   stdio: ['ignore', 'ignore', 'ignore'],
-    //   shell: true,
-    // });
-    let uri = vscode.Uri.file(gamePath);
-    this._executable = cp.spawn(`"${uri.fsPath}"`, [], {
+    this._executable = cp.spawn(exePath, exeArgs, {
       cwd: workingDir,
       stdio: ['ignore', 'ignore', 'ignore'],
       shell: true,
@@ -298,7 +292,7 @@ export class GameplayController {
       // Checks output file for possible exceptions that killed the game
       let output = this._config.joinProject(
         GameplayController.GAME_OUTPUT_FILE
-      );
+      )?.fsPath;
       if (output && filesys.isFile(output)) {
         // If file exists, an exception ocurred in the last game session
         let contents = filesys.readTextFile<string[]>(output, (contents) => {
@@ -325,7 +319,7 @@ export class GameplayController {
         // Deletes output for next game run
         filesys.remove(output);
         // Executes command to process the exception if auto-process config is enabled.
-        if (this._config.configGameExceptionAutoProcess()) {
+        if (this._config.configGameErrorAutoProcess()) {
           vscode.commands.executeCommand(
             'rgss-script-editor.processGameException'
           );

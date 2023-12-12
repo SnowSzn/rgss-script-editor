@@ -50,21 +50,23 @@ export async function restart() {
     logger.logInfo('Restarting RGSS Script Editor...');
     extensionGameplay.update(extensionConfig);
     // TODO: Make extensionScripts get the config instance instead
-    let folder = extensionConfig.getInfo();
-    if (folder) {
-      extensionScripts.update(extensionConfig);
-      extensionGameplay.update(extensionConfig);
-      // TODO: Make sure root is not undefined!
-      extensionUI.update({
-        dragAndDropController: extensionScripts,
-        treeRoot: extensionScripts.root!,
-        statusBarOptions: { projectFolder: folder.projectFolderName },
-      });
-    }
+    extensionScripts.update(extensionConfig);
+    extensionGameplay.update(extensionConfig);
+    // TODO: Make sure root is not undefined!
+    extensionUI.update({
+      dragAndDropController: extensionScripts,
+      treeRoot: extensionScripts.root!,
+      statusBarOptions: { projectFolder: folder.projectFolderPath.path },
+    });
   } else {
     // No project folder, falls to quickstart
     logger.logInfo('Starting RGSS Script Editor...');
-    quickStart();
+    if (extensionConfig.configQuickstart()) {
+      quickStart();
+    } else {
+      logger.logWarning('Quickstart is disabled!');
+      logger.logInfo('To open a folder you can use the command palette.');
+    }
   }
 }
 
@@ -77,22 +79,16 @@ export async function restart() {
  * @returns A promise
  */
 export async function quickStart() {
-  // Checks if quickstart is enabled first.
-  if (!extensionConfig.configQuickstart()) {
-    // TODO: extensionUI.hideStatusBar();
-    return;
-  }
-  logger.logInfo('Quickstarting RGSS Script Editor extension...');
   let folders = vscode.workspace.workspaceFolders;
   // Checks if there is any folder opened
   if (!folders) {
     logger.logWarning('No opened folders detected in the VSCode workspace.');
-    logger.logInfo('Open a RPG Maker folder to start the extension');
+    logger.logInfo('Open a RPG Maker folder to start this extension.');
     return;
   }
   let validFolders = [];
   for (let folder of folders) {
-    if (extensionConfig.checkFolderValidness(folder.uri)) {
+    if (extensionConfig.checkFolder(folder.uri)) {
       validFolders.push(folder);
     }
   }
@@ -106,12 +102,12 @@ export async function quickStart() {
     );
     await setProjectFolder(folder.uri);
   } else if (validFolders.length > 1) {
+    // Enables 'choose project folder' button on the status bar
+    extensionUI.controlStatusBar({ setProjectFolder: true });
     // Several valid RPG Maker projects were opened
     logger.logInfo(
       'Several valid RPG Maker folders were detected in the current workspace!'
     );
-    // Enables 'choose project folder' button on the status bar
-    extensionUI.controlStatusBar({ setProjectFolder: true });
     // Shows a info message with a callback
     vscode.window
       .showInformationMessage(
@@ -136,39 +132,36 @@ export async function quickStart() {
  * If the folder is valid the promise is resolved and the folder is set as active.
  *
  * If the folder is invalid the promise is rejected.
- * @param projectFolder Project folder Uri
- * @returns A promise
+ * @param projectFolder Project folder Uri.
+ * @returns A promise.
  */
 export async function setProjectFolder(projectFolder: vscode.Uri) {
   try {
     logger.logInfo(`Changing project folder to: '${projectFolder.fsPath}'...`);
     // If the folder is invalid an error is thrown
-    const folder = await extensionConfig.setProjectFolder(projectFolder);
+    const folder = await extensionConfig.update(projectFolder);
 
-    // Updates extension logger
+    // Updates extension instances
     logger.update(extensionConfig);
+    extensionScripts.update(extensionConfig);
+    extensionGameplay.update(extensionConfig);
+    // TODO: Must make sure _root is not undefined here
+    extensionUI.update({
+      dragAndDropController: extensionScripts,
+      treeRoot: extensionScripts.root!,
+      statusBarOptions: {
+        projectFolder: folder.curProjectFolder.projectFolderPath.path,
+      },
+    });
 
     // Updates extension context
     logger.logInfo(
-      `'${folder.curProjectFolder.projectFolderPath}' opened successfully!`
+      `'${folder.curProjectFolder.projectFolderPath.fsPath}' opened successfully!`
     );
     logger.logInfo(
       `RGSS Version detected: '${folder.curProjectFolder.rgssVersion}'`
     );
     context.setValidProjectFolder(true);
-
-    // Update manager controllers
-    extensionScripts.update(extensionConfig);
-    extensionGameplay.update(extensionConfig);
-    // TODO: Must make sure _root is not undefined here
-    // extensionGameplay.update() must update root.
-    extensionUI.update({
-      dragAndDropController: extensionScripts,
-      treeRoot: extensionScripts.root!,
-      statusBarOptions: {
-        projectFolder: folder.curProjectFolder.projectFolderName,
-      },
-    });
 
     // Updates extension extracted scripts context
     logger.logInfo(`Checking project's bundle scripts file status...`);
@@ -196,10 +189,18 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
 
     // Update UI visibility
     extensionUI.showStatusBar();
+
+    // Shows an information VSCode window
+    vscode.window.showInformationMessage(
+      `Folder: '${folder.curProjectFolder.projectFolderPath.path}' opened succesfully!`
+    );
   } catch (error) {
     logger.logErrorUnknown(error);
     context.setValidProjectFolder(false);
     context.setExtractedScripts(false);
+
+    // Shows an error VSCode window
+    vscode.window.showErrorMessage(`Failed to open the folder!`);
   }
 }
 
@@ -208,16 +209,17 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
  * @returns A promise
  */
 export async function openProjectFolder() {
-  let folderPath = extensionConfig.getProjectFolderPath();
+  let folderPath = extensionConfig.projectFolderPath;
   if (folderPath) {
     try {
-      let folderProcess = await openFolder(folderPath);
+      let folderProcess = await openFolder(folderPath.fsPath);
+      folderProcess.unref();
     } catch (error) {
       logger.logErrorUnknown(error);
     }
   } else {
     logger.logError(
-      `Cannot open project folder, the project folder is invalid: '${folderPath}'`
+      `Cannot open project folder, the project folder: '${folderPath}' is invalid!`
     );
   }
 }
@@ -369,7 +371,7 @@ export async function runGame() {
   try {
     let pid = await extensionGameplay.runGame();
     if (pid) {
-      logger.logInfo(`Game launched successfully with PID: ${pid}`);
+      logger.logInfo(`Game executable launched successfully with PID: ${pid}`);
     }
   } catch (error) {
     logger.logErrorUnknown(error);
@@ -385,13 +387,13 @@ export async function processGameException() {
   let exception = extensionGameplay.lastException;
   if (exception) {
     let option = await vscode.window.showWarningMessage(
-      'An exception was reported in the last game session...',
+      'An exception was reported in the last game session.',
       'Peek Backtrace',
       'Close'
     );
     if (option === 'Peek Backtrace') {
       // Shows the exception in a new text document besides the main editor if allowed.
-      if (extensionConfig.configGameExceptionShowInEditor()) {
+      if (extensionConfig.configGameErrorShowEditor()) {
         let doc = await vscode.workspace.openTextDocument({
           language: 'text',
           content: exception.document(),
@@ -516,6 +518,13 @@ export async function alternateLoadScriptSection(what: any) {
   }
   // TODO: UI must be refreshed everytime root is changed
   refresh();
+}
+
+export async function alternateDropMode() {
+  // TODO: Alternates the extension scripts controller drop mode
+  // If a file is in MOVE mode and it is dropped on a folder, it will take the next priority value.
+  // If a file is in CREATE mode and it is dropped on a folder, it will be inserted as a child.
+  logger.logInfo('Alternating drop mode!');
 }
 
 /**
