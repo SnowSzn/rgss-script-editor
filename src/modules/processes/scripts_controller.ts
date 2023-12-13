@@ -8,38 +8,34 @@ import { TextDecoder } from 'util';
 import { Configuration } from '../utils/configuration';
 import { logger } from '../utils/logger';
 
-/**
- * Loader bundle creation type.
- */
-type LoaderScriptConfig = {
-  /**
-   * Scripts folder relative path.
-   *
-   * The path must be relative to the game's folder.
-   */
-  scriptsFolder: string;
-
-  /**
-   * Loader script name.
-   */
-  scriptName: string;
-
-  /**
-   * Load order TXT file name.
-   *
-   * The file that dictates the load order.
-   *
-   * File must exists inside ``scriptsFolder`` path.
-   */
-  loadOrderFileName: string;
-
-  /**
-   * Error file name.
-   *
-   * The file that creates the loader with the error output of the process.
-   */
-  errorFileName: string;
-};
+// TODO: Hacer que los separadores tengan un path valido
+// para asegurar que todas las instancias tengan path y ademas
+// que las instancias anidadas tengan separadores los separators tendrian
+// que ser escritos en el load_order.txt
+//
+// No se deberia escribir ficheros para representar un separador en la carpeta
+// debibo a que solaparia con otros ficheros "separator" que existan
+//  -> No se podria tener dos separadores en la misma carpeta porque se sobreescribirian
+//
+// Se podria escribir en el load_order.txt algo que identifique al separador.
+// por ejemplo: '$separator'
+//
+// File 1.rb
+// File 2.rb
+// $separator
+// Modules
+// Modules/Audio.rb
+// Modules/$separator
+// Modules/SceneManager.rb
+// $separator
+//
+// TODO: Asegurarse que el fichero script loader evita todas las entradas
+// del fichero que no existan en el disco, para evitar que crashee cuando se lee un $separator
+//
+// TODO: ACTUALIZACION
+// No se puede hacer eso creo, el problema es que, a la hora de crear instancias
+// busca si ya existe una instancia con el mismo path, lo que genera
+// incompatibilidades con este metodo
 
 /**
  * Editor section instance type enumerator.
@@ -95,30 +91,51 @@ type EditorSectionInfoOld = {
 };
 
 /**
- * Editor section instance info type.
+ * Loader bundle creation type.
+ */
+type LoaderScriptConfig = {
+  /**
+   * Scripts folder relative path.
+   *
+   * The path must be relative to the game's folder.
+   */
+  scriptsFolder: string;
+
+  /**
+   * Loader script name.
+   */
+  scriptName: string;
+
+  /**
+   * Load order TXT file name.
+   *
+   * The file that dictates the load order.
+   *
+   * File must exists inside ``scriptsFolder`` path.
+   */
+  loadOrderFileName: string;
+
+  /**
+   * Error file name.
+   *
+   * The file that creates the loader with the error output of the process.
+   */
+  errorFileName: string;
+};
+
+/**
+ * Editor section instance information type.
  */
 type EditorSectionInfo = {
   /**
    * Editor section tree item label.
    */
-  label?: string;
-
-  /**
-   * Editor section priority.
-   */
-  priority?: number;
+  label: string;
 
   /**
    * Absolute path to the editor section entry.
    */
-  path?: vscode.Uri;
-
-  /**
-   * Whether editor section is loaded or not.
-   *
-   * Being loaded means that the tree item checkbox is ticked.
-   */
-  loaded?: boolean;
+  path: vscode.Uri;
 };
 
 /**
@@ -139,8 +156,16 @@ const LOAD_ORDER_FILE_NAME = 'load_order.txt';
 /**
  * Regexp of invalid characters for Windows, Linux-based systems and the script loader.
  */
-const INVALID_CHARACTERS = /[\\/:\*\?"<>\|▼■]/g;
+const INVALID_CHARACTERS = /[\\/:\*\?"<>\|#▼■]/g;
 
+/**
+ * Name of any editor section separator instance.
+ *
+ * To avoid issues, it should include, at least, an invalid character to avoid files having the same name.
+ */
+const EDITOR_SECTION_SEPARATOR_NAME = '*Separator*';
+
+// TODO: Delete since new version won't be index-dependent
 /**
  * Regexp to deformat a external script section name.
  *
@@ -149,11 +174,11 @@ const INVALID_CHARACTERS = /[\\/:\*\?"<>\|▼■]/g;
 const DEFORMAT_SCRIPT_NAME = /(?:\d+\s*-\s*)?(.*)/i;
 
 /**
- * Maximum value to generate a script section
+ * Maximum value to generate a script section for RPG Maker.
  *
- * Sets as the maximum of the script loader to avoid a double section ID
+ * Sets as the maximum of the script loader to avoid a double section ID.
  */
-const SECTION_MAX_VAL = 133_769_419;
+const RPG_MAKER_SECTION_MAX_VAL = 133_769_419;
 
 /**
  * Editor section tree item class.
@@ -501,7 +526,7 @@ export class EditorSection extends vscode.TreeItem {
         path: pathing.dirname(config.path),
         label: config.label,
         type: config.type,
-        priority: config.priority, // TODO: Determine priority correctly
+        priority: config.priority,
         loaded: config.loaded,
       });
       if (parent) {
@@ -665,532 +690,733 @@ export class EditorSection extends vscode.TreeItem {
   }
 }
 
-// /**
-//  * Editor section base class.
-//  */
-// export abstract class EditorSectionBase extends vscode.TreeItem {
-//   /**
-//    * Editor section collapsible states enum.
-//    */
-//   public static Collapsible = vscode.TreeItemCollapsibleState;
+/**
+ * Editor section base class.
+ *
+ * The virtual representation of a RPG Maker script section.
+ */
+export abstract class EditorSectionBase extends vscode.TreeItem {
+  /**
+   * Editor section collapsible states enum.
+   */
+  public static Collapsible = vscode.TreeItemCollapsibleState;
 
-//   /**
-//    * Editor section type.
-//    */
-//   protected _type: number;
+  /**
+   * Editor section type.
+   */
+  protected _type: number;
 
-//   /**
-//    * Editor section children.
-//    */
-//   protected _children: EditorSectionBase[];
+  /**
+   * Editor section children.
+   */
+  protected _children: EditorSectionBase[];
 
-//   /**
-//    * Editor section priority.
-//    */
-//   protected _priority: number;
+  /**
+   * Editor section priority.
+   */
+  protected _priority: number;
 
-//   /**
-//    * Editor section parent.
-//    */
-//   protected _parent?: EditorSectionBase;
+  /**
+   * Editor section parent.
+   */
+  protected _parent?: EditorSectionBase;
 
-//   /**
-//    * Constructor.
-//    * @param type Editor section type.
-//    * @param label Editor section label.
-//    */
-//   constructor(type: number, label: string) {
-//     super(label);
-//     this._type = type;
-//     this._children = [];
-//     this._priority = 0;
-//     this._parent = undefined;
-//   }
+  /**
+   * The {@link vscode.Uri Uri} of the resource representing this item.
+   *
+   * Will be used to derive the {@link vscode.TreeItem.label label}, when it is not provided.
+   *
+   * Will be used to derive the icon from current file icon theme, when {@link vscode.TreeItem.iconPath iconPath} has {@link vscode.ThemeIcon ThemeIcon} value.
+   */
+  resourceUri: vscode.Uri;
 
-//   /**
-//    * Editor section type.
-//    */
-//   get type() {
-//     return this._type;
-//   }
+  /**
+   * Constructor.
+   * @param type Editor section type.
+   * @param label Editor section label.
+   * @param path Editor section path.
+   */
+  constructor(type: number, label: string, path: vscode.Uri) {
+    super(label);
+    this._type = type;
+    this.resourceUri = path;
+    this._children = [];
+    this._priority = 0;
+    this._parent = undefined;
+  }
 
-//   /**
-//    * Editor section priority.
-//    */
-//   get priority() {
-//     return this._priority;
-//   }
+  /**
+   * Adds the given editor section instance as a child of this one.
+   *
+   * The given child instance priority attribute will be updated to the size of the children list.
+   *
+   * Note: For the sake of consistency, the section given must be relative to this instance.
+   *
+   * For example:
+   *  - This instance: *'My Folder/Subfolder/'*
+   *  - Child instance: *'My Folder/Subfolder/file.txt'*
+   *
+   * Otherwise, this method will throw an error.
+   * @param section Editor section.
+   * @throws An error when the section is not valid.
+   */
+  abstract addChild(section: EditorSectionBase): void;
 
-//   /**
-//    * Editor section children.
-//    */
-//   get children() {
-//     return this._children;
-//   }
+  /**
+   * Deletes the given editor section instance from the children list.
+   *
+   * If deletion was successful it returns the deleted element and resets its parent reference to ``undefined``.
+   *
+   * If the element is not found it returns ``undefined``.
+   * @param section Editor section.
+   * @returns List of deleted elements.
+   */
+  abstract deleteChild(
+    section: EditorSectionBase
+  ): EditorSectionBase | undefined;
 
-//   /**
-//    * Editor section parent.
-//    */
-//   get parent() {
-//     return this._parent;
-//   }
+  /**
+   * Creates a new instance and automatically inserts it as a child of this editor section.
+   *
+   * The given Uri path ``path`` must be inmediate to this editor section.
+   *
+   * If the creation is not possible, it returns ``undefined``.
+   * @param type Editor section type.
+   * @param path Editor section Uri path.
+   * @returns Editor section child instance.
+   */
+  abstract createChild(
+    type: number,
+    path: vscode.Uri
+  ): EditorSectionBase | undefined;
 
-//   /**
-//    * Returns all nested child instances.
-//    * @returns Nested editor section instances.
-//    */
-//   getNestedChildren(): EditorSectionBase[] {
-//     let children: EditorSectionBase[] = [];
-//     this._children.forEach((section) => {
-//       if (section.hasChildren()) {
-//         children.push(section, ...section.getNestedChildren());
-//       } else {
-//         children.push(section);
-//       }
-//     });
-//     return children;
-//   }
+  /**
+   * Recursively creates a new child instance and automatically inserts it as a child of this editor section.
+   *
+   * The given Uri path ``path`` must be inmediate to this editor section.
+   *
+   * If the creation is not possible, it returns ``undefined``.
+   *
+   * This method recursively creates all needed child instances to create the child with the given information.
+   *
+   * For example:
+   *
+   * If a child is created with path ``./some/path/file.rb`` but the child ``some`` does not exists it will create it before the last child (in this case, ``file.rb``) is created.
+   * @param type Editor section type.
+   * @param path Editor section Uri path.
+   * @returns The last editor section child instance.
+   */
+  abstract createChildren(
+    type: number,
+    path: vscode.Uri
+  ): EditorSectionBase | undefined;
 
-//   /**
-//    * Sets this instance parent reference to the given ``section``.
-//    *
-//    * If the given ``section`` is invalid or ``undefined`` the parent reference is set to ``undefined``.
-//    *
-//    * If this instance parent was set previously and the given ``section`` is valid:
-//    *  - This instance is removed from the parent children list.
-//    *  - The given section parent children list is updated with this instance.
-//    * @param section Editor section instance.
-//    */
-//   setParent(section: EditorSectionBase | undefined) {
-//     // Updates the parent only if this instance is relative to the parent.
-//     if (section?.isInmediate(this.resourceUri)) {
-//       // Removes this instance from the previous parent (if it exists)
-//       this._parent?.deleteChild(this);
-//       // Updates the parent.
-//       this._parent = section;
-//     } else {
-//       this._parent = undefined;
-//     }
-//   }
+  /**
+   * Resets this editor section instance configuration based on the current atributes.
+   *
+   * This method must be used every time the attributes changes.
+   */
+  protected abstract _reset(): void;
 
-//   /**
-//    * Sets this editor section description text on the tree view.
-//    *
-//    * When true, it is derived from resourceUri and when falsy, it is not shown.
-//    * @param description Description.
-//    */
-//   setDescription(description: string | boolean | undefined) {
-//     this.description = description;
-//   }
+  /**
+   * Editor section type.
+   */
+  get type() {
+    return this._type;
+  }
 
-//   /**
-//    * Sets this editor section tooltip text on the tree view.
-//    *
-//    * The tooltip text when you hover over this item.
-//    * @param tooltip Tooltip.
-//    */
-//   setTooltip(tooltip: string | undefined) {
-//     this.tooltip = tooltip;
-//   }
+  /**
+   * Editor section priority.
+   */
+  get priority() {
+    return this._priority;
+  }
 
-//   /**
-//    * Sets this editor section checkbox state.
-//    *
-//    * The checkbox is used to determine whether this editor section is loaded or not.
-//    * @param state Checkbox state.
-//    */
-//   setCheckboxState(
-//     state: vscode.TreeItemCheckboxState | boolean | undefined | null
-//   ) {
-//     this.checkboxState = state
-//       ? vscode.TreeItemCheckboxState.Checked
-//       : vscode.TreeItemCheckboxState.Unchecked;
-//   }
+  /**
+   * Editor section children.
+   */
+  get children() {
+    return this._children;
+  }
 
-//   /**
-//    * Sets this script section collapsible state.
-//    * @param state Collapsible state.
-//    */
-//   setCollapsibleState(state: vscode.TreeItemCollapsibleState | undefined) {
-//     this.collapsibleState = state;
-//   }
+  /**
+   * Editor section parent.
+   */
+  get parent() {
+    return this._parent;
+  }
 
-//   /**
-//    * Sets this editor section tree item icon.
-//    * @param icon Tree item icon.
-//    */
-//   setIcon(icon: vscode.ThemeIcon | undefined) {
-//     this.iconPath = icon;
-//   }
+  /**
+   * Sets this instance prioriry to the given ``priority`` value.
+   * @param priority Editor section priority.
+   */
+  setPriority(priority: number) {
+    this._priority = priority;
+  }
 
-//   /**
-//    * Checks if this editor section is of the given ``type``.
-//    * @param type Editor section type.
-//    * @returns Whether it is the given type or not.
-//    */
-//   isType(type: number) {
-//     return this._type === type;
-//   }
+  /**
+   * Sets this instance parent reference to the given ``section``.
+   *
+   * If the given ``section`` is invalid or it is ``undefined`` the parent reference is set to ``undefined``.
+   *
+   * If this instance parent was set previously and the given ``section`` is valid:
+   *  - This instance is automatically removed from the previous parent children list.
+   *  - This instance parent reference will be updated to the new one.
+   *
+   * **Note: The given ``section`` must have this instance in their children list, otherwise the parent reference won't be updated.**
+   * @param section Editor section instance.
+   */
+  setParent(section: EditorSectionBase | undefined) {
+    // Updates the parent only if this instance is relative to the parent.
+    if (section?.has(this)) {
+      // Removes this instance from the previous parent (if it exists)
+      this.delete();
+      // Updates the parent.
+      this._parent = section;
+    } else {
+      this._parent = undefined;
+    }
+    this._parent = section;
+  }
 
-//   /**
-//    * Checks if this editor section path is the given ``uri`` path.
-//    * @param uri Uri path.
-//    * @returns Whether it is the given path or not.
-//    */
-//   isPath(uri: vscode.Uri) {
-//     return this.resourceUri === uri;
-//   }
+  /**
+   * Sets this editor section description text on the tree view.
+   *
+   * When true, it is derived from resourceUri and when falsy, it is not shown.
+   * @param description Description.
+   */
+  setDescription(description: string | boolean | undefined) {
+    this.description = description;
+  }
 
-//   /**
-//    * Checks if this editor section instance is currently loaded.
-//    * @returns Whether it is loaded or not.
-//    */
-//   isLoaded() {
-//     return this.checkboxState === vscode.TreeItemCheckboxState.Checked;
-//   }
+  /**
+   * Sets this editor section tooltip text on the tree view.
+   *
+   * The tooltip text when you hover over this item.
+   * @param tooltip Tooltip.
+   */
+  setTooltip(tooltip: string | undefined) {
+    this.tooltip = tooltip;
+  }
 
-//   /**
-//    * Checks if the given ``uri`` path is inmediate to this editor section uri path.
-//    *
-//    * Being inmediate means that ``uri`` could be a child of this section.
-//    *
-//    * If this instance does not have a path or the given path is ``undefined`` it returns ``false``.
-//    * @param uri Uri path.
-//    * @returns Whether it is relative of the path or not.
-//    */
-//   isInmediate(uri: vscode.Uri | undefined) {
-//     // Evaluates Uri path validness.
-//     if (!uri) {
-//       return false;
-//     }
-//     // Gets the relative path and check it.
-//     let relative = this.relative(uri);
-//     if (relative) {
-//       return this._tokenize(relative).length === 1;
-//     }
-//     return false;
-//   }
+  /**
+   * Sets this editor section checkbox state.
+   *
+   * The checkbox is used to determine whether this editor section is loaded or not.
+   * @param state Checkbox state.
+   */
+  setCheckboxState(
+    state: vscode.TreeItemCheckboxState | boolean | undefined | null
+  ) {
+    this.checkboxState = state
+      ? vscode.TreeItemCheckboxState.Checked
+      : vscode.TreeItemCheckboxState.Unchecked;
+  }
 
-//   /**
-//    * Checks if this editor section instance is the same as the given one.
-//    *
-//    * This method compares the attributes to check equality.
-//    * @param other Editor section instance.
-//    */
-//   isEqual(other: EditorSectionBase) {
-//     return (
-//       this._type === other.type &&
-//       this._priority === other.priority &&
-//       this._parent === other.parent &&
-//       this._children === other.children
-//     );
-//   }
+  /**
+   * Sets this script section collapsible state.
+   * @param state Collapsible state.
+   */
+  setCollapsibleState(state: vscode.TreeItemCollapsibleState | undefined) {
+    this.collapsibleState = state;
+  }
 
-//   /**
-//    * Checks if this instance has ``section`` as a child instance.
-//    * @param section Editor section instance.
-//    * @returns Whether it is a child or not.
-//    */
-//   has(section: EditorSectionBase) {
-//     return this._children.some((child) => {
-//       return child === section;
-//     });
-//   }
+  /**
+   * Sets this editor section tree item icon.
+   * @param icon Tree item icon.
+   */
+  setIcon(icon: vscode.ThemeIcon | undefined) {
+    this.iconPath = icon;
+  }
 
-//   /**
-//    * Checks if this instance has a child equal to the given ``section``.
-//    * @param section Editor section instance.
-//    * @returns Whether it has an equal child instance or not.
-//    */
-//   hasEqual(section: EditorSectionBase) {
-//     return this._children.some((child) => {
-//       return child.isEqual(section);
-//     });
-//   }
+  /**
+   * Checks if this editor section is of the given ``type``.
+   * @param type Editor section type.
+   * @returns Whether it is the given type or not.
+   */
+  isType(type: number) {
+    return this._type === type;
+  }
 
-//   /**
-//    * Checks if this editor section instance has children instances or not.
-//    * @returns Whether it has children or not.
-//    */
-//   hasChildren() {
-//     return this._children.length > 0;
-//   }
+  /**
+   * Checks if this editor section path is the given ``uri`` path.
+   * @param uri Uri path.
+   * @returns Whether it is the given path or not.
+   */
+  isPath(uri: vscode.Uri) {
+    return this.resourceUri === uri;
+  }
 
-//   /**
-//    * Updates this section instance with the given information.
-//    *
-//    * It forces a reset on the instance.
-//    * @param info Editor section path.
-//    */
-//   update(info: EditorSectionInfoOld) {
-//     this._type = info.type;
-//     this._priority = info.priority;
-//     this._reset();
-//   }
+  /**
+   * Checks if this editor section instance is currently loaded.
+   * @returns Whether it is loaded or not.
+   */
+  isLoaded() {
+    return this.checkboxState === vscode.TreeItemCheckboxState.Checked;
+  }
 
-//   /**
-//    * Gets the relative path from this editor section to the given ``uri`` path.
-//    *
-//    * If this editor section does not have a path it returns ``undefined``.
-//    * @param uri Uri Path.
-//    * @returns Relative path.
-//    */
-//   relative(uri: vscode.Uri): string | undefined {
-//     if (!this.resourceUri) {
-//       return undefined;
-//     }
-//     return pathing.relative(this.resourceUri, uri);
-//   }
+  /**
+   * Checks if this editor section instance is currently collapsed.
+   *
+   * If the instance cannot be collapsed it will always return ``false``.
+   * @returns Whether is is collapsed or not.
+   */
+  isCollapsed() {
+    return this.collapsibleState === EditorSectionBase.Collapsible.Collapsed;
+  }
 
-//   /**
-//    * Returns the child instance that matches the given ``uri`` path.
-//    *
-//    * If the ``nested`` flag is set, it will search each child recursively until found.
-//    *
-//    * If no script section is found, it returns ``undefined``.
-//    * @param uri Uri path.
-//    * @param nested Nested flag.
-//    * @returns Child instance.
-//    */
-//   findChild(uri: vscode.Uri, nested?: boolean) {
-//     let child: EditorSectionBase | undefined = undefined;
-//     if (this.isInmediate(uri)) {
-//       // Child should be an inmediate child
-//       child = this._children.find((section) => {
-//         return section.isPath(uri);
-//       });
-//     } else if (nested) {
-//       // Child instance can be nested.
-//       child = this.getNestedChildren().find((section) => {
-//         return section.isPath(uri);
-//       });
-//     }
-//     return child;
-//   }
+  /**
+   * Checks if the given ``uri`` path is inmediate to this editor section uri path.
+   *
+   * Being inmediate means that ``uri`` could be a child of this section.
+   *
+   * If this instance does not have a path or the given path is ``undefined`` it returns ``false``.
+   * @param uri Uri path.
+   * @returns Whether it is inmediate of the path or not.
+   */
+  isInmediate(uri: vscode.Uri | undefined) {
+    // Evaluates Uri path validness.
+    if (!uri) {
+      return false;
+    }
+    // Gets the relative path and check it.
+    let relative = this.relative(uri);
+    if (relative) {
+      return this._tokenize(relative).length === 1;
+    }
+    return false;
+  }
 
-//   /**
-//    * Returns all children instances that meets the condition specified in the ``callback`` function.
-//    *
-//    * If the ``nested`` flag is set, it will apply the filter for each child recursively.
-//    * @param callback Callback function.
-//    * @param nested Nested flag.
-//    * @returns Children instances.
-//    */
-//   filterChildren(
-//     callback: (
-//       value: EditorSectionBase,
-//       index: number,
-//       array: EditorSectionBase[]
-//     ) => boolean,
-//     nested?: boolean
-//   ) {
-//     let children: EditorSectionBase[] = [];
-//     if (nested) {
-//       children = this.getNestedChildren().filter(callback);
-//     } else {
-//       children = this._children.filter(callback);
-//     }
-//     return children;
-//   }
+  /**
+   * Checks if the given ``uri`` path is relative to this editor section uri path.
+   *
+   * Being 'relative' means that this section could have the given Uri path as inmediate or nested child.
+   *
+   * For example:
+   *
+   * - This Uri: ``Scripts/Folder/``
+   * - Given Uri: ``Scripts/Folder/Subfolder/file.rb``
+   * - Relative path is: ``Subfolder/file.rb``
+   *
+   * If this instance does not have a path or the given path is ``undefined`` it returns ``false``.
+   * @param uri Uri path.
+   * @returns Whether it is relative of the path or not.
+   */
+  isRelative(uri: vscode.Uri | undefined) {
+    // Evaluates Uri path validness.
+    if (!uri) {
+      return false;
+    }
+    // Gets the relative path and check it.
+    let relative = this.relative(uri);
+    if (relative) {
+      // If path is relative, it must not contain this editor section Uri path.
+      return !relative.includes(this.resourceUri!.fsPath);
+    }
+  }
 
-//   /**
-//    * Deletes the given instance from the children.
-//    *
-//    * It returns all elements that were deleted.
-//    * @param section Editor section
-//    * @returns List of deleted elements.
-//    */
-//   deleteChild(section: EditorSectionBase) {
-//     let index = this._children.indexOf(section);
-//     if (index !== -1) {
-//       return this._children.splice(index, 1).forEach((child) => {
-//         child.setParent(undefined);
-//       });
-//     }
-//   }
+  /**
+   * Checks if this editor section instance is the same as the given one.
+   *
+   * This method compares the attributes to check equality.
+   * @param other Editor section instance.
+   */
+  isEqual(other: EditorSectionBase) {
+    return (
+      this._type === other.type &&
+      this._priority === other.priority &&
+      this._parent === other.parent &&
+      this._children === other.children
+    );
+  }
 
-//   /**
-//    * Adds the given editor section instance as a child of this one.
-//    *
-//    * Note: For the sake of consistency, the section given must be relative to this instance.
-//    *
-//    * For example:
-//    *  - This instance: *'Folder/Subfolder/'*
-//    *  - Child instance: *'Folder/Subfolder/file.txt'*
-//    *
-//    * Otherwise, this method will throw an error.
-//    * @param section Editor section.
-//    * @throws An error when the section is not valid.
-//    */
-//   addChild(section: EditorSectionBase) {
-//     // Checks for path validness.
-//     if (!this.isInmediate(section.resourceUri)) {
-//       throw new Error(`Cannot add child instance because it is not inmediate!`);
-//     }
-//     // Adds the new child instance.
-//     this._children.push(section);
-//     this._children.sort((a, b) => a.priority - b.priority);
-//     // Updates the parent reference.
-//     section.setParent(this);
-//   }
+  /**
+   * Checks if this instance has the given ``section`` as a child instance.
+   * @param section Editor section instance.
+   * @returns Whether it is a child or not.
+   */
+  has(section: EditorSectionBase) {
+    return this._children.some((child) => {
+      return child === section;
+    });
+  }
 
-//   /**
-//    * Creates a string of this editor section instance.
-//    * @returns Editor section stringified.
-//    */
-//   toString(): string {
-//     return `${this.label}`;
-//   }
+  /**
+   * Checks if this instance has a child equal to the given ``section``.
+   * @param section Editor section instance.
+   * @returns Whether it has an equal child instance or not.
+   */
+  hasEqual(section: EditorSectionBase) {
+    return this._children.some((child) => {
+      return child.isEqual(section);
+    });
+  }
 
-//   /**
-//    * Creates a list of path elements by the given ``path``.
-//    *
-//    * This method splits ``path`` with the current OS path separator.
-//    * @param path Path
-//    * @returns List of elements
-//    */
-//   private _tokenize(path: string) {
-//     return path.split(pathing.separator());
-//   }
+  /**
+   * Checks if this editor section instance has children instances or not.
+   * @returns Whether it has children or not.
+   */
+  hasChildren() {
+    return this._children.length > 0;
+  }
 
-//   /**
-//    * Resets the editor section information.
-//    */
-//   protected _reset() {}
-// }
+  /**
+   * Gets the relative path from this editor section to the given ``uri`` path.
+   *
+   * If this editor section does not have a path it returns ``undefined``.
+   * @param uri Uri Path.
+   * @returns Relative path.
+   */
+  relative(uri: vscode.Uri): string | undefined {
+    if (!this.resourceUri) {
+      return undefined;
+    }
+    return pathing.relative(this.resourceUri, uri);
+  }
 
-// /**
-//  * Editor section separator class.
-//  */
-// class EditorSectionSeparator extends EditorSectionBase {
-//   /**
-//    * Constructor.
-//    * @param priority Separator priority.
-//    */
-//   constructor(priority: number) {
-//     super(EditorSectionType.Separator, priority, '');
-//   }
+  /**
+   * Recursively returns all nested child instances from this editor section.
+   * @returns Nested editor section instances.
+   */
+  nestedChildren(): EditorSectionBase[] {
+    let children: EditorSectionBase[] = [];
+    this._children.forEach((section) => {
+      if (section.hasChildren()) {
+        children.push(section, ...section.nestedChildren());
+      } else {
+        children.push(section);
+      }
+    });
+    return children;
+  }
 
-//   /**
-//    * Separator cannot have a checkbox state.
-//    *
-//    * The checkbox will be set to ``undefined``.
-//    * @param state Checkbox state.
-//    */
-//   setCheckboxState(
-//     state: vscode.TreeItemCheckboxState | boolean | undefined | null
-//   ) {
-//     this.checkboxState = undefined;
-//   }
+  /**
+   * Renames this section instance with the given information.
+   *
+   * To avoid inconsistences, the given path directory must be the same as this instance path.
+   *
+   * This method should force the instance to reset its values based on the updated attributes.
+   *
+   * If rename fails, it throws an error.
+   * @param info Editor section information.
+   * @throws An error when rename fails.
+   */
+  rename(info: EditorSectionInfo): void {
+    // Checks path validness
+    if (!this.isRelative(info.path)) {
+      throw new Error(
+        `Cannot rename editor section, the given path: '${info.path}' is not relative!`
+      );
+    }
+    this.label = info.label;
+    this.resourceUri = info.path;
+  }
 
-//   /**
-//    * Separator cannot have a collapsible state.
-//    *
-//    * The collapsible state will be set to ``undefined``.
-//    * @param state Collapsible state.
-//    */
-//   setCollapsibleState(state: vscode.TreeItemCollapsibleState | undefined) {
-//     this.collapsibleState = undefined;
-//   }
+  /**
+   * This method deletes this editor section instance from the parent's children list, if it exists.
+   *
+   * This method could be used when moving a script section from one parent to another.
+   *
+   * @returns It returns the deleted instance.
+   */
+  delete() {
+    return this._parent?.deleteChild(this);
+  }
 
-//   /**
-//    * Separator cannot have an icon.
-//    *
-//    * The icon will be set to ``undefined``.
-//    * @param icon Icon.
-//    */
-//   setIcon(icon: vscode.ThemeIcon | undefined) {
-//     this.iconPath = undefined;
-//   }
+  /**
+   * Returns the child instance that matches the given ``uri`` path.
+   *
+   * If the ``nested`` flag is set, it will search each child recursively until found.
+   *
+   * If no script section is found, it returns ``undefined``.
+   * @param uri Uri path.
+   * @param nested Nested flag.
+   * @returns Child instance.
+   */
+  findChild(uri: vscode.Uri, nested?: boolean) {
+    let child: EditorSectionBase | undefined = undefined;
+    if (this.isInmediate(uri)) {
+      // Child should be an inmediate child
+      child = this._children.find((section) => {
+        return section.isPath(uri);
+      });
+    } else if (nested) {
+      // Child instance can be nested.
+      child = this.nestedChildren().find((section) => {
+        return section.isPath(uri);
+      });
+    }
+    return child;
+  }
 
-//   /**
-//    * Separator cannot have children.
-//    *
-//    * The children list will be set to ``undefined``.
-//    * @param section Editor section instance.
-//    */
-//   addChild(section: EditorSectionBase) {
-//     this._children = [];
-//   }
+  /**
+   * Returns all children instances that meets the condition specified in the ``callback`` function.
+   *
+   * If the ``nested`` flag is set, it will apply the filter for each child recursively.
+   * @param callback Callback function.
+   * @param nested Nested flag.
+   * @returns Children instances.
+   */
+  filterChildren(
+    callback: (
+      value: EditorSectionBase,
+      index: number,
+      array: EditorSectionBase[]
+    ) => boolean,
+    nested?: boolean
+  ) {
+    let children: EditorSectionBase[] = [];
+    if (nested) {
+      children = this.nestedChildren().filter(callback);
+    } else {
+      children = this._children.filter(callback);
+    }
+    return children;
+  }
 
-//   /**
-//    * Resets the editor section information.
-//    */
-//   protected _reset() {
-//     super._reset();
-//     this.setDescription('Separator');
-//     this.setTooltip('Separator');
-//     this.setCollapsibleState(EditorSectionBase.Collapsible.None);
-//     this.setCheckboxState(undefined);
-//     this.setIcon(undefined);
-//     this.command = undefined;
-//   }
-// }
+  /**
+   * Creates a string of this editor section instance.
+   * @returns Editor section stringified.
+   */
+  toString(): string {
+    return `${this.label}`;
+  }
 
-// /**
-//  * Editor section script class.
-//  */
-// class EditorSectionScript extends EditorSectionBase {
-//   /**
-//    * Constructor.
-//    * @param priority Script priority.
-//    * @param uri Script resource Uri.
-//    */
-//   constructor(priority: number, uri: vscode.Uri) {
-//     super(EditorSectionType.Script, priority, pathing.basename(uri));
-//     this.resourceUri = uri;
-//     this._reset();
-//   }
+  /**
+   * Creates a list of path elements by the given ``path``.
+   *
+   * This method splits ``path`` with the current OS path separator.
+   * @param path Path
+   * @returns List of elements
+   */
+  private _tokenize(path: string) {
+    return path.split(pathing.separator());
+  }
+}
 
-//   /**
-//    * Sets this script section collapsible state.
-//    * @param state Collapsible state.
-//    */
-//   setCollapsibleState(state: vscode.TreeItemCollapsibleState | undefined) {
-//     this.collapsibleState = undefined;
-//   }
+/**
+ * Editor section separator class.
+ */
+class EditorSectionSeparator extends EditorSectionBase {
+  /**
+   * Constructor.
+   * @param uri Editor section Uri path.
+   */
+  constructor(uri: vscode.Uri) {
+    super(EditorSectionType.Separator, '', uri);
+    this._reset();
+  }
 
-//   /**
-//    * Resets the editor section information.
-//    */
-//   protected _reset() {
-//     super._reset();
-//     this.setDescription('Script file');
-//     this.setTooltip(this.resourceUri?.fsPath);
-//     this.setCollapsibleState(EditorSectionBase.Collapsible.None);
-//     this.command = {
-//       title: 'Open Script File',
-//       command: 'vscode.open',
-//       arguments: [this.resourceUri],
-//     };
-//   }
-// }
+  setCheckboxState(
+    state: vscode.TreeItemCheckboxState | boolean | undefined | null
+  ) {
+    this.checkboxState = undefined;
+  }
 
-// /**
-//  * Editor section folder class.
-//  */
-// class EditorSectionFolder extends EditorSectionBase {
-//   /**
-//    * Constructor.
-//    * @param priority Folder priority.
-//    * @param uri Folder resource Uri.
-//    */
-//   constructor(priority: number, uri: vscode.Uri) {
-//     super(EditorSectionType.Folder, priority, uri.fragment);
-//     this.resourceUri = uri;
-//   }
+  setCollapsibleState(state: vscode.TreeItemCollapsibleState | undefined) {
+    this.collapsibleState = EditorSectionBase.Collapsible.None;
+  }
 
-//   /**
-//    * Resets the editor section information.
-//    */
-//   protected _reset() {
-//     super._reset();
-//     this.setDescription('Folder');
-//     this.setTooltip(this.resourceUri?.fsPath);
-//     this.setCollapsibleState(EditorSectionBase.Collapsible.Collapsed);
-//     this.command = undefined;
-//   }
-// }
+  setIcon(icon: vscode.ThemeIcon | undefined) {
+    this.iconPath = undefined;
+  }
+
+  addChild(section: EditorSectionBase) {
+    this._children = [];
+  }
+
+  deleteChild(section: EditorSectionBase): EditorSectionBase | undefined {
+    return undefined;
+  }
+
+  createChild(type: number, path: vscode.Uri): EditorSectionBase | undefined {
+    return undefined;
+  }
+
+  createChildren(
+    type: number,
+    path: vscode.Uri
+  ): EditorSectionBase | undefined {
+    return undefined;
+  }
+
+  rename(info: EditorSectionInfo): void {
+    super.rename({ label: '', path: info.path });
+    this._reset();
+  }
+
+  protected _reset() {
+    this.setDescription('Separator');
+    this.setTooltip('Separator');
+    this.setCollapsibleState(EditorSectionBase.Collapsible.None);
+    this.setCheckboxState(undefined);
+    this.setIcon(undefined);
+    this.command = undefined;
+  }
+}
+
+/**
+ * Editor section script class.
+ */
+class EditorSectionScript extends EditorSectionBase {
+  /**
+   * Constructor.
+   * @param uri Script resource Uri.
+   */
+  constructor(uri: vscode.Uri) {
+    super(EditorSectionType.Script, pathing.basename(uri), uri);
+    this._reset();
+  }
+
+  setCollapsibleState(state: vscode.TreeItemCollapsibleState | undefined) {
+    this.collapsibleState = EditorSectionBase.Collapsible.None;
+  }
+
+  addChild(section: EditorSectionBase): void {
+    this._children = [];
+  }
+
+  deleteChild(section: EditorSectionBase): EditorSectionBase | undefined {
+    return undefined;
+  }
+
+  createChild(type: number, path: vscode.Uri): EditorSectionBase | undefined {
+    return undefined;
+  }
+
+  createChildren(
+    type: number,
+    path: vscode.Uri
+  ): EditorSectionBase | undefined {
+    return undefined;
+  }
+
+  rename(info: EditorSectionInfo): void {
+    super.rename(info);
+    this._reset();
+  }
+
+  protected _reset() {
+    this.setDescription('Script file');
+    this.setTooltip(this.resourceUri.fsPath);
+    this.setCollapsibleState(EditorSectionBase.Collapsible.None);
+    this.setCheckboxState(this.isLoaded());
+    this.iconPath = vscode.ThemeIcon.File;
+    this.command = {
+      title: 'Open Script File',
+      command: 'vscode.open',
+      arguments: [this.resourceUri],
+    };
+  }
+}
+
+/**
+ * Editor section folder class.
+ */
+class EditorSectionFolder extends EditorSectionBase {
+  /**
+   * Constructor.
+   * @param priority Folder priority.
+   * @param uri Folder resource Uri.
+   */
+  constructor(uri: vscode.Uri) {
+    super(EditorSectionType.Folder, pathing.basename(uri), uri);
+    this._reset();
+  }
+
+  addChild(section: EditorSectionBase): void {
+    if (!this.isInmediate(section.resourceUri)) {
+      return;
+    }
+    // Adds the new child instance.
+    this._children.push(section);
+    // Updates the priority
+    section.setPriority(this._children.length);
+    // Updates the parent reference.
+    section.setParent(this);
+    // Sort list
+    this._children.sort((a, b) => a.priority - b.priority);
+  }
+
+  deleteChild(section: EditorSectionBase): EditorSectionBase | undefined {
+    let index = this._children.indexOf(section);
+    if (index !== -1) {
+      let child = this._children.splice(index, 1)[0];
+      child.setParent(undefined); // nullifies parent reference
+      return child;
+    }
+    return undefined;
+  }
+
+  createChild(type: number, path: vscode.Uri): EditorSectionBase | undefined {
+    if (!this.isInmediate(path)) {
+      return undefined;
+    }
+    // Child creation
+    let child = this.findChild(path);
+    if (!child) {
+      switch (type) {
+        case EditorSectionType.Separator: {
+          child = new EditorSectionSeparator(path);
+          this.addChild(child);
+          break;
+        }
+        case EditorSectionType.Folder: {
+          child = new EditorSectionFolder(path);
+          this.addChild(child);
+          break;
+        }
+        case EditorSectionType.Script: {
+          child = new EditorSectionScript(path);
+          this.addChild(child);
+          break;
+        }
+      }
+    }
+    return child;
+  }
+
+  createChildren(
+    type: number,
+    path: vscode.Uri
+  ): EditorSectionBase | undefined {
+    // End reached, children creation must have been done by now.
+    if (!this.isRelative(path)) {
+      return undefined;
+    }
+    // Child creation
+    let child = this.createChild(type, path);
+    if (!child) {
+      // Child does not exists, create parent first.
+      let parent = this.createChildren(
+        EditorSectionType.Folder,
+        vscode.Uri.file(pathing.dirname(path))
+      );
+      if (parent) {
+        child = parent.createChildren(type, path);
+      }
+    }
+    return child;
+  }
+
+  rename(info: EditorSectionInfo): void {
+    super.rename(info);
+    this._reset();
+  }
+
+  protected _reset() {
+    this.setDescription('Folder');
+    this.setTooltip(this.resourceUri.fsPath);
+    this.setCollapsibleState(
+      this.isCollapsed()
+        ? EditorSectionBase.Collapsible.Collapsed
+        : EditorSectionBase.Collapsible.Expanded
+    );
+    this.setCheckboxState(this.isLoaded());
+    this.iconPath = vscode.ThemeIcon.Folder;
+    this.command = undefined;
+  }
+}
 
 /**
  * Scripts controller class.
@@ -2046,7 +2272,7 @@ ScriptLoader.run
   private _generateScriptId(sections: number[]): number {
     let section = 0;
     do {
-      section = Math.floor(Math.random() * SECTION_MAX_VAL);
+      section = Math.floor(Math.random() * RPG_MAKER_SECTION_MAX_VAL);
     } while (sections.includes(section));
     return section;
   }

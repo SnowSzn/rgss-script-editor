@@ -16,8 +16,9 @@ import * as manager from './modules/manager';
             -> Carpeta
             -> Script
           2.1.3 Se usara el checkbox built-in de VSCode para determinar si un item sera cargado o no.
-            2.1.3.1 Cuando un item no este cargado, se escribira en el load_order.txt con "//" al comienzo.
-            se tiene que adaptar el script loader para que, en vez de comprobar el caracter "#" compruebe "//"
+            2.1.3.1 Cuando un item no este cargado, se escribira en el load_order.txt con "#" al comienzo.
+            NOTA: Se deberá incluir "#" en el regexp de caracteres invalidos para evitar que se creen ficheros
+            con este caracter y genere conflictos con esta caracteristica de la extension.
 
         2.2 El arbol se guardara en el fichero load_order.txt, dentro de la carpeta de Scripts extraidos
           2.2.1 Todas las instancias de EditorSection deben de ser escritas en el fichero, esto se debe a que
