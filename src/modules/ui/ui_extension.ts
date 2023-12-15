@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { EditorSection } from '../processes/scripts_controller';
+import { EditorSectionBase } from '../processes/scripts_controller';
 import {
   StatusBarControl,
   StatusBarOptions,
@@ -41,7 +41,7 @@ export type ExtensionUiOptions<T> = {
    *
    * This will be used by the view provider to provide data to the tree view.
    */
-  treeRoot: T;
+  treeRoot?: T;
 
   /**
    * Drag and drop controller for the tree view.
@@ -85,7 +85,7 @@ export class ExtensionUI {
   /**
    * Tree view instance.
    */
-  private _editorView: vscode.TreeView<EditorSection> | undefined;
+  private _editorView: vscode.TreeView<EditorSectionBase> | undefined;
 
   /**
    * Tree view provider instance.
@@ -115,7 +115,7 @@ export class ExtensionUI {
    * Updates the extension UI with the given options.
    * @param options Extension UI options.
    */
-  update(options: ExtensionUiOptions<EditorSection>) {
+  update(options: ExtensionUiOptions<EditorSectionBase>) {
     // Disposes previous configuration
     this.dispose();
 
@@ -152,7 +152,7 @@ export class ExtensionUI {
    * @param options Reveal options.
    * @returns The script section revealed.
    */
-  revealInTreeView(path: string, options: ExtensionUiReveal) {
+  revealInTreeView(path: vscode.Uri, options: ExtensionUiReveal) {
     if (this._editorView?.visible || options.force) {
       // Avoids conflicts with other container auto reveals
       let section = this._editorViewProvider?.findTreeItem(path);
@@ -170,7 +170,7 @@ export class ExtensionUI {
   /**
    * Refreshes the UI contents.
    */
-  refresh(options: ExtensionUiRefresh<EditorSection>) {
+  refresh(options: ExtensionUiRefresh<EditorSectionBase>) {
     if (options.isRoot) {
       this._editorViewProvider.update(options.treeItem);
       this._editorViewProvider.refresh();
@@ -184,7 +184,7 @@ export class ExtensionUI {
    */
   showStatusBar(): void {
     this.controlStatusBar({
-      setProjectFolder: true,
+      changeProjectFolder: true,
       currentProjectFolder: true,
       extractScripts: true,
       runGame: true,

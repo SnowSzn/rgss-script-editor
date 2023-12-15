@@ -1,3 +1,4 @@
+import * as path from 'path';
 import * as fs from 'fs';
 import * as zlib from 'zlib';
 import * as marshal from '@hyrious/marshal';
@@ -7,35 +8,6 @@ import * as filesys from '../utils/filesystem';
 import { TextDecoder } from 'util';
 import { Configuration } from '../utils/configuration';
 import { logger } from '../utils/logger';
-
-// TODO: Hacer que los separadores tengan un path valido
-// para asegurar que todas las instancias tengan path y ademas
-// que las instancias anidadas tengan separadores los separators tendrian
-// que ser escritos en el load_order.txt
-//
-// No se deberia escribir ficheros para representar un separador en la carpeta
-// debibo a que solaparia con otros ficheros "separator" que existan
-//  -> No se podria tener dos separadores en la misma carpeta porque se sobreescribirian
-//
-// Se podria escribir en el load_order.txt algo que identifique al separador.
-// por ejemplo: '$separator'
-//
-// File 1.rb
-// File 2.rb
-// $separator
-// Modules
-// Modules/Audio.rb
-// Modules/$separator
-// Modules/SceneManager.rb
-// $separator
-//
-// TODO: Asegurarse que el fichero script loader evita todas las entradas
-// del fichero que no existan en el disco, para evitar que crashee cuando se lee un $separator
-//
-// TODO: ACTUALIZACION
-// No se puede hacer eso creo, el problema es que, a la hora de crear instancias
-// busca si ya existe una instancia con el mismo path, lo que genera
-// incompatibilidades con este metodo
 
 /**
  * Editor section instance type enumerator.
@@ -58,36 +30,18 @@ enum EditorSectionType {
 }
 
 /**
- * Editor section instance configuration type.
+ * Editor section information.
  */
-type EditorSectionInfoOld = {
+type EditorSectionInfo = {
   /**
-   * Editor section type.
-   */
-  type: number;
-
-  /**
-   * Editor section tree item label.
+   * Editor section label.
    */
   label: string;
 
   /**
-   * Editor section priority.
+   * Editor section uri path.
    */
-  priority: number;
-
-  /**
-   * Absolute path to the editor section.
-   */
-  // path?: string;
-  path: string;
-
-  /**
-   * Whether editor section is loaded or not.
-   *
-   * Being loaded means that the tree item checkbox is ticked.
-   */
-  loaded?: boolean;
+  uri: vscode.Uri;
 };
 
 /**
@@ -121,25 +75,41 @@ type LoaderScriptConfig = {
    * The file that creates the loader with the error output of the process.
    */
   errorFileName: string;
+
+  /**
+   * Skip script character.
+   */
+  skipCharacter: string;
 };
 
 /**
- * Editor section instance information type.
+ * Regexp of invalid characters for Windows, Linux-based systems and this extension.
  */
-type EditorSectionInfo = {
-  /**
-   * Editor section tree item label.
-   */
-  label: string;
+const INVALID_CHARACTERS = /[\\/:\*\?"<>\|#▼■]/g;
 
-  /**
-   * Absolute path to the editor section entry.
-   */
-  path: vscode.Uri;
-};
+/**
+ * Load order file name within the scripts folder.
+ */
+const LOAD_ORDER_FILE_NAME = 'load_order.txt';
+
+/**
+ * Name of any editor section separator instance.
+ *
+ * To avoid issues, it should include, at least, an invalid character from {@link INVALID_CHARACTERS} invalid character list.
+ */
+const EDITOR_SECTION_SEPARATOR_NAME = '*separator*';
+
+/**
+ * Character used to mark a editor section as skipped.
+ *
+ * To avoid issues, this character should be included inside the {@link INVALID_CHARACTERS} invalid character list.
+ */
+const EDITOR_SECTION_SKIPPED_CHARACTER = '#';
 
 /**
  * Unique script section for this extension's external scripts loader script.
+ *
+ * Note: This value is used to uniquely identify the script loader this extension creates.
  */
 const LOADER_SCRIPT_SECTION = 133_769_420;
 
@@ -149,546 +119,11 @@ const LOADER_SCRIPT_SECTION = 133_769_420;
 const LOADER_SCRIPT_NAME = 'RGSS Script Editor Loader';
 
 /**
- * Load order file name within the scripts folder.
- */
-const LOAD_ORDER_FILE_NAME = 'load_order.txt';
-
-/**
- * Regexp of invalid characters for Windows, Linux-based systems and the script loader.
- */
-const INVALID_CHARACTERS = /[\\/:\*\?"<>\|#▼■]/g;
-
-/**
- * Name of any editor section separator instance.
- *
- * To avoid issues, it should include, at least, an invalid character to avoid files having the same name.
- */
-const EDITOR_SECTION_SEPARATOR_NAME = '*Separator*';
-
-// TODO: Delete since new version won't be index-dependent
-/**
- * Regexp to deformat a external script section name.
- *
- * Case insensitive.
- */
-const DEFORMAT_SCRIPT_NAME = /(?:\d+\s*-\s*)?(.*)/i;
-
-/**
  * Maximum value to generate a script section for RPG Maker.
  *
- * Sets as the maximum of the script loader to avoid a double section ID.
+ * Note: Should be set below {@link LOADER_SCRIPT_SECTION} to avoid a double section ID.
  */
 const RPG_MAKER_SECTION_MAX_VAL = 133_769_419;
-
-/**
- * Editor section tree item class.
- */
-export class EditorSection extends vscode.TreeItem {
-  /**
-   * None collapsible state.
-   */
-  public static SectionNone = vscode.TreeItemCollapsibleState.None;
-
-  /**
-   * Collapsed collapsible state.
-   */
-  public static SectionCollapsed = vscode.TreeItemCollapsibleState.Collapsed;
-
-  /**
-   * Expanded collapsible state.
-   */
-  public static SectionExpanded = vscode.TreeItemCollapsibleState.Expanded;
-
-  /**
-   * Script section type.
-   */
-  readonly type: number;
-
-  /**
-   * Script section priority.
-   */
-  private _priority: number;
-
-  /**
-   * Script section children.
-   */
-  private _children: Array<EditorSection>;
-
-  /**
-   * Script section absolute path.
-   */
-  private _path: string;
-
-  /**
-   * Parent script section.
-   */
-  private _parent: EditorSection | undefined;
-
-  /**
-   * Constructor.
-   * @param config Script section configuration.
-   */
-  constructor(config: EditorSectionInfoOld) {
-    super(config.label);
-    this.type = config.type;
-    this._path = config.path;
-    this._priority = config.priority;
-    this.setCheckboxState(config.loaded);
-    this._children = [];
-    this._parent = undefined;
-    this._restart();
-  }
-
-  /**
-   * Script section absolute path.
-   */
-  get path() {
-    return this._path;
-  }
-
-  /**
-   * Script section priority value.
-   */
-  get priority() {
-    return this._priority;
-  }
-
-  /**
-   * Script section children.
-   */
-  get children() {
-    return this._children;
-  }
-
-  /**
-   * Script section parent.
-   *
-   * If this script section has no parent it returns ``undefined``.
-   */
-  get parent() {
-    return this._parent;
-  }
-
-  /**
-   * Gets this script section directory name
-   * @returns Script section directory
-   */
-  getDirectory(): string {
-    return pathing.dirname(this._path);
-  }
-
-  /**
-   * Gets this script section item
-   * @returns Script section item
-   */
-  getItem(): string {
-    return pathing.basename(this._path);
-  }
-
-  /**
-   * Gets the script section that matches the given ``path``.
-   *
-   * If no script section is found, it returns ``undefined``.
-   * @param path Scrip section path.
-   * @returns Script section.
-   */
-  getChild(path: string): EditorSection | undefined {
-    if (!this.isFolder()) {
-      return undefined;
-    }
-    return this._children.find((value) => {
-      return value.matches(path);
-    });
-  }
-
-  /**
-   * Gets the nested script section that matches the given ``path``.
-   *
-   * If no script section is found, it returns ``undefined``.
-   * @param path Scrip section path.
-   * @returns Script section.
-   */
-  getNestedChild(path: string): EditorSection | undefined {
-    if (!this.isFolder()) {
-      return undefined;
-    }
-    // Search logic
-    let child: EditorSection | undefined = undefined;
-    if (this.isRelative(path)) {
-      // Inmediate child
-      child = this.getChild(path);
-    } else {
-      // Nested child
-      for (let section of this._children) {
-        child = section.getNestedChild(path);
-        // Checks if found
-        if (child) {
-          break;
-        }
-      }
-    }
-    return child;
-  }
-
-  /**
-   * Recursively gets a list of all nested child instances of this script section.
-   * @returns List of child script sections.
-   */
-  getNestedChildren(): EditorSection[] {
-    if (!this.isFolder()) {
-      return [];
-    }
-    let nested: EditorSection[] = [];
-    this._children.forEach((section) => {
-      if (section.hasChildren()) {
-        nested.push(section, ...section.getNestedChildren());
-      } else {
-        nested.push(section);
-      }
-    });
-    return nested;
-  }
-
-  /**
-   * Sets the parent of this script section to the given ``section``.
-   *
-   * The given script section ``section`` must be relative to this script section folder, otherwise it throws an error.
-   * @param section Script section
-   */
-  setParent(section: EditorSection) {
-    if (this.isRelative(section.path)) {
-      this._parent = section;
-    } else {
-      throw new Error(
-        `Cannot set script section: '${section.path}' to this script section because it is not relative!`
-      );
-    }
-  }
-
-  /**
-   * Sets this script section description text on the tree view.
-   * @param description Description.
-   */
-  setDescription(description: string | boolean) {
-    this.description = description;
-  }
-
-  /**
-   * Sets this script section tooltip text on the tree view.
-   * @param tooltip Tooltip.
-   */
-  setTooltip(tooltip: string | undefined) {
-    this.tooltip = tooltip;
-  }
-
-  /**
-   * Sets this script section collapsible state.
-   * @param state Collapsible state.
-   */
-  setCollapsibleState(state: vscode.TreeItemCollapsibleState) {
-    this.collapsibleState = state;
-  }
-
-  /**
-   * Sets this script section checkbox state.
-   *
-   * The checkbox is used to determine whether this script section should be loaded or not.
-   * @param state Checkbox state.
-   */
-  setCheckboxState(state: vscode.TreeItemCheckboxState | boolean | undefined) {
-    let check;
-    if (typeof state === 'boolean' || typeof state === 'undefined') {
-      check = state
-        ? vscode.TreeItemCheckboxState.Checked
-        : vscode.TreeItemCheckboxState.Unchecked;
-    } else {
-      check = state;
-    }
-    this.checkboxState = check;
-  }
-
-  /**
-   * Checks if this script section instance checkbox is ticked or not.
-   * @returns Whether script is loaded or not.
-   */
-  isLoaded(): boolean {
-    return this.checkboxState === vscode.TreeItemCheckboxState.Checked;
-  }
-
-  /**
-   * Checks if this script section instance is a Ruby folder.
-   * @returns Whether this section is a folder.
-   */
-  isFolder(): boolean {
-    return this.type === EditorSectionType.Folder;
-  }
-
-  /**
-   * Checks if this script section instance is a Ruby script file.
-   * @returns Whether this section is a script.
-   */
-  isFile(): boolean {
-    return this.type === EditorSectionType.Script;
-  }
-
-  /**
-   * Checks if this script section instance is a separator.
-   * @returns Whether this section is a separator.
-   */
-  isSeparator(): boolean {
-    return this.type === EditorSectionType.Separator;
-  }
-
-  /**
-   * Checks if this script section instance is relative to the given ``path``.
-   *
-   * Being relative means that ``path`` could be an inmediate child of this section.
-   * @param path Path.
-   * @returns Whether this section is relative of the path.
-   */
-  isRelative(path: string): boolean {
-    return this._tokenize(this.relative(path)).length === 1;
-  }
-
-  /**
-   * Checks if this script section has children instances or not.
-   * @returns Whether script section has children or not.
-   */
-  hasChildren(): boolean {
-    return this._children.length > 0;
-  }
-
-  /**
-   * Gets the relative path from this script section to the given path.
-   * @param path Path.
-   * @returns Relative path to the given path.
-   */
-  relative(path: string): string {
-    return pathing.relative(this._path, path);
-  }
-
-  /**
-   * Checks if this script section instance matches the given ``path``.
-   * @param path Path.
-   * @returns Whether this section matches the path.
-   */
-  matches(path: string): boolean {
-    return this._path === path;
-  }
-
-  /**
-   * Creates a new script section instance as a child of this one based on the given configuration ``config``.
-   *
-   * The given configuration must be valid for this method to create a new script section instance.
-   *
-   * If the creation fails it returns ``undefined``.
-   *
-   * **Note: Child instance is added automatically to this script section children list if valid.**
-   *
-   * @param config Script section configuration.
-   * @returns Child instance.
-   */
-  createChild(config: EditorSectionInfoOld): EditorSection | undefined {
-    // Ensures validness
-    if (!this.isFolder() || !this.isRelative(config.path)) {
-      return undefined;
-    }
-    // Child creation
-    let child = this.getChild(config.path);
-    if (!child) {
-      child = new EditorSection(config);
-      this.addChild(child);
-    }
-    return child;
-  }
-
-  /**
-   * Creates a new script section instance as a child of this one based on the given configuration ``config``.
-   *
-   * This method will append all necessary child instances to the created script section as necessary.
-   *
-   * The path inside ``config`` must be reachable from this script section, otherwise it will return ``undefined``.
-   *
-   * **Child instance is added automatically to this script section if valid.**
-   *
-   * @param config Script section configuration.
-   * @returns The new child
-   */
-  createChildren(config: EditorSectionInfoOld): EditorSection | undefined {
-    // End reached, children creation must have been done by now.
-    if (config.path === '.') {
-      return undefined;
-    }
-    // Child creation
-    let child = this.createChild(config);
-    if (!child) {
-      let parent = this.createChildren({
-        path: pathing.dirname(config.path),
-        label: config.label,
-        type: config.type,
-        priority: config.priority,
-        loaded: config.loaded,
-      });
-      if (parent) {
-        child = parent.createChildren(config);
-      }
-    }
-    return child;
-  }
-
-  /**
-   * Adds the given script section as a child of this script section instance.
-   *
-   * To add a child, this instance must be a Ruby folder, otherwise it throws an error.
-   *
-   * This script section instance will be set as the parent of the given section automatically.
-   * @param section Script section child
-   */
-  addChild(section: EditorSection) {
-    // Avoids non-folders having children
-    if (!this.isFolder()) {
-      throw new Error(`Cannot add a child section to a file!`);
-    }
-    // Ensures validness
-    if (!this.isRelative(section.path)) {
-      throw new Error(
-        `Cannot add child section: ${section} to this script section instance, because path is not relative!`
-      );
-    }
-    // Updates parent reference
-    section.setParent(this);
-    // Appends the new child
-    this._children.push(section);
-    // Sort by priority
-    this._children.sort((a, b) => {
-      return a.priority - b.priority;
-    });
-  }
-
-  /**
-   * Gets all elements of this script section instance that meets the condition specified in the given callback function.
-   *
-   * This method can get nested child instances in this script section.
-   * @param callback Predicate function.
-   * @returns List of children.
-   */
-  filter(
-    callback: (
-      value: EditorSection,
-      index: number,
-      array: EditorSection[]
-    ) => boolean
-  ): EditorSection[] {
-    return this.getNestedChildren().filter(callback);
-  }
-
-  /**
-   * Removes the given Script section instance from the children list.
-   *
-   * The Script section instance must have been added previously with the same reference.
-   *
-   * It returns the script sections that were deleted.
-   *
-   * Use ``removeChildForce()`` to forcely remove a child instance that matches a given path.
-   * @param section Script section
-   * @returns Whether deletion was succesful or not.
-   */
-  deleteChild(section: EditorSection) {
-    let index = this._children.indexOf(section);
-    if (index !== -1) {
-      return this._children.splice(index, 1);
-    }
-    return undefined;
-  }
-
-  /**
-   * Removes all children instances that matches the given path.
-   * @param path Path
-   */
-  deleteChildForced(path: string) {
-    let deleted: EditorSection[] = [];
-    this._children = this._children.filter((section) => {
-      if (section.matches(path)) {
-        deleted.push(section);
-        return false;
-      } else {
-        return true;
-      }
-    });
-    return deleted;
-  }
-  // TODO: Move child
-
-  moveChild(path: string, priority: number) {}
-
-  moveChildren() {}
-
-  /**
-   * Creates a string of this script section instance.
-   * @returns Script section stringified
-   */
-  toString(): string {
-    return `${this.getItem()}`;
-  }
-
-  /**
-   * Restarts this script section instance.
-   *
-   * This method must be called every time this script section path is changed.
-   */
-  private _restart() {
-    // Updates the tooltip to show the current path.
-    this.setTooltip(this._path);
-    // Restart logic type-based
-    switch (this.type) {
-      case EditorSectionType.Separator: {
-        this.setDescription('Separator');
-        this.setTooltip('Separator');
-        this.setCollapsibleState(EditorSection.SectionNone);
-        this.setCheckboxState(undefined);
-        this.iconPath = undefined;
-        this.command = undefined;
-        break;
-      }
-      case EditorSectionType.Folder: {
-        this.setCollapsibleState(EditorSection.SectionCollapsed);
-        this.iconPath = vscode.ThemeIcon.Folder;
-        this.command = undefined;
-        break;
-      }
-      case EditorSectionType.Script: {
-        this.setCollapsibleState(EditorSection.SectionNone);
-        this.iconPath = vscode.ThemeIcon.File;
-        this.command = {
-          title: 'Open Script File',
-          command: 'vscode.open',
-          arguments: [vscode.Uri.file(this._path)],
-        };
-        break;
-      }
-      default: {
-        this.setDescription('Invalid script section!');
-        this.setTooltip('Invalid script section!');
-        this.setCollapsibleState(EditorSection.SectionNone);
-        this.setCheckboxState(undefined);
-        this.iconPath = undefined;
-        this.command = undefined;
-        break;
-      }
-    }
-  }
-
-  /**
-   * Creates a list of items by the given path.
-   *
-   * This method splits ``path`` by the current OS path separator.
-   * @param path Path
-   * @returns List of tokenize
-   */
-  private _tokenize(path: string) {
-    return path.split(pathing.separator());
-  }
-}
 
 /**
  * Editor section base class.
@@ -697,24 +132,31 @@ export class EditorSection extends vscode.TreeItem {
  */
 export abstract class EditorSectionBase extends vscode.TreeItem {
   /**
-   * Editor section collapsible states enum.
+   * Editor section collapsible states.
    */
   public static Collapsible = vscode.TreeItemCollapsibleState;
 
   /**
-   * Editor section type.
+   * Editor section checkbox values.
    */
-  protected _type: number;
+  public static Checkbox = vscode.TreeItemCheckboxState;
 
   /**
-   * Editor section children.
+   * Editor section type.
+   *
+   * **Note: This attribute is inmutable and cannot be changed in subclasses.**
    */
-  protected _children: EditorSectionBase[];
+  private readonly _type: number;
 
   /**
    * Editor section priority.
    */
   protected _priority: number;
+
+  /**
+   * Editor section children.
+   */
+  protected _children: EditorSectionBase[];
 
   /**
    * Editor section parent.
@@ -734,19 +176,19 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    * Constructor.
    * @param type Editor section type.
    * @param label Editor section label.
-   * @param path Editor section path.
+   * @param uri Editor section path.
    */
-  constructor(type: number, label: string, path: vscode.Uri) {
+  constructor(type: number, label: string, uri: vscode.Uri) {
     super(label);
     this._type = type;
-    this.resourceUri = path;
+    this.resourceUri = uri;
     this._children = [];
     this._priority = 0;
     this._parent = undefined;
   }
 
   /**
-   * Adds the given editor section instance as a child of this one.
+   * Adds the given editor section instance as a new child of this one.
    *
    * The given child instance priority attribute will be updated to the size of the children list.
    *
@@ -782,12 +224,12 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    *
    * If the creation is not possible, it returns ``undefined``.
    * @param type Editor section type.
-   * @param path Editor section Uri path.
+   * @param uri Editor section Uri path.
    * @returns Editor section child instance.
    */
   abstract createChild(
     type: number,
-    path: vscode.Uri
+    uri: vscode.Uri
   ): EditorSectionBase | undefined;
 
   /**
@@ -803,12 +245,12 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    *
    * If a child is created with path ``./some/path/file.rb`` but the child ``some`` does not exists it will create it before the last child (in this case, ``file.rb``) is created.
    * @param type Editor section type.
-   * @param path Editor section Uri path.
+   * @param uri Editor section Uri path.
    * @returns The last editor section child instance.
    */
   abstract createChildren(
     type: number,
-    path: vscode.Uri
+    uri: vscode.Uri
   ): EditorSectionBase | undefined;
 
   /**
@@ -868,7 +310,7 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    */
   setParent(section: EditorSectionBase | undefined) {
     // Updates the parent only if this instance is relative to the parent.
-    if (section?.has(this)) {
+    if (section?.hasChild(this)) {
       // Removes this instance from the previous parent (if it exists)
       this.delete();
       // Updates the parent.
@@ -944,7 +386,7 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    * @returns Whether it is the given path or not.
    */
   isPath(uri: vscode.Uri) {
-    return this.resourceUri === uri;
+    return this.resourceUri.fsPath === uri.fsPath;
   }
 
   /**
@@ -952,7 +394,7 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    * @returns Whether it is loaded or not.
    */
   isLoaded() {
-    return this.checkboxState === vscode.TreeItemCheckboxState.Checked;
+    return this.checkboxState === EditorSectionBase.Checkbox.Checked;
   }
 
   /**
@@ -981,24 +423,21 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
     }
     // Gets the relative path and check it.
     let relative = this.relative(uri);
-    if (relative) {
-      return this._tokenize(relative).length === 1;
-    }
-    return false;
+    return this._tokenize(relative).length === 1;
   }
 
   /**
    * Checks if the given ``uri`` path is relative to this editor section uri path.
    *
-   * Being 'relative' means that this section could have the given Uri path as inmediate or nested child.
+   * Being relative means that this section could have the given Uri path as inmediate or nested child.
    *
    * For example:
    *
-   * - This Uri: ``Scripts/Folder/``
-   * - Given Uri: ``Scripts/Folder/Subfolder/file.rb``
+   * - This instance Uri path is: ``Scripts/Folder/``
+   * - The given Uri path is: ``Scripts/Folder/Subfolder/file.rb``
    * - Relative path is: ``Subfolder/file.rb``
    *
-   * If this instance does not have a path or the given path is ``undefined`` it returns ``false``.
+   * In case the given path is ``undefined`` it returns ``false``.
    * @param uri Uri path.
    * @returns Whether it is relative of the path or not.
    */
@@ -1007,12 +446,8 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
     if (!uri) {
       return false;
     }
-    // Gets the relative path and check it.
-    let relative = this.relative(uri);
-    if (relative) {
-      // If path is relative, it must not contain this editor section Uri path.
-      return !relative.includes(this.resourceUri!.fsPath);
-    }
+    // Checks for path relativeness
+    return uri.fsPath.includes(this.resourceUri.fsPath);
   }
 
   /**
@@ -1031,11 +466,20 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   }
 
   /**
+   * Checks if this instance has a child instance with the given ``path``.
+   * @param uri Uri path.
+   * @returns Whether it has a child with the given path or not.
+   */
+  hasChildPath(uri: vscode.Uri) {
+    return this.findChild(uri) !== undefined;
+  }
+
+  /**
    * Checks if this instance has the given ``section`` as a child instance.
    * @param section Editor section instance.
    * @returns Whether it is a child or not.
    */
-  has(section: EditorSectionBase) {
+  hasChild(section: EditorSectionBase) {
     return this._children.some((child) => {
       return child === section;
     });
@@ -1043,10 +487,12 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
 
   /**
    * Checks if this instance has a child equal to the given ``section``.
+   *
+   * This method uses the ``isEqual()`` method to evaluate truthiness.
    * @param section Editor section instance.
    * @returns Whether it has an equal child instance or not.
    */
-  hasEqual(section: EditorSectionBase) {
+  hasChildEqual(section: EditorSectionBase) {
     return this._children.some((child) => {
       return child.isEqual(section);
     });
@@ -1062,15 +508,10 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
 
   /**
    * Gets the relative path from this editor section to the given ``uri`` path.
-   *
-   * If this editor section does not have a path it returns ``undefined``.
    * @param uri Uri Path.
    * @returns Relative path.
    */
-  relative(uri: vscode.Uri): string | undefined {
-    if (!this.resourceUri) {
-      return undefined;
-    }
+  relative(uri: vscode.Uri): string {
     return pathing.relative(this.resourceUri, uri);
   }
 
@@ -1093,31 +534,50 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   /**
    * Renames this section instance with the given information.
    *
-   * To avoid inconsistences, the given path directory must be the same as this instance path.
-   *
-   * This method should force the instance to reset its values based on the updated attributes.
-   *
-   * If rename fails, it throws an error.
-   * @param info Editor section information.
-   * @throws An error when rename fails.
+   * To avoid inconsistencies:
+   *  - The given path must be inmediate to this instance's parent path.
+   *    - This way an editor section path won't be updated outside of the parent's bounds.
+   * - It must not already exists a editor section with the same path.
+   * @param info Information.
+   * @throws An error when operation fails.
    */
   rename(info: EditorSectionInfo): void {
-    // Checks path validness
-    if (!this.isRelative(info.path)) {
-      throw new Error(
-        `Cannot rename editor section, the given path: '${info.path}' is not relative!`
-      );
+    //Checks information validness.
+    if (this._parent) {
+      if (!this._parent.isRelative(info.uri)) {
+        throw new Error(
+          `Failed to rename this instance, path: "${info.uri.fsPath}" is not relative to the parent!`
+        );
+      }
+      if (this._parent.hasChildPath(info.uri)) {
+        throw new Error(
+          `Failed to rename this instance, the given path exists already in the parent!`
+        );
+      }
     }
+    // Updates section information
+    this.resourceUri = info.uri;
     this.label = info.label;
-    this.resourceUri = info.path;
   }
 
   /**
-   * This method deletes this editor section instance from the parent's children list, if it exists.
+   * Clears this instance children list.
    *
-   * This method could be used when moving a script section from one parent to another.
+   * All children instances will be removed and their parent references nullified.
+   */
+  clear() {
+    // Nullifies parent references
+    this._children.forEach((child) => {
+      child.setParent(undefined);
+    });
+    // Resets children list
+    this._children = [];
+  }
+
+  /**
+   * Deletes this instance from the parent's children list, if it exists.
    *
-   * @returns It returns the deleted instance.
+   * @returns The deleted instance.
    */
   delete() {
     return this._parent?.deleteChild(this);
@@ -1136,12 +596,12 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   findChild(uri: vscode.Uri, nested?: boolean) {
     let child: EditorSectionBase | undefined = undefined;
     if (this.isInmediate(uri)) {
-      // Child should be an inmediate child
+      // Child target should be an inmediate child of this instance.
       child = this._children.find((section) => {
         return section.isPath(uri);
       });
     } else if (nested) {
-      // Child instance can be nested.
+      // Child target could be nested.
       child = this.nestedChildren().find((section) => {
         return section.isPath(uri);
       });
@@ -1183,14 +643,14 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   }
 
   /**
-   * Creates a list of path elements by the given ``path``.
+   * Creates a list of path elements by the given ``item``.
    *
    * This method splits ``path`` with the current OS path separator.
-   * @param path Path
+   * @param item Path
    * @returns List of elements
    */
-  private _tokenize(path: string) {
-    return path.split(pathing.separator());
+  private _tokenize(item: string) {
+    return item.split(path.sep);
   }
 }
 
@@ -1229,24 +689,23 @@ class EditorSectionSeparator extends EditorSectionBase {
     return undefined;
   }
 
-  createChild(type: number, path: vscode.Uri): EditorSectionBase | undefined {
+  createChild(type: number, uri: vscode.Uri): EditorSectionBase | undefined {
     return undefined;
   }
 
-  createChildren(
-    type: number,
-    path: vscode.Uri
-  ): EditorSectionBase | undefined {
+  createChildren(type: number, uri: vscode.Uri): EditorSectionBase | undefined {
     return undefined;
   }
 
   rename(info: EditorSectionInfo): void {
-    super.rename({ label: '', path: info.path });
+    super.rename({ label: '', uri: info.uri });
     this._reset();
   }
 
   protected _reset() {
-    this.setDescription('Separator');
+    // Note: Separators having an uri property sets the instance
+    // to have an icon on the view?
+    this.setDescription(undefined);
     this.setTooltip('Separator');
     this.setCollapsibleState(EditorSectionBase.Collapsible.None);
     this.setCheckboxState(undefined);
@@ -1264,7 +723,7 @@ class EditorSectionScript extends EditorSectionBase {
    * @param uri Script resource Uri.
    */
   constructor(uri: vscode.Uri) {
-    super(EditorSectionType.Script, pathing.basename(uri), uri);
+    super(EditorSectionType.Script, path.parse(uri.fsPath).name, uri);
     this._reset();
   }
 
@@ -1280,28 +739,25 @@ class EditorSectionScript extends EditorSectionBase {
     return undefined;
   }
 
-  createChild(type: number, path: vscode.Uri): EditorSectionBase | undefined {
+  createChild(type: number, uri: vscode.Uri): EditorSectionBase | undefined {
     return undefined;
   }
 
-  createChildren(
-    type: number,
-    path: vscode.Uri
-  ): EditorSectionBase | undefined {
+  createChildren(type: number, uri: vscode.Uri): EditorSectionBase | undefined {
     return undefined;
   }
 
   rename(info: EditorSectionInfo): void {
-    super.rename(info);
+    super.rename({ label: path.parse(info.uri.fsPath).name, uri: info.uri });
     this._reset();
   }
 
   protected _reset() {
-    this.setDescription('Script file');
+    this.setDescription(undefined);
     this.setTooltip(this.resourceUri.fsPath);
     this.setCollapsibleState(EditorSectionBase.Collapsible.None);
     this.setCheckboxState(this.isLoaded());
-    this.iconPath = vscode.ThemeIcon.File;
+    this.setIcon(vscode.ThemeIcon.File);
     this.command = {
       title: 'Open Script File',
       command: 'vscode.open',
@@ -1320,13 +776,15 @@ class EditorSectionFolder extends EditorSectionBase {
    * @param uri Folder resource Uri.
    */
   constructor(uri: vscode.Uri) {
-    super(EditorSectionType.Folder, pathing.basename(uri), uri);
+    super(EditorSectionType.Folder, path.parse(uri.fsPath).name, uri);
     this._reset();
   }
 
   addChild(section: EditorSectionBase): void {
     if (!this.isInmediate(section.resourceUri)) {
-      return;
+      throw new Error(
+        `Cannot add: ${section}} as a child instance because it is not inmediate!`
+      );
     }
     // Adds the new child instance.
     this._children.push(section);
@@ -1348,26 +806,26 @@ class EditorSectionFolder extends EditorSectionBase {
     return undefined;
   }
 
-  createChild(type: number, path: vscode.Uri): EditorSectionBase | undefined {
-    if (!this.isInmediate(path)) {
+  createChild(type: number, uri: vscode.Uri): EditorSectionBase | undefined {
+    if (!this.isInmediate(uri)) {
       return undefined;
     }
     // Child creation
-    let child = this.findChild(path);
+    let child = this.findChild(uri);
     if (!child) {
       switch (type) {
         case EditorSectionType.Separator: {
-          child = new EditorSectionSeparator(path);
+          child = new EditorSectionSeparator(uri);
           this.addChild(child);
           break;
         }
         case EditorSectionType.Folder: {
-          child = new EditorSectionFolder(path);
+          child = new EditorSectionFolder(uri);
           this.addChild(child);
           break;
         }
         case EditorSectionType.Script: {
-          child = new EditorSectionScript(path);
+          child = new EditorSectionScript(uri);
           this.addChild(child);
           break;
         }
@@ -1376,36 +834,33 @@ class EditorSectionFolder extends EditorSectionBase {
     return child;
   }
 
-  createChildren(
-    type: number,
-    path: vscode.Uri
-  ): EditorSectionBase | undefined {
+  createChildren(type: number, uri: vscode.Uri): EditorSectionBase | undefined {
     // End reached, children creation must have been done by now.
-    if (!this.isRelative(path)) {
+    if (!this.isRelative(uri)) {
       return undefined;
     }
     // Child creation
-    let child = this.createChild(type, path);
+    let child = this.createChild(type, uri);
     if (!child) {
       // Child does not exists, create parent first.
       let parent = this.createChildren(
         EditorSectionType.Folder,
-        vscode.Uri.file(pathing.dirname(path))
+        vscode.Uri.file(pathing.dirname(uri))
       );
       if (parent) {
-        child = parent.createChildren(type, path);
+        child = parent.createChildren(type, uri);
       }
     }
     return child;
   }
 
   rename(info: EditorSectionInfo): void {
-    super.rename(info);
+    super.rename({ label: path.parse(info.uri.fsPath).name, uri: info.uri });
     this._reset();
   }
 
   protected _reset() {
-    this.setDescription('Folder');
+    this.setDescription(undefined);
     this.setTooltip(this.resourceUri.fsPath);
     this.setCollapsibleState(
       this.isCollapsed()
@@ -1413,7 +868,7 @@ class EditorSectionFolder extends EditorSectionBase {
         : EditorSectionBase.Collapsible.Expanded
     );
     this.setCheckboxState(this.isLoaded());
-    this.iconPath = vscode.ThemeIcon.Folder;
+    this.setIcon(vscode.ThemeIcon.Folder);
     this.command = undefined;
   }
 }
@@ -1422,7 +877,7 @@ class EditorSectionFolder extends EditorSectionBase {
  * Scripts controller class.
  */
 export class ScriptsController
-  implements vscode.TreeDragAndDropController<EditorSection>
+  implements vscode.TreeDragAndDropController<EditorSectionBase>
 {
   /**
    * Determines that the RPG Maker scripts bundle file was not extracted.
@@ -1444,12 +899,25 @@ export class ScriptsController
    */
   public static readonly BUNDLE_CREATED = 300;
 
-  private _config: Configuration | undefined;
+  /**
+   * Extension configuration instance.
+   */
+  private _config?: Configuration;
+
+  /**
+   * Load order file Uri path.
+   */
+  private _loadOrderFilePath?: vscode.Uri;
+
+  /**
+   * Scripts folder watcher.
+   */
+  private _watcher?: vscode.FileSystemWatcher;
 
   /**
    * Script section root instance.
    */
-  private _root: EditorSection | undefined;
+  private _root?: EditorSectionFolder;
 
   /**
    * UTF-8 text decoder instance.
@@ -1457,17 +925,12 @@ export class ScriptsController
   private _textDecoder: TextDecoder;
 
   /**
-   * Scripts folder watcher.
-   */
-  private _watcher: vscode.FileSystemWatcher | undefined;
-
-  /**
-   * Drop accepted MIME types
+   * Drop accepted MIME types.
    */
   dropMimeTypes: readonly string[] = ['application/rgss.script.editor'];
 
   /**
-   * Drag accepted MIME types
+   * Drag accepted MIME types.
    */
   dragMimeTypes: readonly string[] = ['application/rgss.script.editor'];
 
@@ -1479,9 +942,16 @@ export class ScriptsController
   }
 
   /**
-   * Root script section instance.
+   * Load order file Uri path.
    */
-  public get root(): EditorSection | undefined {
+  get loadOrderFilePath() {
+    return this._loadOrderFilePath;
+  }
+
+  /**
+   * Root editor section instance.
+   */
+  public get root() {
     return this._root;
   }
 
@@ -1491,16 +961,18 @@ export class ScriptsController
    * It returns ``undefined`` in case path to the load order file cannot be determined.
    * @returns Absolute path to the load oder file.
    */
-  getLoadOrderFilePath(): string | undefined {
-    let scriptsFolderPath = this._config?.scriptsFolderPath?.fsPath;
+  getLoadOrderFilePath() {
+    let scriptsFolderPath = this._config?.scriptsFolderPath;
     if (scriptsFolderPath) {
-      return pathing.join(scriptsFolderPath, LOAD_ORDER_FILE_NAME);
+      return vscode.Uri.joinPath(scriptsFolderPath, LOAD_ORDER_FILE_NAME);
     }
     return undefined;
   }
 
   /**
    * Updates the scripts controller instance attributes.
+   *
+   * If the given configuration instance is valid, it restarts this controller.
    * @param config Configuration.
    */
   update(config: Configuration) {
@@ -1521,6 +993,7 @@ export class ScriptsController
    * @returns A promise
    */
   async checkScripts(): Promise<number> {
+    logger.logInfo(`Checking project's bundle scripts file status...`);
     // Checks configuration validness
     if (!this._config) {
       throw new Error(
@@ -1528,7 +1001,7 @@ export class ScriptsController
       );
     }
     let bundleFilePath = this._config.bundleFilePath?.fsPath;
-    logger.logInfo(`Bundle file path is: '${bundleFilePath}'`);
+    logger.logInfo(`Bundle file path is: "${bundleFilePath}"`);
     if (!bundleFilePath) {
       throw new Error('Cannot check bundle scripts due to invalid values!');
     }
@@ -1548,49 +1021,61 @@ export class ScriptsController
    *
    * The scripts folder is automatically created if it does not exists.
    *
+   * The root editor section instance is automatically updated with the new instances.
+   *
    * **The promise is resolved when the extraction is done with a code number.**
    *
    * **If the extraction was impossible it rejects the promise with an error.**
    * @returns A promise
    */
   async extractScripts(): Promise<number> {
-    logger.logInfo('Extracting scripts from bundle file...');
-    // Checks configuration validness
-    if (!this._config) {
-      throw new Error(
-        `Script controller has an invalid configuration instance!`
-      );
-    }
-    let bundleFilePath = this._config.bundleFilePath?.fsPath;
-    let scriptsFolderPath = this._config.scriptsFolderPath?.fsPath;
-    logger.logInfo(`Bundle file path is: '${bundleFilePath}'`);
-    logger.logInfo(`Scripts folder path is: '${scriptsFolderPath}'`);
+    logger.logInfo('Extracting scripts from RPG Maker bundle file...');
+    let bundleFilePath = this._config?.bundleFilePath;
+    let scriptsFolderPath = this._config?.scriptsFolderPath;
+    logger.logInfo(`Bundle file path is: "${bundleFilePath?.fsPath}"`);
+    logger.logInfo(`Scripts folder path is: "${scriptsFolderPath?.fsPath}"`);
     // Checks bundle file path validness
     if (!bundleFilePath || !scriptsFolderPath) {
       throw new Error(`Cannot extract scripts due to invalid values!`);
     }
     // Extraction logic
-    let bundle = this._readBundleFile(bundleFilePath);
+    let bundle = this._readBundleFile(bundleFilePath.fsPath);
     if (this._checkValidExtraction(bundle)) {
-      // Create scripts folder if it does not exists
-      filesys.createFolder(scriptsFolderPath, {
-        recursive: true,
-        overwrite: false,
-      });
-      // Perform extraction loop
+      // Creates scripts folder if it does not exists.
+      this._createScriptsFolder(scriptsFolderPath);
+
+      // Perform extraction loop.
       for (let i = 0; i < bundle.length; i++) {
         // Ignores the loader script
-        if (this._isLoaderScript(bundle[i][0])) {
+        if (this._isExtensionLoader(bundle[i][0])) {
           continue;
         }
-        // Create scripts contents
-        let name = this._formatScriptName(
-          this._deformatScriptName(bundle[i][1]),
-          i
-        );
-        let code = this._processScriptCode(bundle[i][2]);
-        let scriptPath = pathing.join(scriptsFolderPath, name);
-        fs.writeFileSync(scriptPath, code, { encoding: 'utf8' });
+        let baseName = bundle[i][1] as string;
+        let baseCode = bundle[i][2] as string;
+        if (baseName.trim().length === 0 && baseCode.trim().length === 0) {
+          // Untitled script and empty code block
+          let uri = vscode.Uri.joinPath(
+            scriptsFolderPath,
+            EDITOR_SECTION_SEPARATOR_NAME
+          );
+          this._createSection(EditorSectionType.Separator, uri);
+        } else if (baseName.trim().length === 0) {
+          // Untitled script with code
+          let uri = vscode.Uri.joinPath(
+            scriptsFolderPath,
+            `Untitled Script ${i}.rb`
+          );
+          let code = this._formatScriptCode(baseCode);
+          this._createSection(EditorSectionType.Script, uri, code);
+        } else {
+          // Titled script
+          let uri = vscode.Uri.joinPath(
+            scriptsFolderPath,
+            this._formatScriptName(baseName)
+          );
+          let code = this._formatScriptCode(baseCode);
+          this._createSection(EditorSectionType.Script, uri, code);
+        }
       }
       return ScriptsController.SCRIPTS_EXTRACTED;
     } else {
@@ -1606,37 +1091,37 @@ export class ScriptsController
    * **The promise is resolved when the creation is done with a code number.**
    *
    * **If the creation was impossible it rejects the promise with an error.**
-   * @param gameOutputFile Game error output file name.
    * @returns A promise
    */
-  async createLoader(gameOutputFile: string): Promise<number> {
+  async createLoader(): Promise<number> {
     logger.logInfo('Creating script loader bundle file...');
-    // Checks configuration validness
-    if (!this._config) {
-      throw new Error(
-        `Script controller has an invalid configuration instance!`
-      );
-    }
-    let bundleFilePath = this._config.bundleFilePath?.fsPath;
-    let backUpsFolderPath = this._config.backUpsFolderPath?.fsPath;
-    let scriptsFolderPath = this._config.configScriptsFolder();
-    logger.logInfo(`RPG Maker bundle file path: '${bundleFilePath}'`);
-    logger.logInfo(`Back ups folder path: '${backUpsFolderPath}'`);
-    logger.logInfo(`Scripts folder relative path: '${scriptsFolderPath}'`);
-    if (!bundleFilePath || !backUpsFolderPath || !scriptsFolderPath) {
+    let bundleFilePath = this._config?.bundleFilePath;
+    let backUpsFolderPath = this._config?.backUpsFolderPath;
+    let scriptsFolderPath = this._config?.configScriptsFolder();
+    let gameOutputFile = Configuration.GAME_OUTPUT_FILE;
+    logger.logInfo(`RPG Maker bundle file path: "${bundleFilePath?.fsPath}"`);
+    logger.logInfo(`Back ups folder path: "${backUpsFolderPath?.fsPath}"`);
+    logger.logInfo(`Scripts folder relative path: "${scriptsFolderPath}"`);
+    logger.logInfo(`Game output file: "${gameOutputFile}"`);
+    if (
+      !gameOutputFile ||
+      !bundleFilePath ||
+      !backUpsFolderPath ||
+      !scriptsFolderPath
+    ) {
       throw new Error(
         'Cannot create script loader bundle due to invalid values!'
       );
     }
     // Formats backup destination path.
-    let backUpFilePath = pathing.join(
+    let backUpFilePath = vscode.Uri.joinPath(
       backUpsFolderPath,
       `${pathing.basename(bundleFilePath)} - ${this._currentDate()}.bak`
     );
-    logger.logInfo(`Resolved back up file: ${backUpFilePath}`);
+    logger.logInfo(`Resolved back up file: ${backUpFilePath.fsPath}`);
     logger.logInfo('Backing up original RPG Maker bundle file...');
     // Create backup of the bundle file
-    filesys.copyFile(bundleFilePath, backUpFilePath, {
+    filesys.copyFile(bundleFilePath.fsPath, backUpFilePath.fsPath, {
       recursive: true,
       overwrite: true,
     });
@@ -1647,11 +1132,12 @@ export class ScriptsController
     bundle[0][0] = LOADER_SCRIPT_SECTION;
     bundle[0][1] = LOADER_SCRIPT_NAME;
     bundle[0][2] = zlib.deflateSync(
-      this._loaderScriptCode({
+      this._scriptLoaderCode({
         scriptsFolder: scriptsFolderPath,
         scriptName: LOADER_SCRIPT_NAME,
         loadOrderFileName: LOAD_ORDER_FILE_NAME,
         errorFileName: gameOutputFile,
+        skipCharacter: EDITOR_SECTION_SKIPPED_CHARACTER,
       }),
       {
         level: zlib.constants.Z_BEST_COMPRESSION,
@@ -1663,63 +1149,43 @@ export class ScriptsController
       hashStringKeysToSymbol: true,
     });
     // Overwrite bundle data
-    fs.writeFileSync(bundleFilePath, bundleMarshalized, {
+    fs.writeFileSync(bundleFilePath.fsPath, bundleMarshalized, {
       flag: 'w',
     });
     return ScriptsController.LOADER_BUNDLE_CREATED;
   }
 
   /**
-   * Asynchronously creates a load order file within the scripts folder.
+   * Asynchronously updates the load order file within the scripts folder.
    *
    * This method will overwrite the load order file if it already exists.
-   *
-   * It will look for each script section in the tree and include it on the file if it is loaded.
    *
    * If the load order file creation was successful it resolves the promise with the number of scripts written.
    *
    * If the load order file couldn't be created it rejects the promise with an error.
    * @returns A promise.
    */
-  async createLoadOrderFile(): Promise<number> {
+  async updateLoadOrderFile(): Promise<number> {
     // TODO: Hacer que este metodo se llama por cada 'refresh' que ocurra en la extension:
     //  - Cualquier modificacion del tree view
     //    -> Se cambia de nombre un fichero.
     //    -> Se activa/desactiva el checkbox de un fichero.
     //    -> Se elimina un fichero (que estaba activado)
     //    -> TBD...
-    logger.logInfo(`Creating load order TXT file...`);
-    // Checks configuration validness
-    if (!this._config) {
-      throw new Error(
-        `Script controller has an invalid configuration instance!`
-      );
-    }
-    let scriptsFolderPath = this._config.scriptsFolderPath?.fsPath;
-    logger.logInfo(`Scripts folder path: '${scriptsFolderPath}'`);
-    if (!scriptsFolderPath) {
+    logger.logInfo(`Updating load order file...`);
+    logger.logInfo(
+      `Load order file path: "${this._loadOrderFilePath?.fsPath}"`
+    );
+    if (!this._loadOrderFilePath) {
       throw new Error('Cannot create load order file due to invalid values!');
     }
-    // Gets all script section files enabled
-    let checked = this._root!.filter((value) => {
-      return value.isLoaded();
-    });
-    // Deletes old load order file and re-creates it.
-    let loadOrderFile = fs.openSync(this.getLoadOrderFilePath()!, 'w');
-    checked.forEach((section) => {
-      let relativePath = `${pathing.relative(
-        this._root!.path,
-        section.path
-      )}\n`;
-      fs.writeSync(loadOrderFile, relativePath);
-    });
-    fs.closeSync(loadOrderFile);
-    // Returns the response
-    return checked.length;
+    let loadOrder = this._root?.nestedChildren() || [];
+    this._saveLoadOrder(loadOrder);
+    return loadOrder.length;
   }
 
   /**
-   * Asynchronously creates a RPG Maker bundle file based on the RGSS version from all of the extracted scripts files.
+   * Asynchronously creates a RPG Maker bundle file.
    *
    * This method will create a packaged bundle file with all active scripts on the tree view.
    *
@@ -1730,35 +1196,31 @@ export class ScriptsController
    * **If the creation was impossible it rejects the promise with an error.**
    * @param destination Destination path
    * @returns A promise
+   * @throws An error if creation fails.
    */
   async createBundle(destination: vscode.Uri): Promise<number> {
     logger.logInfo('Creating bundle file...');
-    // Checks configuration validness
-    if (!this._config) {
-      throw new Error(
-        `Script controller has an invalid configuration instance!`
-      );
-    }
-    let scriptsFolderPath = this._config.scriptsFolderPath?.fsPath;
-    logger.logInfo(`Scripts folder path: '${scriptsFolderPath}'`);
-    logger.logInfo(`Destination path: ${destination.fsPath}`);
-    if (!scriptsFolderPath) {
-      throw new Error('Cannot create load order file due to invalid values!');
+    logger.logInfo(`Destination path: "${destination.fsPath}"`);
+    if (!this._root) {
+      throw new Error('Cannot create bundle file because root is undefined!');
     }
     // Gets all script section files enabled
-    let checked = this._root!.filter((value) => {
-      return value.isLoaded() && value.isFile();
-    });
+    let checked = this._root.filterChildren((value) => {
+      return value.isLoaded() && value.isType(EditorSectionType.Script);
+    }, true);
     // Formats RPG Maker bundle
-    let usedIds = [LOADER_SCRIPT_SECTION];
+    let usedIds: number[] = [];
     let bundle: any[][] = [];
     checked.forEach((section, index) => {
       let id = this._generateScriptId(usedIds);
-      let code = fs.readFileSync(section.path, { encoding: 'utf8' });
+      let name = this._deformatScriptName(section.resourceUri.fsPath);
+      let code = fs.readFileSync(section.resourceUri.fsPath, {
+        encoding: 'utf8',
+      });
       // Create new bundle section
       bundle[index] = [];
       bundle[index][0] = id;
-      bundle[index][1] = this._deformatScriptName(section.path);
+      bundle[index][1] = name;
       bundle[index][2] = zlib.deflateSync(code, {
         level: zlib.constants.Z_BEST_COMPRESSION,
         finishFlush: zlib.constants.Z_FINISH,
@@ -1777,19 +1239,19 @@ export class ScriptsController
   }
 
   /**
-   * Disposes this scripts controller.
-   */
-  dispose() {
-    this._watcher?.dispose();
-    this._watcher = undefined;
-  }
-
-  /**
    * Checks if this scripts controller instance is currently disposed or not.
    * @returns Whether the controller is disposed.
    */
   isDisposed(): boolean {
     return this._watcher === undefined;
+  }
+
+  /**
+   * Disposes this scripts controller.
+   */
+  dispose() {
+    this._watcher?.dispose();
+    this._watcher = undefined;
   }
 
   /**
@@ -1799,7 +1261,7 @@ export class ScriptsController
    * @param token Token
    */
   handleDrag(
-    source: readonly EditorSection[],
+    source: readonly EditorSectionBase[],
     dataTransfer: vscode.DataTransfer,
     token: vscode.CancellationToken
   ): void | Thenable<void> {
@@ -1813,7 +1275,7 @@ export class ScriptsController
    * @param token Token
    */
   handleDrop(
-    target: EditorSection | undefined,
+    target: EditorSectionBase | undefined,
     dataTransfer: vscode.DataTransfer,
     token: vscode.CancellationToken
   ): void | Thenable<void> {
@@ -1821,35 +1283,40 @@ export class ScriptsController
   }
 
   /**
-   * Restarts the controller based on the current path.
+   * Restarts this instance based on the given
+   *
    */
   private _restart() {
-    if (!this._config) {
+    let scriptsFolderPath = this._config?.scriptsFolderPath;
+    // Checks scripts folder path validness
+    if (!scriptsFolderPath) {
       return;
     }
 
-    // Disposes the instance first
-    if (!this.isDisposed()) {
-      this.dispose();
-    }
+    // Disposes previous values
+    this.dispose();
 
-    // Recreates the root script section
-    let scriptsFolderPath = this._config.scriptsFolderPath!.fsPath;
-    this._root = new EditorSection({
-      path: scriptsFolderPath,
-      label: 'Root',
-      type: EditorSectionType.Folder,
-      priority: 0,
-      loaded: false,
-    });
-    this._scan();
+    // Updates load order file path
+    this._loadOrderFilePath = vscode.Uri.joinPath(
+      scriptsFolderPath,
+      LOAD_ORDER_FILE_NAME
+    );
 
-    // Restarts the watcher instance.
+    // Create scripts folder path if it does not exists
+    this._createScriptsFolder(scriptsFolderPath);
+
+    // Updates the root script section
+    this._root = new EditorSectionFolder(scriptsFolderPath);
+
+    // Reads the load order file
+    this._readLoadOrder();
+
+    // Creates the watcher instance
     this._watcher = vscode.workspace.createFileSystemWatcher(
       new vscode.RelativePattern(scriptsFolderPath, '**')
     );
 
-    // Sets the watcher callbacks.
+    // Sets the watcher callbacks
     this._watcher.onDidCreate((uri) => this._onDidCreate(uri));
     this._watcher.onDidChange((uri) => this._onDidChange(uri));
     this._watcher.onDidDelete((uri) => this._onDidDelete(uri));
@@ -1860,8 +1327,10 @@ export class ScriptsController
    * @param uri Entry uri
    */
   private _onDidCreate(uri: vscode.Uri) {
-    // TODO: Process entry change, possible valid cases:
+    // TODO: Process entry create, possible valid cases:
     //  -> ``uri`` is the scripts folder.
+    //  -> ``uri`` is load_order.txt
+    //  -> ``uri`` is a folder.
     //  -> ``uri`` is a script section inside the scripts folder.
     logger.logInfo(`Entry created: ${uri.fsPath}`);
   }
@@ -1873,6 +1342,8 @@ export class ScriptsController
   private _onDidChange(uri: vscode.Uri) {
     // TODO: Process entry change, possible valid cases:
     //  -> ``uri`` is the scripts folder.
+    //  -> ``uri`` is load_order.txt
+    //  -> ``uri`` is a folder.
     //  -> ``uri`` is a script section inside the scripts folder.
     logger.logInfo(`Entry changed: ${uri.fsPath}`);
   }
@@ -1882,52 +1353,139 @@ export class ScriptsController
    * @param uri Entry uri
    */
   private _onDidDelete(uri: vscode.Uri) {
-    // TODO: Process entry change, possible valid cases:
+    // TODO: Process entry deletion, possible valid cases:
     //  -> ``uri`` is the scripts folder.
+    //  -> ``uri`` is load_order.txt
+    //  -> ``uri`` is a folder.
     //  -> ``uri`` is a script section inside the scripts folder.
     logger.logInfo(`Entry deleted: ${uri.fsPath}`);
   }
 
+  private _createSection(type: number, uri: vscode.Uri, code?: string) {
+    let child = this._root?.createChildren(type, uri);
+    // If child creation is successful, create the file
+    if (child) {
+      switch (child.type) {
+        case EditorSectionType.Separator: {
+          // Separators are not real files.
+          break;
+        }
+        case EditorSectionType.Script: {
+          fs.writeFileSync(uri.fsPath, code || '', {
+            encoding: 'utf8',
+            flag: 'w',
+          });
+          break;
+        }
+        case EditorSectionType.Folder: {
+          this._createScriptsFolder(uri);
+          break;
+        }
+      }
+    }
+  }
+
   /**
-   * Scans and re-creates the script folder reading all entries from the system
+   * Reads the load order file to create editor sections.
+   *
+   * All valid lines will be inserted into the current root editor section if valid.
+   *
+   * If the load order file does not exists, it returns ``false``.
+   * @returns Whether read operation was successful or not.
    */
-  private _scan() {
-    // TODO: Properly scan the directory
-    if (this._root && this._config) {
-      let scriptsFolderPath = this._config.scriptsFolderPath!.fsPath;
-      filesys
-        .readDirectory(scriptsFolderPath, {
-          relative: false,
-          recursive: true,
-        })
-        .forEach((entry) => {
-          if (filesys.isRubyFile(entry)) {
-            this._root?.createChildren({
-              path: entry,
-              label: this._deformatScriptName(entry),
-              type: EditorSectionType.Script,
-              priority: 1, // TODO: Determine priority correctly
-              loaded: this._determineLoadStatus(entry),
-            });
-          } else if (filesys.isFolder(entry)) {
-            this._root?.createChildren({
-              path: pathing.resolve(entry),
-              label: this._deformatScriptName(entry),
-              type: EditorSectionType.Folder,
-              priority: 1, // TODO: Determine priority correctly
-              loaded: this._determineLoadStatus(entry),
-            });
-          }
-        });
+  private _readLoadOrder() {
+    // Checks for validness
+    if (
+      !this._root ||
+      !this._loadOrderFilePath ||
+      !fs.existsSync(this._loadOrderFilePath.fsPath)
+    ) {
+      return false;
+    }
+
+    // Gets all entries from the load order
+    let lines = fs
+      .readFileSync(this._loadOrderFilePath.fsPath, {
+        flag: 'r',
+        encoding: 'utf8',
+      })
+      .split('\n');
+
+    for (let line of lines) {
+      // Removes trailing and leading whitespaces.
+      let entry = line.trim();
+
+      // Gets whether section is skipped or not (checkbox is enabled/disabled)
+      let sectionEnabled = !entry.startsWith(EDITOR_SECTION_SKIPPED_CHARACTER);
+
+      // Gets the correct uri path based on the enable status.
+      let sectionPath = sectionEnabled
+        ? vscode.Uri.file(entry)
+        : vscode.Uri.file(entry.slice(EDITOR_SECTION_SKIPPED_CHARACTER.length));
+
+      // Gets the section type
+      let sectionType = -1;
+      if (filesys.isFolder(sectionPath.fsPath)) {
+        // Path exists and it is a folder
+        sectionType = EditorSectionType.Folder;
+      } else if (filesys.isRubyFile(sectionPath.fsPath)) {
+        // Path exists and it is a script
+        sectionType = EditorSectionType.Script;
+      } else if (sectionPath.fsPath.includes(EDITOR_SECTION_SEPARATOR_NAME)) {
+        // Neither a file nor a folder, create a separator if valid.
+        sectionType = EditorSectionType.Separator;
+      }
+
+      // Child creation
+      let child = this._root.createChildren(sectionType, sectionPath);
+      child?.setCheckboxState(sectionEnabled);
+    }
+    return true;
+  }
+
+  /**
+   * Saves all given sections into the load order file, overwriting it.
+   *
+   * This method creates the load order file if it does not exists.
+   *
+   * If no section is given it just creates an empty load order file.
+   * @param sections List of editor sections.
+   * @returns Whether the save operation was successful or not.
+   */
+  private _saveLoadOrder(sections?: EditorSectionBase[]): boolean {
+    // Checks if the path to the load order is valid
+    if (!this._loadOrderFilePath) {
+      return false;
+    }
+    // Creates the file if it does not exists
+    let fd = fs.openSync(this._loadOrderFilePath.fsPath, 'w');
+    // Write all of the given sections
+    sections?.forEach((section) => {
+      fs.writeSync(fd, `${section.resourceUri.fsPath}\n`);
+    });
+    // Close file
+    fs.closeSync(fd);
+    return true;
+  }
+
+  /**
+   * Creates the scripts folder on the given uri path.
+   *
+   * If the folder exists already it won't be created again.
+   * @param scriptsFolder Uri path
+   */
+  private _createScriptsFolder(scriptsFolder: vscode.Uri) {
+    if (!filesys.isFolder(scriptsFolder.fsPath)) {
+      fs.mkdirSync(scriptsFolder.fsPath, { recursive: true });
     }
   }
 
   /**
    * Checks if the given script section corresponds to the extension's loader script.
-   * @param scriptSection Section of the script
-   * @returns Whether it is the script loader or not
+   * @param scriptSection Script section
+   * @returns Whether it is the script loader or not.
    */
-  private _isLoaderScript(scriptSection: number) {
+  private _isExtensionLoader(scriptSection: number) {
     return scriptSection === LOADER_SCRIPT_SECTION;
   }
 
@@ -1938,15 +1496,15 @@ export class ScriptsController
    *
    * Returns true if there are scripts in the bundle file that were not extracted previously.
    * @param bundle Bundle (marshalized)
-   * @returns Whether extraction is valid or not
+   * @returns Whether extraction is valid or not.
    */
   private _checkValidExtraction(bundle: any[][]): boolean {
     return bundle.some((script) => {
       // Checks if it exists at least a valid script in the bundle array that is not the loader
-      let scriptSection = script[0];
-      if (this._isLoaderScript(scriptSection)) {
+      let section = script[0];
+      if (this._isExtensionLoader(section)) {
         return false; // It is the loader
-      } else if (typeof scriptSection === 'number') {
+      } else if (typeof section === 'number') {
         return true; // At least a 'true' is needed
       }
       return false;
@@ -1986,7 +1544,7 @@ export class ScriptsController
    * @param config Script configuration.
    * @returns Loader script code
    */
-  private _loaderScriptCode(config: LoaderScriptConfig): string {
+  private _scriptLoaderCode(config: LoaderScriptConfig): string {
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
@@ -2039,7 +1597,7 @@ module ScriptLoaderConfiguration
   #
   # Note: The load order file is expected to exist inside this folder!
   #
-  SCRIPTS_PATH = '${config.scriptsFolder}'
+  SCRIPTS_PATH = '${config.scriptsFolder.split(path.sep).join(path.posix.sep)}'
 end
 
 ###############################################################################
@@ -2136,7 +1694,7 @@ module ScriptLoader
   #
   def self.valid_entry?(path)
     return false if path == nil
-    return false if path[0] == '#'
+    return false if path[0] == '${config.skipCharacter}'
     return false unless File.extname(path).downcase == '.rb'
     return true
   end
@@ -2204,95 +1762,78 @@ ScriptLoader.run
   }
 
   /**
-   * Determines the load status of the given entry checking the load order TXT file.
-   * @param entry Entry
-   * @returns Whether entry is activated or not.
+   * Generates a random number to be used as a script section ID for RPG Maker.
+   *
+   * This method makes sure to always generate a number below {@link RPG_MAKER_SECTION_MAX_VAL} value.
+   *
+   * The generated ID won't be any of the given list of sections IDs.
+   * @param usedIds List of sections IDs
+   * @returns A valid section
    */
-  private _determineLoadStatus(entry: string): boolean {
-    if (this._config) {
-      let scriptsFolderPath = this._config.scriptsFolderPath!.fsPath;
-      let relativePath = pathing.relative(scriptsFolderPath, entry);
-      return fs
-        .readFileSync(this.getLoadOrderFilePath()!, { encoding: 'utf8' })
-        .split('\n')
-        .some((value) => {
-          return pathing.resolve(value) === relativePath;
-        });
+  private _generateScriptId(usedIds: number[]): number {
+    let section = 0;
+    do {
+      section = Math.floor(Math.random() * RPG_MAKER_SECTION_MAX_VAL);
+    } while (usedIds.includes(section));
+    return section;
+  }
+
+  /**
+   * Formats the given script name to ensure compatibility with the extension.
+   * @param scriptName Script name
+   * @returns The script name processed.
+   */
+  private _formatScriptName(scriptName: string) {
+    let script = this._removeInvalidCharacters(scriptName);
+    // Appends extension if missing
+    if (!script.toLowerCase().endsWith('.rb')) {
+      script = script.concat('.rb');
     }
-    return false;
+    return script;
   }
 
   /**
    * Deformats the given script name.
    *
-   * If a path is given, it will get the basename first before deformatting it.
-   *
-   * It will return the untouched script name if deformatting cannot be done.
-   * @param script Script
-   * @returns Deformatted script name
+   * If a path is passed it gets the name of the file and removes the extension.
+   * @param scriptName Script name
+   * @returns Deformatted script name.
    */
-  private _deformatScriptName(script: string): string {
-    // Gets file and removes extension (if it exists)
-    let baseName = pathing.parse(script).name;
-    // Removes priority number (if it exists)
-    let match = baseName.match(DEFORMAT_SCRIPT_NAME);
-    return match ? match[1] : baseName;
+  private _deformatScriptName(scriptName: string) {
+    let script = path.parse(scriptName).name;
+    return script;
   }
 
   /**
-   * Processes the external script name and returns it.
-   *
-   * This function makes sure it does not have invalid characters for the OS.
-   * @param name Script name
-   * @param priority Script priority number
-   * @returns The processed script name
+   * Formats the script code body to ensure compatibility with the extension.
+   * @param scriptCode Script code body
+   * @returns The script code processed.
    */
-  private _formatScriptName(name: string, priority: number | string): string {
-    let scriptPriority = priority.toString();
-    // Removes any OS invalid characters
-    let scriptName = name.replace(INVALID_CHARACTERS, '');
-    // Removes any whitespace left
-    scriptName = scriptName.trim();
-    // Adds script index
-    scriptName = `${scriptPriority.padStart(4, '0')} - ${scriptName}`;
-    // Concatenates the ruby extension if it isn't already
-    if (!scriptName.endsWith('.rb')) {
-      return scriptName.concat('.rb');
-    }
-    return scriptName;
-  }
-
-  /**
-   * Generates a number for a script's ID.
-   *
-   * The generated ID won't be any of the given list of sections IDs.
-   * @param sections List of sections IDs
-   * @returns A valid section
-   */
-  private _generateScriptId(sections: number[]): number {
-    let section = 0;
-    do {
-      section = Math.floor(Math.random() * RPG_MAKER_SECTION_MAX_VAL);
-    } while (sections.includes(section));
-    return section;
-  }
-
-  /**
-   * Processes the script code body to ensure compatibility with RPG Maker.
-   *
-   * Ruby 1.9 does not automatically detects file encoding so it must be added in the script to avoid encoding crashes.
-   * @param scriptCode Code of the script
-   * @returns The script code processed
-   */
-  private _processScriptCode(scriptCode: string): string {
+  private _formatScriptCode(scriptCode: string): string {
     let script = '';
     if (!scriptCode.startsWith('# encoding: utf-8')) {
+      // Ruby 1.9 (RGSS3) does not detects file encoding so it must be added inside to avoid crashes.
       script = `# encoding: utf-8\n${scriptCode}`;
     } else {
       // Code already contains encoding comment
       script = scriptCode;
     }
     return script;
+  }
+
+  /**
+   * Removes any invalid characters from the given string and returns it.
+   *
+   * This function makes sure it does not have invalid characters for the OS and the extension.
+   * @param item Item
+   * @returns The processed item
+   */
+  private _removeInvalidCharacters(item: string): string {
+    // Removes any invalid characters
+    let processed = item.replace(INVALID_CHARACTERS, '');
+    // Removes any trailing whitespaces left
+    processed = processed.trim();
+    return processed;
   }
 
   /**

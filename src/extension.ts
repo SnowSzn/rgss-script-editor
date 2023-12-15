@@ -42,7 +42,10 @@ import * as manager from './modules/manager';
         3.1 En lugar de prefijar todos los ficheros con un indice (0001 - ) se podria crear las instancias de EditorSection
         mientras se extrae, de tal forma que cuando termine la extraccion, todos los ficheros estarian ordenados.
 
-      4. Opcional: Hacer que la extension pueda leer opciones de un fichero JSON en la carpeta del proyecto
+      4. Implementar un comando ``scan()`` para leer recursivamente la carpeta de scripts buscando ficheros Ruby que hayan
+      sido creados mientras VSCode estaba cerrado.
+
+      5. Opcional: Hacer que la extension pueda leer opciones de un fichero JSON en la carpeta del proyecto
       por ejemplo: un fichero 'rgss-script-editor.json' que sobreescribirá al configuracion
       de VSCode (en configuration.ts), si gameName en VSCode es 'Game.exe'
       en el fichero local se podria cambiar el gameName a 'Juego.exe' y la extension

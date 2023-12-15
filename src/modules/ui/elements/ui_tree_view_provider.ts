@@ -1,36 +1,36 @@
 import * as vscode from 'vscode';
-import { EditorSection } from '../../processes/scripts_controller';
+import { EditorSectionBase } from '../../processes/scripts_controller';
 
 /**
  * A data provider that provides tree data.
  */
 export class EditorViewProvider
-  implements vscode.TreeDataProvider<EditorSection>
+  implements vscode.TreeDataProvider<EditorSectionBase>
 {
   /**
    * Scripts folder data.
    */
-  private _root: EditorSection | undefined;
+  private _root: EditorSectionBase | undefined;
 
   /**
    * On did change tree data event emitter.
    */
   private _onDidChangeTreeData: vscode.EventEmitter<
-    EditorSection | undefined | null | void
-  > = new vscode.EventEmitter<EditorSection | undefined | null | void>();
+    EditorSectionBase | undefined | null | void
+  > = new vscode.EventEmitter<EditorSectionBase | undefined | null | void>();
 
   /**
    * On did change tree data event.
    */
   readonly onDidChangeTreeData: vscode.Event<
-    EditorSection | undefined | null | void
+    EditorSectionBase | undefined | null | void
   > = this._onDidChangeTreeData.event;
 
   /**
    * Constructor.
    * @param root Tree root
    */
-  constructor(root?: EditorSection) {
+  constructor(root?: EditorSectionBase) {
     this._root = root;
   }
 
@@ -42,7 +42,7 @@ export class EditorViewProvider
    * To signal that root has changed, do not pass any argument or pass undefined or null.
    * @param element Script Section
    */
-  refresh(element?: EditorSection): void {
+  refresh(element?: EditorSectionBase): void {
     this._onDidChangeTreeData.fire(element);
   }
 
@@ -50,7 +50,7 @@ export class EditorViewProvider
    * Updates the provider script section root instance.
    * @param root Script section root
    */
-  update(root: EditorSection | undefined) {
+  update(root: EditorSectionBase | undefined) {
     this._root = root;
   }
 
@@ -58,8 +58,8 @@ export class EditorViewProvider
    * Reveals the appropiate script section on the tree view based on ``path``.
    * @param path Script section path
    */
-  findTreeItem(path: string) {
-    return this._root?.getNestedChild(path);
+  findTreeItem(path: vscode.Uri) {
+    return this._root?.findChild(path, true);
   }
 
   /**
@@ -67,7 +67,7 @@ export class EditorViewProvider
    * @param element Element
    * @returns Tree item
    */
-  getTreeItem(element: EditorSection): vscode.TreeItem {
+  getTreeItem(element: EditorSectionBase): vscode.TreeItem {
     return element;
   }
 
@@ -80,7 +80,7 @@ export class EditorViewProvider
    * @param element Base script section
    * @returns Returns the data
    */
-  getChildren(element?: EditorSection): Thenable<EditorSection[]> {
+  getChildren(element?: EditorSectionBase): Thenable<EditorSectionBase[]> {
     try {
       if (this._root) {
         let children = element ? element.children : this._root.children;
@@ -98,7 +98,9 @@ export class EditorViewProvider
    * @param element Script section
    * @returns Returns the element's parent
    */
-  getParent(element: EditorSection): vscode.ProviderResult<EditorSection> {
+  getParent(
+    element: EditorSectionBase
+  ): vscode.ProviderResult<EditorSectionBase> {
     return element.parent;
   }
 }

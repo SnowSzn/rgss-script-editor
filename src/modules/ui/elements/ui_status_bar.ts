@@ -7,7 +7,7 @@ export type StatusBarControl = {
   /**
    * Open project folder status bar item visibility status.
    */
-  setProjectFolder?: boolean;
+  changeProjectFolder?: boolean;
 
   /**
    * Current project folder status bar item visibility status.
@@ -94,7 +94,7 @@ export class StatusBarItems {
    */
   controlStatusBar(options?: StatusBarControl): void {
     // Updates set project folder item visibility
-    options?.setProjectFolder
+    options?.changeProjectFolder
       ? this.itemSetProjectFolder.show()
       : this.itemSetProjectFolder.hide();
     // Updates project folder name item visibility
