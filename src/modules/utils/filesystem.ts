@@ -1,5 +1,5 @@
+import * as path from 'path';
 import * as fs from 'fs';
-import * as pathing from './pathing';
 
 /**
  * Base options.
@@ -39,51 +39,61 @@ export type WriteOptions = {
 } & Options;
 
 /**
- * Checks if the given path is a directory or not.
- * @param path Path
+ * Checks if the given folder path is a directory or not.
+ * @param folder Folder path
  * @returns Whether path is a directory.
  */
-export function isFolder(path: string): boolean {
+export function isFolder(folder: string): boolean {
   // Checks if path exists.
-  if (!fs.existsSync(path)) {
+  if (!fs.existsSync(folder)) {
     return false;
   }
   // Checks if file is a directory.
-  return fs.statSync(path).isDirectory();
+  return fs.statSync(folder).isDirectory();
 }
 
 /**
- * Checks if the given path is a file or not.
- * @param path Path
+ * Checks if the given file path is a file or not.
+ * @param file File path
  * @returns Whether path is a file.
  */
-export function isFile(path: string): boolean {
+export function isFile(file: string): boolean {
   // Checks if path exists.
-  if (!fs.existsSync(path)) {
+  if (!fs.existsSync(file)) {
     return false;
   }
   // Checks if file is a directory.
-  return fs.statSync(path).isFile();
+  return fs.statSync(file).isFile();
 }
 
 /**
- * Checks if the given path is a Ruby script file or not.
- * @param path Path
+ * Checks if the given file path is a Ruby script file or not.
+ * @param file File path
  * @returns Whether path is a Ruby file.
  */
-export function isRubyFile(path: string): boolean {
+export function isRubyFile(file: string): boolean {
   // Checks if it is a file.
-  if (!isFile(path)) {
+  if (!isFile(file)) {
     return false;
   }
   // Checks if file is a Ruby script.
-  return pathing.extname(path).toLowerCase() === '.rb';
+  return path.extname(file).toLowerCase() === '.rb';
+}
+
+/**
+ * Returns ``true`` if the entry path exists, ``false`` otherwise.
+ * @param entry Entry path
+ * @returns Whether entry exists or not.
+ */
+export function exists(entry: string | undefined | null) {
+  if (!entry) {
+    return false;
+  }
+  return fs.existsSync(entry);
 }
 
 /**
  * Creates a folder in the given path.
- *
- * This function may throw errors.
  * @param folderPath Path to the folder.
  * @param options Options.
  */
@@ -94,15 +104,15 @@ export function createFolder(folderPath: string, options?: WriteOptions) {
 }
 
 /**
- * Deletes the item specified by the given ``path``.
+ * Deletes the item specified by the given ``item`` path.
  *
  * If the deletion is successful it returns ``true``, otherwise ``false``.
- * @param path Path
+ * @param item Item path
  * @returns Deletion result.
  */
-export function remove(path: string): boolean {
-  if (isFile(path) || isFolder(path)) {
-    fs.unlinkSync(path);
+export function remove(item: string): boolean {
+  if (isFile(item) || isFolder(item)) {
+    fs.unlinkSync(item);
     return true;
   }
   return false;
@@ -123,7 +133,7 @@ export function copyFile(
   destination: string,
   options?: WriteOptions
 ) {
-  let destinationPath = pathing.dirname(destination);
+  let destinationPath = path.dirname(destination);
   // Create directory if possible
   if (!fs.existsSync(destinationPath) && options?.recursive) {
     createFolder(destinationPath, options);
@@ -137,20 +147,20 @@ export function copyFile(
 }
 
 /**
- * Reads the text file specified by ``path`` and returns its contents.
+ * Reads the text file specified by ``file`` and returns its contents.
  *
- * If ``path`` is not file or it does not exists it returns ``undefined``.
+ * If ``file`` is not file or it does not exists it returns ``undefined``.
  *
  * If a ``process`` callback is given, it will called to process the contents and returns the results.
- * @param path File path.
+ * @param file File path.
  * @param process Process contents callback.
  * @returns Returns the file contents.
  */
 export function readTextFile<T>(
-  path: string,
+  file: string,
   process?: (contents: string) => T
 ) {
-  let fileContents = fs.readFileSync(path, { encoding: 'utf8' });
+  let fileContents = fs.readFileSync(file, { encoding: 'utf8' });
   return process ? process(fileContents) : fileContents;
 }
 
@@ -160,22 +170,22 @@ export function readTextFile<T>(
  * The file is written with ``utf-8`` encoding by default.
  *
  * The ``recursive`` flag can be used to create all folders needed to write the file.
- * @param path File path.
+ * @param file File path.
  * @param contents File contents.
  * @param options Write options.
  */
 export function writeTextFile(
-  path: string,
+  file: string,
   contents: string,
   options?: WriteOptions
 ) {
   // Creates folder first if it does not exist and recursiveness is enabled
-  let dir = pathing.dirname(path);
+  let dir = path.dirname(file);
   if (options?.recursive) {
     createFolder(dir, { recursive: true });
   }
   // Creates new file.
-  fs.writeFileSync(path, contents, {
+  fs.writeFileSync(file, contents, {
     encoding: 'utf8',
     flag: options?.flag,
   });
@@ -204,7 +214,7 @@ export function readDirectory(
   // Process relative flag
   if (options?.relative) {
     entries = entries.map((entry) => {
-      return pathing.relative(base, entry);
+      return path.relative(base, entry);
     });
   }
   // Returns data
@@ -222,7 +232,7 @@ export function readDirectory(
 function readDir(base: string, recursive?: boolean) {
   let entries: string[] = [];
   fs.readdirSync(base).forEach((entry) => {
-    let fullPath = pathing.join(base, entry);
+    let fullPath = path.join(base, entry);
     // Inserts entry
     entries.push(fullPath);
     // Process recursiveness
