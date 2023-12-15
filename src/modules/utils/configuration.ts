@@ -34,6 +34,16 @@ export type FolderInfo = {
    * Absolute path to the game executable.
    */
   gameExePath: vscode.Uri;
+
+  /**
+   * Log file URI path.
+   */
+  logFilePath: vscode.Uri;
+
+  /**
+   * Game output file URI path.
+   */
+  gameOutputPath: vscode.Uri;
 };
 
 /**
@@ -85,6 +95,22 @@ const enum RGSSBundlePath {
  */
 export class Configuration {
   /**
+   * Log file name.
+   *
+   * Log file that is created inside the active project folder.
+   */
+  public static LOG_FILE_NAME = '.rgss-script-editor.log';
+
+  /**
+   * Game execution output file name.
+   *
+   * This file is created by the game when an exception kills the process.
+   *
+   * The exception's name and the backtrace are written inside of it.
+   */
+  public static GAME_OUTPUT_FILE = '.rgss-script-editor-game.log';
+
+  /**
    * RGSS Version.
    */
   private _rgssVersion?: string;
@@ -113,6 +139,16 @@ export class Configuration {
    * Game executable URI path.
    */
   private _gameExePath?: vscode.Uri;
+
+  /**
+   * Log file URI path.
+   */
+  private _logFilePath?: vscode.Uri;
+
+  /**
+   * Game output file URI path.
+   */
+  private _gameOutputPath?: vscode.Uri;
 
   /**
    * Constructor.
@@ -162,6 +198,20 @@ export class Configuration {
    */
   get gameExePath() {
     return this._gameExePath;
+  }
+
+  /**
+   * Log file URI path.
+   */
+  get logFilePath() {
+    return this._logFilePath;
+  }
+
+  /**
+   * Game output file URI path.
+   */
+  get gameOutputPath() {
+    return this._gameOutputPath;
   }
 
   /**
@@ -313,6 +363,11 @@ export class Configuration {
     let backUpsPath = vscode.Uri.joinPath(folder, backups);
     let scriptsPath = vscode.Uri.joinPath(folder, scripts);
     let gameExePath = vscode.Uri.joinPath(folder, game);
+    let logFilePath = vscode.Uri.joinPath(folder, Configuration.LOG_FILE_NAME);
+    let gameOutPath = vscode.Uri.joinPath(
+      folder,
+      Configuration.GAME_OUTPUT_FILE
+    );
     let rgss1 = vscode.Uri.joinPath(folder, RGSSBundlePath.RGSS1);
     let rgss2 = vscode.Uri.joinPath(folder, RGSSBundlePath.RGSS2);
     let rgss3 = vscode.Uri.joinPath(folder, RGSSBundlePath.RGSS3);
@@ -323,7 +378,9 @@ export class Configuration {
         rgssVersion: RGSSVersion.RGSS1,
         backUpsFolderPath: backUpsPath,
         scriptsFolderPath: scriptsPath,
+        gameOutputPath: gameOutPath,
         gameExePath: gameExePath,
+        logFilePath: logFilePath,
         bundleFilePath: rgss1,
       };
     }
@@ -334,7 +391,9 @@ export class Configuration {
         rgssVersion: RGSSVersion.RGSS2,
         backUpsFolderPath: backUpsPath,
         scriptsFolderPath: scriptsPath,
+        gameOutputPath: gameOutPath,
         gameExePath: gameExePath,
+        logFilePath: logFilePath,
         bundleFilePath: rgss2,
       };
     }
@@ -345,7 +404,9 @@ export class Configuration {
         rgssVersion: RGSSVersion.RGSS3,
         backUpsFolderPath: backUpsPath,
         scriptsFolderPath: scriptsPath,
+        gameOutputPath: gameOutPath,
         gameExePath: gameExePath,
+        logFilePath: logFilePath,
         bundleFilePath: rgss3,
       };
     }
@@ -373,6 +434,8 @@ export class Configuration {
       this._scriptsFolderPath = info.scriptsFolderPath;
       this._bundleFilePath = info.bundleFilePath;
       this._gameExePath = info.gameExePath;
+      this._gameOutputPath = info.gameOutputPath;
+      this._logFilePath = info.logFilePath;
       return { oldProjectFolder: oldProjectFolder, curProjectFolder: info };
     } else {
       // RGSS version was not found, probably an invalid folder.
@@ -402,6 +465,8 @@ export class Configuration {
         scriptsFolderPath: this._scriptsFolderPath!,
         backUpsFolderPath: this._backUpsFolderPath!,
         gameExePath: this._gameExePath!,
+        gameOutputPath: this._gameOutputPath!,
+        logFilePath: this._logFilePath!,
       };
     }
     return undefined;

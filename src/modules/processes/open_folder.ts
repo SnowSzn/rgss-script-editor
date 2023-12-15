@@ -13,7 +13,7 @@ import * as fs from 'fs';
 export async function openFolder(folderPath: string): Promise<cp.ChildProcess> {
   // Checks if path exists
   if (!fs.existsSync(folderPath)) {
-    throw new Error(`The given folder path: '${folderPath}' does not exists!`);
+    throw new Error(`The given folder path: "${folderPath}" does not exists!`);
   }
   // Open folder
   let command = '';
@@ -32,7 +32,7 @@ export async function openFolder(folderPath: string): Promise<cp.ChildProcess> {
     }
     default: {
       throw new Error(
-        `Cannot open folder because the platform: '${process.platform}' is not supported!`
+        `Cannot open folder because the platform: "${process.platform}" is not supported!`
       );
     }
   }

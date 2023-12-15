@@ -2,11 +2,6 @@ import * as fs from 'fs';
 import { Configuration } from './configuration';
 
 /**
- * Log file name.
- */
-const LOG_FILE_NAME = '.rgss-script-editor.log';
-
-/**
  * Whether to force logging or not.
  *
  * Dev use.
@@ -18,38 +13,15 @@ const FORCE_CONSOLE_LOG = true;
  */
 class Logger {
   /**
-   * Log file name.
-   */
-  private _fileName: string;
-
-  /**
    * Extension configuration instance.
    */
-  private _config: Configuration | undefined;
+  private _config?: Configuration;
 
   /**
    * Constructor.
-   * @param logFileName Log file name.
    */
-  constructor(logFileName: string) {
-    this._fileName = logFileName;
+  constructor() {
     this._config = undefined;
-  }
-
-  /**
-   * Sets the logger file name.
-   * @param logFileName Name of the log file.
-   */
-  setLogFileName(logFileName: string): void {
-    this._fileName = logFileName;
-  }
-
-  /**
-   * Gets the logger file name.
-   * @returns Logger file name.
-   */
-  getLogFileName(): string {
-    return this._fileName;
   }
 
   /**
@@ -74,11 +46,9 @@ class Logger {
    * Deletes the log file of to this logger instance if it exists.
    */
   deleteLogFile(): void {
-    if (this._config) {
-      let logFilePath = this._config.joinProject(LOG_FILE_NAME);
-      if (logFilePath && fs.existsSync(logFilePath.fsPath)) {
-        fs.unlinkSync(logFilePath.fsPath);
-      }
+    let logFilePath = this._config?.logFilePath;
+    if (logFilePath && fs.existsSync(logFilePath.fsPath)) {
+      fs.unlinkSync(logFilePath.fsPath);
     }
   }
 
@@ -103,10 +73,7 @@ class Logger {
       // Logging to file enabled
       if (this._config.configLogFile()) {
         // Process logging operation
-        let logFilePath = this._config.joinProject(LOG_FILE_NAME);
-        if (logFilePath) {
-          fs.writeFileSync(logFilePath.fsPath, msg, { flag: 'a' });
-        }
+        fs.writeFileSync(this._config.logFilePath!.fsPath, msg, { flag: 'a' });
       }
     }
   }
@@ -156,4 +123,4 @@ class Logger {
   }
 }
 
-export let logger = new Logger(LOG_FILE_NAME);
+export let logger = new Logger();

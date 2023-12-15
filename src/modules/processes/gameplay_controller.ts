@@ -119,28 +119,19 @@ export class GameException {
  */
 export class GameplayController {
   /**
-   * Game execution output file name.
-   *
-   * This file is created by the game when an exception kills the process.
-   *
-   * The exception's name and the backtrace are written inside of it.
-   */
-  static readonly GAME_OUTPUT_FILE = '.rgss-script-editor-game.log';
-
-  /**
    * Extension configuration instance.
    */
-  private _config: Configuration | undefined;
+  private _config?: Configuration;
 
   /**
    * Executable process.
    */
-  private _executable: cp.ChildProcess | undefined;
+  private _executable?: cp.ChildProcess;
 
   /**
    * Executable last exception.
    */
-  private _lastException: GameException | undefined;
+  private _lastException?: GameException;
 
   /**
    * Constructor.
@@ -157,7 +148,7 @@ export class GameplayController {
    * If the game did not report any exception it returns ``undefined``.
    * @returns The last exception.
    */
-  public get lastException(): GameException | undefined {
+  get lastException() {
     return this._lastException;
   }
 
@@ -213,9 +204,9 @@ export class GameplayController {
     let gameArgs = this._config.determineGameArgs();
     let exePath = '';
     let exeArgs = [];
-    logger.logInfo(`Game working directory: '${workingDir}'`);
-    logger.logInfo(`Game executable path: '${gamePath}'`);
-    logger.logInfo(`Game executable arguments: '${gameArgs}'`);
+    logger.logInfo(`Game working directory: "${workingDir}"`);
+    logger.logInfo(`Game executable path: "${gamePath}"`);
+    logger.logInfo(`Game executable arguments: "${gameArgs}"`);
     // Safe-check for variables validness
     if (!workingDir || !gamePath || !gameArgs) {
       throw new Error('Cannot run the game due to invalid values!');
@@ -257,12 +248,12 @@ export class GameplayController {
       }
       default: {
         throw new Error(
-          `Cannot launch the game because the platform: '${process.platform}' is unknown or not supported!`
+          `Cannot launch the game because the platform: "${process.platform}" is unknown or not supported!`
         );
       }
     }
-    logger.logInfo(`Resolved process command: '${exePath}'`);
-    logger.logInfo(`Resolved process arguments: '${exeArgs}'`);
+    logger.logInfo(`Resolved process command: "${exePath}"`);
+    logger.logInfo(`Resolved process arguments: "${exeArgs}"`);
     logger.logInfo('Spawning process...');
     // Process should not be piped because if 'console' is passed as an argument to a RGSS3
     // executable, when the process spawns, it redirects $stderr to the console window.
@@ -290,9 +281,7 @@ export class GameplayController {
         `Game execution finished with code: ${code}, signal: ${signal}`
       );
       // Checks output file for possible exceptions that killed the game
-      let output = this._config.joinProject(
-        GameplayController.GAME_OUTPUT_FILE
-      )?.fsPath;
+      let output = this._config.gameOutputPath?.fsPath;
       if (output && filesys.isFile(output)) {
         // If file exists, an exception ocurred in the last game session
         let contents = filesys.readTextFile<string[]>(output, (contents) => {
