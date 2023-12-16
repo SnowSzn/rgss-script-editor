@@ -9,7 +9,7 @@ import { Configuration } from './configuration';
 const FORCE_CONSOLE_LOG = true;
 
 /**
- * Extension logger class
+ * Extension logger class.
  */
 class Logger {
   /**
@@ -27,18 +27,14 @@ class Logger {
   /**
    * Updates the logger with the given configuration instance.
    *
-   * A valid configuration instance is needed to allow the logger to log information to an external file.
+   * A valid instance is needed for the logger to log information to the log file.
    * @param config Extension configuration instance.
    */
   update(config: Configuration) {
-    if (config.isValid()) {
-      this._config = config;
-      // Deletes old log file
-      if (this._config.configLogFile()) {
-        this.deleteLogFile();
-      }
-    } else {
-      this._config = undefined;
+    this._config = config;
+    // Deletes old log file
+    if (this._config.configLogFile()) {
+      this.deleteLogFile();
     }
   }
 
@@ -60,20 +56,21 @@ class Logger {
    * @param errorConsole Console error output flag.
    */
   log(message: string, errorConsole: boolean = false): void {
-    if (this._config) {
-      let msg = '[RGSS Script Editor] ' + message.concat('\n');
-      // Logging to console enabled
-      if (this._config.configLogConsole() || FORCE_CONSOLE_LOG) {
-        if (errorConsole) {
-          console.error(msg);
-        } else {
-          console.log(msg);
-        }
+    let msg = '[RGSS Script Editor] ' + message.concat('\n');
+    // Logging to console enabled
+    if (this._config?.configLogConsole() || FORCE_CONSOLE_LOG) {
+      if (errorConsole) {
+        console.error(msg);
+      } else {
+        console.log(msg);
       }
-      // Logging to file enabled
-      if (this._config.configLogFile()) {
-        // Process logging operation
-        fs.writeFileSync(this._config.logFilePath!.fsPath, msg, { flag: 'a' });
+    }
+    // Logging to file enabled
+    if (this._config?.configLogFile()) {
+      let logFile = this._config?.logFilePath;
+      // Process logging operation
+      if (logFile) {
+        fs.writeFileSync(logFile.fsPath, msg, { flag: 'a' });
       }
     }
   }
@@ -118,7 +115,7 @@ class Logger {
     if (typeof error === 'string') {
       this.logError(error);
     } else if (error instanceof Error) {
-      this.logError(`[${error.name}] ${error.message} at: ${error.stack}`);
+      this.logError(`${error.stack}`);
     }
   }
 }

@@ -39,94 +39,41 @@ events.registerEvent(events.EVENT_REFRESH, (treeItem: EditorSectionBase) => {
 });
 
 /**
- * Extension re-start logic.
+ * Extension start logic.
  * @returns A promise.
  */
-export async function restart() {
-  // TODO: Is this method really needed?
-  // whenever the extension starts it always execute the else part
-  // if the folder is already opened, the only way to open other is via setProjectFolder async func
-  //
-  // Checks if a folder project is opened already
-  let folder = extensionConfig.getInfo();
-  if (folder) {
-    // Project folder opened already.
-    logger.logInfo('Restarting RGSS Script Editor...');
-    extensionGameplay.update(extensionConfig);
-    // TODO: Make extensionScripts get the config instance instead
-    extensionScripts.update(extensionConfig);
-    extensionGameplay.update(extensionConfig);
-    // TODO: Make sure root is not undefined!
-    extensionUI.update({
-      dragAndDropController: extensionScripts,
-      treeRoot: extensionScripts.root!,
-      statusBarOptions: { projectFolder: folder.projectFolderPath.path },
-    });
+export async function start() {
+  logger.logInfo('Starting RGSS Script Editor...');
+  if (extensionConfig.configQuickstart()) {
+    quickStart();
   } else {
-    // No project folder, falls to quickstart
-    logger.logInfo('Starting RGSS Script Editor...');
-    if (extensionConfig.configQuickstart()) {
-      quickStart();
-    } else {
-      logger.logWarning('Quickstart is disabled!');
-      logger.logInfo('To open a folder you can use the command palette.');
-    }
+    logger.logWarning('Quickstart is disabled!');
+    logger.logInfo('To open a folder you can use the command palette.');
   }
 }
 
 /**
  * Quickstart extension.
- *
- * It scans the current opened folders to start the extension:
- *  - If only one folder exists it is a RPG Maker project it is opened.
- *  - If more than one folder exists it enables the 'choose folder' ui element on the status bar.
  * @returns A promise
  */
 export async function quickStart() {
-  let folders = vscode.workspace.workspaceFolders;
-  // Checks if there is any folder opened
-  if (!folders) {
-    logger.logWarning('No opened folders detected in the VSCode workspace.');
-    logger.logInfo('Open a RPG Maker folder to start this extension.');
-    return;
-  }
-  let validFolders = [];
-  for (let folder of folders) {
-    if (extensionConfig.checkFolder(folder.uri)) {
-      validFolders.push(folder);
-    }
-  }
-  // Evaluates valid folders
+  let validFolders = fetchWorkspaceFolders();
   if (validFolders.length === 1) {
     // Opens the folder if there is only one valid
     let folder = validFolders[0];
     logger.logInfo(`Detected "${folder.name}" as a RPG Maker project!`);
-    vscode.window.showInformationMessage(
-      `Detected "${folder.name}" as a RPG Maker project!`
-    );
     await setProjectFolder(folder.uri);
   } else if (validFolders.length > 1) {
-    // Enables 'choose project folder' button on the status bar
-    extensionUI.controlStatusBar({ changeProjectFolder: true });
     // Several valid RPG Maker projects were opened
     logger.logInfo(
       'Several valid RPG Maker folders were detected in the current workspace!'
     );
-    // Shows a info message with a callback
-    vscode.window
-      .showInformationMessage(
-        `Several folders were detected in the workspace. You can select one as the active folder by clicking the button.`,
-        'Set RPG Maker Project Folder'
-      )
-      .then((value) => {
-        if (value) {
-          vscode.commands.executeCommand('rgss-script-editor.setProjectFolder');
-        }
-      });
+    extensionUI.control({ changeProjectFolder: true });
   } else {
     logger.logWarning(
       'No valid RPG Maker folder was detected in the current workspace'
     );
+    extensionUI.hide();
   }
 }
 
@@ -152,20 +99,23 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
     // TODO: Must make sure _root is not undefined here or resolve nulliness in UI
     extensionUI.update({
       dragAndDropController: extensionScripts,
-      treeRoot: extensionScripts.root,
+      treeRoot: extensionScripts.root!,
       statusBarOptions: {
-        projectFolder: folder.curProjectFolder.projectFolderPath.path,
+        projectFolder: folder.curProjectFolder.projectFolderName,
       },
     });
 
     // Updates extension context
     logger.logInfo(
-      `"${folder.curProjectFolder.projectFolderPath.fsPath}" opened successfully!`
+      `Workspace folder "${folder.curProjectFolder.projectFolderName}" opened successfully!`
+    );
+    vscode.window.showInformationMessage(
+      `Workspace folder "${folder.curProjectFolder.projectFolderName}" opened successfully!`
     );
     logger.logInfo(
       `RGSS Version detected: "${folder.curProjectFolder.rgssVersion}"`
     );
-    context.setValidProjectFolder(true);
+    context.setOpenedProjectFolder(true);
 
     // Updates extension extracted scripts context
     const scriptsResponse = await extensionScripts.checkScripts();
@@ -191,19 +141,23 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
     }
 
     // Update UI visibility
-    extensionUI.showStatusBar();
-
-    // Shows an information VSCode window
-    vscode.window.showInformationMessage(
-      `Folder: "${folder.curProjectFolder.projectFolderPath.path}" opened succesfully!`
-    );
+    extensionUI.show();
   } catch (error) {
+    // Invalid folder
     logger.logErrorUnknown(error);
-    context.setValidProjectFolder(false);
+    vscode.window.showErrorMessage(`Failed to open the folder!`);
+
+    // Updates extension context
+    context.setOpenedProjectFolder(false);
     context.setExtractedScripts(false);
 
-    // Shows an error VSCode window
-    vscode.window.showErrorMessage(`Failed to open the folder!`);
+    // Resets all UI elements
+    extensionUI.reset();
+
+    // Activate the status bar only if valid folders detected
+    if (fetchWorkspaceFolders().length > 0) {
+      extensionUI.control({ changeProjectFolder: true });
+    }
   }
 }
 
@@ -533,6 +487,18 @@ export async function alternateDropMode() {
   // TODO: Alternates the extension scripts controller drop mode
   // If a file is in MOVE mode and it is dropped on a folder, it will take the next priority value.
   // If a file is in CREATE mode and it is dropped on a folder, it will be inserted as a child.
+  //
+  // Se podria alternar de la siguiente forma:
+  // const enum DropModes {
+  //   MOVE,
+  //   MERGE,
+  // }
+
+  // const Modes = [DropModes.MOVE, DropModes.MERGE];
+  // let currentMode = DropModes.MOVE; // MOVE por ejemplo
+  // currentMode = (Modes.indexOf(currentMode) + 1) % Modes.length;
+  //
+  // Con estas lineas se cambia el modo de forma ciclica
   logger.logInfo('Alternating drop mode!');
 }
 
@@ -545,14 +511,17 @@ export async function alternateDropMode() {
  * @param treeItem Tree item to refresh.
  */
 export async function refresh(treeItem?: EditorSectionBase) {
+  // TODO: Esta funcion deberia ser llamada cada vez que ocurra un cambio en el root del arbol
+  // ademas, prodria actualizar el fichero load order para que existe consistencia entre el arbol
+  // de VSCode y el load order que se carga cuando se ejecuta el juego.
   if (treeItem) {
     // Refresh the given tree item
-    extensionUI.refresh({ treeItem: treeItem });
+    extensionUI.refresh(treeItem);
   } else {
     // Force root refresh
     let root = extensionScripts.root;
     if (root) {
-      extensionUI.refresh({ treeItem: root, isRoot: true });
+      extensionUI.refresh(root, true);
     }
   }
 }
@@ -567,4 +536,24 @@ export function dispose() {
   extensionGameplay.dispose();
   // Disposes UI elements
   extensionUI.dispose();
+}
+
+/**
+ * Fetchs all valid folders from the current workspace.
+ *
+ * A valid folder is a folder in which a RGSS version was detected.
+ * @returns List of valid folders.
+ */
+function fetchWorkspaceFolders() {
+  let folders = vscode.workspace.workspaceFolders;
+  if (!folders) {
+    return [];
+  }
+  let validFolders = [];
+  for (let folder of folders) {
+    if (extensionConfig.checkFolder(folder.uri)) {
+      validFolders.push(folder);
+    }
+  }
+  return validFolders;
 }

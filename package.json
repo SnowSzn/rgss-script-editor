@@ -238,12 +238,12 @@
       {
         "command": "rgss-script-editor.runGame",
         "key": "F12",
-        "when": "rgss-script-editor.validWorkingFolder"
+        "when": "rgss-script-editor.openedFolder"
       },
       {
         "command": "rgss-script-editor.alternateDropMode",
         "key": "F9",
-        "when": "rgss-script-editor.validWorkingFolder"
+        "when": "rgss-script-editor.openedFolder"
       }
     ],
     "viewsContainers": {
@@ -268,18 +268,23 @@
     "viewsWelcome": [
       {
         "view": "rgss-script-editor.editorView",
-        "contents": "There is no folder opened in Visual Studio Code.\nYou should open a RPG Maker project folder to start this extension.\n[Open Folder](command:vscode.openFolder)",
+        "contents": "There is no folder open in Visual Studio Code.\nYou should open a RPG Maker project folder to start this extension.\n[Open Folder](command:vscode.openFolder)",
         "when": "workspaceFolderCount <= 0"
       },
       {
         "view": "rgss-script-editor.editorView",
-        "contents": "There are more than one folder opened in Visual Studio Code.\nYou can select a folder to set it as the active RPG Maker project.\n[Set Active Project Folder](command:rgss-script-editor.setProjectFolder)",
-        "when": "workspaceFolderCount > 0 && !rgss-script-editor.validWorkingFolder"
+        "contents": "A folder is currently open.\nYou can select the folder to set it as the active RPG Maker folder using the button below.\n[Set Active Project Folder](command:rgss-script-editor.setProjectFolder)",
+        "when": "workspaceFolderCount == 1 && !rgss-script-editor.openedFolder"
       },
       {
         "view": "rgss-script-editor.editorView",
-        "contents": "You must extract the contents of the RPG Maker bundled file.\nA folder containing all script files extracted will be created in the currently selected project folder.\nOnce all scripts are extracted, the scripts bundle file will be overwritten with a script loader and you can start using this editor\n[Extract Scripts](command:rgss-script-editor.extractScripts)",
-        "when": "rgss-script-editor.validWorkingFolder && !rgss-script-editor.extractedScripts"
+        "contents": "There is more than one folder open in Visual Studio Code.\nYou can select a folder to set it as the active RPG Maker folder using the button below.\n[Set Active Project Folder](command:rgss-script-editor.setProjectFolder)",
+        "when": "workspaceFolderCount > 1 && !rgss-script-editor.openedFolder"
+      },
+      {
+        "view": "rgss-script-editor.editorView",
+        "contents": "To use this extension you must extract the contents of the RPG Maker bundled file.\nA new folder with all script files extracted will be created inside the folder.\nOnce all scripts are extracted, you can start using this editor\n[Extract Scripts](command:rgss-script-editor.extractScripts)",
+        "when": "rgss-script-editor.openedFolder && !rgss-script-editor.extractedScripts"
       }
     ],
     "menus": {
@@ -287,7 +292,7 @@
         {
           "command": "rgss-script-editor.updateLoadOrder",
           "when": "view == rgss-script-editor.editorView",
-          "group": "navigation"
+          "group": "navigation"   
         },
         {
           "command": "rgss-script-editor.createScriptSection",

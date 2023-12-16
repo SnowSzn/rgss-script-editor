@@ -71,7 +71,7 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showInformationMessage(
           'External scripts folder path change detected!'
         );
-        manager.restart();
+        manager.start();
       }
     })
   );
@@ -251,7 +251,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
   // **********************************************************
   // Start extension
-  manager.restart();
+  manager.start();
   // **********************************************************
 }
 

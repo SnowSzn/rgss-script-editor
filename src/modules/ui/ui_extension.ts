@@ -41,7 +41,7 @@ export type ExtensionUiOptions<T> = {
    *
    * This will be used by the view provider to provide data to the tree view.
    */
-  treeRoot?: T;
+  treeRoot: T;
 
   /**
    * Drag and drop controller for the tree view.
@@ -57,35 +57,13 @@ export type ExtensionUiOptions<T> = {
 };
 
 /**
- * Extension UI refresh options type.
- */
-export type ExtensionUiRefresh<T> = {
-  /**
-   * Tree item instance to refresh.
-   */
-  treeItem: T;
-
-  /**
-   * Whether the given tree item is the tree root or not.
-   *
-   * If this is true, the whole tree is refreshed instead of a single tree item.
-   */
-  isRoot?: boolean;
-};
-
-/**
  * Extension UI class.
  */
 export class ExtensionUI {
   /**
-   * Status bar items controller.
-   */
-  private _statusBar: StatusBarItems | undefined;
-
-  /**
    * Tree view instance.
    */
-  private _editorView: vscode.TreeView<EditorSectionBase> | undefined;
+  private _editorView?: vscode.TreeView<EditorSectionBase>;
 
   /**
    * Tree view provider instance.
@@ -93,12 +71,17 @@ export class ExtensionUI {
   private _editorViewProvider: EditorViewProvider;
 
   /**
+   * Status bar items controller.
+   */
+  private _statusBar: StatusBarItems;
+
+  /**
    * Constructor.
    */
   constructor() {
     this._editorViewProvider = new EditorViewProvider();
+    this._statusBar = new StatusBarItems();
     this._editorView = undefined;
-    this._statusBar = undefined;
   }
 
   /**
@@ -116,11 +99,8 @@ export class ExtensionUI {
    * @param options Extension UI options.
    */
   update(options: ExtensionUiOptions<EditorSectionBase>) {
-    // Disposes previous configuration
-    this.dispose();
-
     // Updates status bar items
-    this._statusBar = new StatusBarItems(options.statusBarOptions);
+    this._statusBar.update(options.statusBarOptions);
 
     // Updates view provider
     this._editorViewProvider.update(options.treeRoot);
@@ -147,6 +127,16 @@ export class ExtensionUI {
   }
 
   /**
+   * Resets the extension UI to the default values.
+   *
+   * It resets the current tree view provider and hides the status bar.
+   */
+  reset() {
+    this._editorViewProvider.reset();
+    this._statusBar.hide();
+  }
+
+  /**
    * Reveals the appropiate script section in the tree view by the given ``path``.
    * @param path Script section path.
    * @param options Reveal options.
@@ -170,42 +160,36 @@ export class ExtensionUI {
   /**
    * Refreshes the UI contents.
    */
-  refresh(options: ExtensionUiRefresh<EditorSectionBase>) {
-    if (options.isRoot) {
-      this._editorViewProvider.update(options.treeItem);
-      this._editorViewProvider.refresh();
+  refresh(treeItem: EditorSectionBase, isRoot?: boolean) {
+    if (isRoot) {
+      this._editorViewProvider.update(treeItem);
     } else {
-      this._editorViewProvider.refresh(options.treeItem);
+      this._editorViewProvider.refresh(treeItem);
     }
   }
 
   /**
-   * Shows all status bar items
+   * Shows all extension UI elements.
    */
-  showStatusBar(): void {
-    this.controlStatusBar({
-      changeProjectFolder: true,
-      currentProjectFolder: true,
-      extractScripts: true,
-      runGame: true,
-    });
+  show() {
+    // Shows status bar items.
+    this._statusBar.show();
   }
 
   /**
-   * Hides all status bar items
+   * Hides all extension UI elements.
    */
-  hideStatusBar(): void {
-    this.controlStatusBar();
+  hide() {
+    // Hides status bar items.
+    this._statusBar.hide();
   }
 
   /**
-   * Controls all status bar items visibility
-   *
-   * If no options are given, it hides all items.
-   * @param options Status bar options
+   * Controls the extension UI elements.
+   * @param options Extension UI options.
    */
-  controlStatusBar(options?: StatusBarControl): void {
-    this._statusBar?.controlStatusBar(options);
+  control(options?: StatusBarControl): void {
+    this._statusBar.control(options);
   }
 
   /**
@@ -213,18 +197,8 @@ export class ExtensionUI {
    */
   dispose() {
     // Disposes all status bar items
-    this._statusBar?.dispose();
-    this._statusBar = undefined;
+    this._statusBar.dispose();
     // Disposes the editor view
     this._editorView?.dispose();
-    this._editorView = undefined;
-  }
-
-  /**
-   * Checks if extension UI is disposed.
-   * @returns Disposed status.
-   */
-  isDisposed(): boolean {
-    return !this._editorView && !this._statusBar;
   }
 }

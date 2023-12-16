@@ -159,13 +159,9 @@ export class GameplayController {
    * @param config Configuration instance.
    */
   update(config: Configuration) {
-    if (config.isValid()) {
-      // Make sure to dispose so info does not mix up between projects
-      this.dispose();
-      this._config = config;
-    } else {
-      this._config = undefined;
-    }
+    // Make sure to dispose so info does not mix up between projects
+    this.dispose();
+    this._config = config;
   }
 
   /**

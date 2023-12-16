@@ -1,3 +1,4 @@
+import * as path from 'path';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
 
@@ -9,6 +10,11 @@ export type FolderInfo = {
    * Absolute path to the project folder.
    */
   projectFolderPath: vscode.Uri;
+
+  /**
+   * Project folder name.
+   */
+  projectFolderName: string;
 
   /**
    * RGSS version.
@@ -121,6 +127,11 @@ export class Configuration {
   private _projectFolderPath?: vscode.Uri;
 
   /**
+   * Project folder name
+   */
+  private _projectFolderName?: string;
+
+  /**
    * RPG Maker bundle file URI path.
    */
   private _bundleFilePath?: vscode.Uri;
@@ -170,6 +181,13 @@ export class Configuration {
    */
   get projectFolderPath() {
     return this._projectFolderPath;
+  }
+
+  /**
+   * Project folder name
+   */
+  get projectFolderName() {
+    return this._projectFolderName;
   }
 
   /**
@@ -360,6 +378,7 @@ export class Configuration {
       return null;
     }
     // Creates paths
+    let projectName = path.basename(folder.fsPath);
     let backUpsPath = vscode.Uri.joinPath(folder, backups);
     let scriptsPath = vscode.Uri.joinPath(folder, scripts);
     let gameExePath = vscode.Uri.joinPath(folder, game);
@@ -376,6 +395,7 @@ export class Configuration {
       return {
         projectFolderPath: folder,
         rgssVersion: RGSSVersion.RGSS1,
+        projectFolderName: projectName,
         backUpsFolderPath: backUpsPath,
         scriptsFolderPath: scriptsPath,
         gameOutputPath: gameOutPath,
@@ -389,6 +409,7 @@ export class Configuration {
       return {
         projectFolderPath: folder,
         rgssVersion: RGSSVersion.RGSS2,
+        projectFolderName: projectName,
         backUpsFolderPath: backUpsPath,
         scriptsFolderPath: scriptsPath,
         gameOutputPath: gameOutPath,
@@ -402,6 +423,7 @@ export class Configuration {
       return {
         projectFolderPath: folder,
         rgssVersion: RGSSVersion.RGSS3,
+        projectFolderName: projectName,
         backUpsFolderPath: backUpsPath,
         scriptsFolderPath: scriptsPath,
         gameOutputPath: gameOutPath,
@@ -430,6 +452,7 @@ export class Configuration {
       let oldProjectFolder = this.getInfo();
       this._rgssVersion = info.rgssVersion;
       this._projectFolderPath = info.projectFolderPath;
+      this._projectFolderName = info.projectFolderName;
       this._backUpsFolderPath = info.backUpsFolderPath;
       this._scriptsFolderPath = info.scriptsFolderPath;
       this._bundleFilePath = info.bundleFilePath;
@@ -440,10 +463,14 @@ export class Configuration {
     } else {
       // RGSS version was not found, probably an invalid folder.
       this._rgssVersion = undefined;
-      this._bundleFilePath = undefined;
-      this._scriptsFolderPath = undefined;
+      this._projectFolderPath = undefined;
+      this._projectFolderName = undefined;
       this._backUpsFolderPath = undefined;
+      this._scriptsFolderPath = undefined;
+      this._bundleFilePath = undefined;
       this._gameExePath = undefined;
+      this._gameOutputPath = undefined;
+      this._logFilePath = undefined;
       throw new Error(
         `Cannot update to folder: ${folder.fsPath}. A valid RGSS version was not detected!`
       );
@@ -461,6 +488,7 @@ export class Configuration {
       return {
         rgssVersion: this._rgssVersion!,
         projectFolderPath: this._projectFolderPath!,
+        projectFolderName: this._projectFolderName!,
         bundleFilePath: this._bundleFilePath!,
         scriptsFolderPath: this._scriptsFolderPath!,
         backUpsFolderPath: this._backUpsFolderPath!,

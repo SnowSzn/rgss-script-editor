@@ -10,7 +10,7 @@ export class EditorViewProvider
   /**
    * Scripts folder data.
    */
-  private _root: EditorSectionBase | undefined;
+  private _root?: EditorSectionBase;
 
   /**
    * On did change tree data event emitter.
@@ -28,10 +28,9 @@ export class EditorViewProvider
 
   /**
    * Constructor.
-   * @param root Tree root
    */
-  constructor(root?: EditorSectionBase) {
-    this._root = root;
+  constructor() {
+    this._root = undefined;
   }
 
   /**
@@ -48,18 +47,33 @@ export class EditorViewProvider
 
   /**
    * Updates the provider script section root instance.
+   *
+   * This method triggers a refresh on the tree since data has been updated.
    * @param root Script section root
    */
-  update(root: EditorSectionBase | undefined) {
+  update(root: EditorSectionBase) {
     this._root = root;
+    this.refresh();
+  }
+
+  /**
+   * Resets the provider.
+   *
+   * This method undefines the tree view root instance.
+   *
+   * This method triggers a refresh on the tree since data has been updated.
+   */
+  reset() {
+    this._root = undefined;
+    this.refresh();
   }
 
   /**
    * Reveals the appropiate script section on the tree view based on ``path``.
-   * @param path Script section path
+   * @param uri Script section uri path
    */
-  findTreeItem(path: vscode.Uri) {
-    return this._root?.findChild(path, true);
+  findTreeItem(uri: vscode.Uri) {
+    return this._root?.findChild(uri, true);
   }
 
   /**

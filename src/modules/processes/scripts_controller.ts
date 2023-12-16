@@ -327,7 +327,7 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    * When true, it is derived from resourceUri and when falsy, it is not shown.
    * @param description Description.
    */
-  setDescription(description: string | boolean | undefined) {
+  setDescription(description?: string | boolean) {
     this.description = description;
   }
 
@@ -337,7 +337,7 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    * The tooltip text when you hover over this item.
    * @param tooltip Tooltip.
    */
-  setTooltip(tooltip: string | undefined) {
+  setTooltip(tooltip?: string) {
     this.tooltip = tooltip;
   }
 
@@ -347,19 +347,21 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    * The checkbox is used to determine whether this editor section is loaded or not.
    * @param state Checkbox state.
    */
-  setCheckboxState(
-    state: vscode.TreeItemCheckboxState | boolean | undefined | null
-  ) {
-    this.checkboxState = state
-      ? vscode.TreeItemCheckboxState.Checked
-      : vscode.TreeItemCheckboxState.Unchecked;
+  setCheckboxState(state?: vscode.TreeItemCheckboxState | boolean) {
+    if (state === undefined) {
+      this.checkboxState = undefined;
+    } else {
+      this.checkboxState = state
+        ? vscode.TreeItemCheckboxState.Checked
+        : vscode.TreeItemCheckboxState.Unchecked;
+    }
   }
 
   /**
    * Sets this script section collapsible state.
    * @param state Collapsible state.
    */
-  setCollapsibleState(state: vscode.TreeItemCollapsibleState | undefined) {
+  setCollapsibleState(state?: vscode.TreeItemCollapsibleState) {
     this.collapsibleState = state;
   }
 
@@ -367,8 +369,12 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    * Sets this editor section tree item icon.
    * @param icon Tree item icon.
    */
-  setIcon(icon: vscode.ThemeIcon | undefined) {
-    this.iconPath = icon;
+  setIcon(icon?: vscode.ThemeIcon | vscode.Uri | string) {
+    // The only way to not show an icon is using
+    // { light: '', dark: '' } and not undefined.
+    // When falsy, Folder Theme Icon is assigned,
+    // if item is collapsible otherwise File Theme Icon.
+    this.iconPath = icon ? icon : { light: '', dark: '' };
   }
 
   /**
@@ -466,15 +472,6 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   }
 
   /**
-   * Checks if this instance has a child instance with the given ``path``.
-   * @param uri Uri path.
-   * @returns Whether it has a child with the given path or not.
-   */
-  hasChildPath(uri: vscode.Uri) {
-    return this.findChild(uri) !== undefined;
-  }
-
-  /**
    * Checks if this instance has the given ``section`` as a child instance.
    * @param section Editor section instance.
    * @returns Whether it is a child or not.
@@ -496,6 +493,15 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
     return this._children.some((child) => {
       return child.isEqual(section);
     });
+  }
+
+  /**
+   * Checks if this instance has a child instance with the given ``path``.
+   * @param uri Uri path.
+   * @returns Whether it has a child with the given path or not.
+   */
+  hasChildPath(uri: vscode.Uri) {
+    return this.findChild(uri) !== undefined;
   }
 
   /**
@@ -583,6 +589,32 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
     return this._parent?.deleteChild(this);
   }
 
+  moveChildren(target: number, ...children: EditorSectionBase[]) {
+    // TODO: finish move method
+    // Checks if the given children are in the list
+    if (!children.every((child) => this.hasChild(child))) {
+      return;
+    }
+    // Gets the proper index
+    let index = -1;
+    if (target < 0) {
+      index = 0;
+    } else if (target >= this._children.length) {
+      index = this._children.length - 1;
+    }
+    let temp = this._children.splice(index);
+    // Updates the priority of all child instances based on the target
+    children.forEach((child, i) => {
+      child.setPriority(index + i);
+    });
+    // Updates temporal child instances priority.
+    temp.forEach((child, i) => {
+      child.setPriority(index + i + children.length);
+    });
+    this._children.push(...children);
+    this._children.push(...temp);
+  }
+
   /**
    * Returns the child instance that matches the given ``uri`` path.
    *
@@ -668,17 +700,10 @@ class EditorSectionSeparator extends EditorSectionBase {
   }
 
   setCheckboxState(
-    state: vscode.TreeItemCheckboxState | boolean | undefined | null
-  ) {
-    this.checkboxState = undefined;
-  }
-
-  setCollapsibleState(state: vscode.TreeItemCollapsibleState | undefined) {
-    this.collapsibleState = EditorSectionBase.Collapsible.None;
-  }
-
-  setIcon(icon: vscode.ThemeIcon | undefined) {
-    this.iconPath = undefined;
+    state?: boolean | vscode.TreeItemCheckboxState | undefined
+  ): void {
+    // Forced so separators has no checkbox rendered
+    super.setCheckboxState(undefined);
   }
 
   addChild(section: EditorSectionBase) {
@@ -703,8 +728,6 @@ class EditorSectionSeparator extends EditorSectionBase {
   }
 
   protected _reset() {
-    // Note: Separators having an uri property sets the instance
-    // to have an icon on the view?
     this.setDescription(undefined);
     this.setTooltip('Separator');
     this.setCollapsibleState(EditorSectionBase.Collapsible.None);
@@ -725,10 +748,6 @@ class EditorSectionScript extends EditorSectionBase {
   constructor(uri: vscode.Uri) {
     super(EditorSectionType.Script, path.parse(uri.fsPath).name, uri);
     this._reset();
-  }
-
-  setCollapsibleState(state: vscode.TreeItemCollapsibleState | undefined) {
-    this.collapsibleState = EditorSectionBase.Collapsible.None;
   }
 
   addChild(section: EditorSectionBase): void {
@@ -976,12 +995,8 @@ export class ScriptsController
    * @param config Configuration.
    */
   update(config: Configuration) {
-    if (config.isValid()) {
-      this._config = config;
-      this._restart();
-    } else {
-      this._config = undefined;
-    }
+    this._config = config;
+    this._restart();
   }
 
   /**
@@ -1172,6 +1187,8 @@ export class ScriptsController
     //    -> Se activa/desactiva el checkbox de un fichero.
     //    -> Se elimina un fichero (que estaba activado)
     //    -> TBD...
+    //
+    // Dentro de la funcion refresh() de manager.ts, llamar a este metodo?
     logger.logInfo(`Updating load order file...`);
     logger.logInfo(
       `Load order file path: "${this._loadOrderFilePath?.fsPath}"`
@@ -1279,6 +1296,17 @@ export class ScriptsController
     dataTransfer: vscode.DataTransfer,
     token: vscode.CancellationToken
   ): void | Thenable<void> {
+    // TODO: Para poder dropear en secciones diferentes
+    // EditorSectionBase deberia poder permitir añadir secciones que no sean relativas
+    // ya que si se coge una seccion de nivel profundidad 1 y se dropea en un nivel de profundidad
+    // de 3 o 4, por ejemplo, la clase EditorSectionBase deberia poder permitir añadir un item
+    // que no sea relativo
+    //
+    // o incluso eliminar el metodo moveChildren() y modificar addChild() para poder añadir
+    // un hijo en una posicion especifica de la array.
+    //
+    // de tal forma que la operacion de mover seria borrar los items que se quieren mover
+    // de source y añadirlos en el target con la prioridad de target + 1
     logger.logInfo('Dropping handler called!');
   }
 
@@ -1363,23 +1391,26 @@ export class ScriptsController
 
   private _createSection(type: number, uri: vscode.Uri, code?: string) {
     let child = this._root?.createChildren(type, uri);
-    // If child creation is successful, create the file
     if (child) {
-      switch (child.type) {
-        case EditorSectionType.Separator: {
-          // Separators are not real files.
-          break;
-        }
-        case EditorSectionType.Script: {
-          fs.writeFileSync(uri.fsPath, code || '', {
-            encoding: 'utf8',
-            flag: 'w',
-          });
-          break;
-        }
-        case EditorSectionType.Folder: {
-          this._createScriptsFolder(uri);
-          break;
+      child.setCheckboxState(true);
+      // Create file if it does not exists
+      if (!fs.existsSync(child.resourceUri.fsPath)) {
+        switch (child.type) {
+          case EditorSectionType.Separator: {
+            // Separators are not real files.
+            break;
+          }
+          case EditorSectionType.Script: {
+            fs.writeFileSync(uri.fsPath, code || '', {
+              encoding: 'utf8',
+              flag: 'w',
+            });
+            break;
+          }
+          case EditorSectionType.Folder: {
+            this._createScriptsFolder(uri);
+            break;
+          }
         }
       }
     }
@@ -1415,6 +1446,11 @@ export class ScriptsController
       // Removes trailing and leading whitespaces.
       let entry = line.trim();
 
+      // Skips empty lines.
+      if (entry.length === 0) {
+        continue;
+      }
+
       // Gets whether section is skipped or not (checkbox is enabled/disabled)
       let sectionEnabled = !entry.startsWith(EDITOR_SECTION_SKIPPED_CHARACTER);
 
@@ -1422,6 +1458,13 @@ export class ScriptsController
       let sectionPath = sectionEnabled
         ? vscode.Uri.file(entry)
         : vscode.Uri.file(entry.slice(EDITOR_SECTION_SKIPPED_CHARACTER.length));
+      if (!sectionPath.fsPath.includes(this._root.resourceUri.fsPath)) {
+        // Entry needs to be joined to the root directory
+        sectionPath = vscode.Uri.joinPath(
+          this._root.resourceUri,
+          sectionPath.fsPath
+        );
+      }
 
       // Gets the section type
       let sectionType = -1;
@@ -1437,8 +1480,10 @@ export class ScriptsController
       }
 
       // Child creation
-      let child = this._root.createChildren(sectionType, sectionPath);
-      child?.setCheckboxState(sectionEnabled);
+      if (sectionType !== -1) {
+        let child = this._root.createChildren(sectionType, sectionPath);
+        child?.setCheckboxState(sectionEnabled);
+      }
     }
     return true;
   }
@@ -1454,14 +1499,24 @@ export class ScriptsController
    */
   private _saveLoadOrder(sections?: EditorSectionBase[]): boolean {
     // Checks if the path to the load order is valid
-    if (!this._loadOrderFilePath) {
+    if (!this._root || !this._loadOrderFilePath) {
       return false;
     }
     // Creates the file if it does not exists
     let fd = fs.openSync(this._loadOrderFilePath.fsPath, 'w');
     // Write all of the given sections
     sections?.forEach((section) => {
-      fs.writeSync(fd, `${section.resourceUri.fsPath}\n`);
+      // Gets relative entry
+      let entry = path.relative(
+        this._root!.resourceUri.fsPath,
+        section.resourceUri.fsPath
+      );
+      // Adds checkbox status
+      entry = section.isLoaded()
+        ? entry
+        : EDITOR_SECTION_SKIPPED_CHARACTER + entry;
+      // Writes entry to the load order
+      fs.writeSync(fd, `${entry}\n`);
     });
     // Close file
     fs.closeSync(fd);
@@ -1548,7 +1603,7 @@ export class ScriptsController
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
-# Version: 1.1.5
+# Version: 1.1.6
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
@@ -1593,7 +1648,7 @@ export class ScriptsController
 #
 module ScriptLoaderConfiguration
   #
-  # Relative path to the scripts folder inside the game project's folder.
+  # Path to the scripts folder inside the game project's folder.
   #
   # Note: The load order file is expected to exist inside this folder!
   #
@@ -1601,9 +1656,9 @@ module ScriptLoaderConfiguration
 end
 
 ###############################################################################
-#   DO NOT MODIFY ANYTHING BELOW THIS LINE IF YOU DO NOT WHAT YOU ARE DOING   #
-#   DO NOT MODIFY ANYTHING BELOW THIS LINE IF YOU DO NOT WHAT YOU ARE DOING   #
-#   DO NOT MODIFY ANYTHING BELOW THIS LINE IF YOU DO NOT WHAT YOU ARE DOING   #
+#   DO NOT MODIFY ANYTHING BELOW THIS IF YOU DO NOT KNOW WHAT YOU ARE DOING   #
+#   DO NOT MODIFY ANYTHING BELOW THIS IF YOU DO NOT KNOW WHAT YOU ARE DOING   #
+#   DO NOT MODIFY ANYTHING BELOW THIS IF YOU DO NOT KNOW WHAT YOU ARE DOING   #
 ###############################################################################
 
 #
@@ -1674,7 +1729,9 @@ module ScriptLoader
   # Prepares the module before attempting to run the loader.
   #
   def self.prepare
-    scripts_path = File.join(Dir.pwd, SCRIPTS_PATH)
+    scripts_path = File.directory?(SCRIPTS_PATH) ?
+    SCRIPTS_PATH :
+    File.join(Dir.pwd, SCRIPTS_PATH)
     # Pushes current working directory (XP and VX comp.)
     unless $:.include?('.')
       $:.push('.')

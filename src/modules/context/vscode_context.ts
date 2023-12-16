@@ -4,10 +4,10 @@ import * as vscode from 'vscode';
  * Sets extension's valid working folder context state.
  * @param contextState Context state value
  */
-export function setValidProjectFolder(contextState: boolean) {
+export function setOpenedProjectFolder(contextState: boolean) {
   vscode.commands.executeCommand(
     'setContext',
-    'rgss-script-editor.validWorkingFolder',
+    'rgss-script-editor.openedFolder',
     contextState
   );
 }

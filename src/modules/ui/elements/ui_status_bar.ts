@@ -59,7 +59,7 @@ export class StatusBarItems {
   /**
    * Constructor.
    */
-  constructor(options?: StatusBarOptions) {
+  constructor() {
     this.itemSetProjectFolder = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left
     );
@@ -72,10 +72,7 @@ export class StatusBarItems {
     this.itemRunGame = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left
     );
-    this.initializeItems();
-    if (options) {
-      this.update(options);
-    }
+    this._initialize();
   }
 
   /**
@@ -87,12 +84,31 @@ export class StatusBarItems {
   }
 
   /**
+   * Shows all items on the status bar.
+   */
+  show() {
+    this.control({
+      changeProjectFolder: true,
+      currentProjectFolder: true,
+      extractScripts: true,
+      runGame: true,
+    });
+  }
+
+  /**
+   * Hides all items on the status bar.
+   */
+  hide() {
+    this.control();
+  }
+
+  /**
    * Controls all status bar items visibility.
    *
    * If no options are given, it hides all items.
    * @param options Status bar options
    */
-  controlStatusBar(options?: StatusBarControl): void {
+  control(options?: StatusBarControl): void {
     // Updates set project folder item visibility
     options?.changeProjectFolder
       ? this.itemSetProjectFolder.show()
@@ -120,9 +136,9 @@ export class StatusBarItems {
   }
 
   /**
-   * Initializes the status bar configuration.
+   * Initializes the status bar items.
    */
-  private initializeItems(): void {
+  private _initialize() {
     // Set Project Folder item
     this.itemSetProjectFolder.name = 'RGSS Script Editor: Set Project Folder';
     this.itemSetProjectFolder.text =
