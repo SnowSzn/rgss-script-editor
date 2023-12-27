@@ -1,15 +1,41 @@
 import * as cp from 'child_process';
+import * as fs from 'fs';
 import * as vscode from 'vscode';
-import * as filesys from '../utils/filesystem';
+import * as marshal from '@hyrious/marshal';
+import { TextDecoder } from 'util';
 import { Configuration } from '../utils/configuration';
 import { logger } from '../utils/logger';
+
+/**
+ * Ruby exception information type.
+ *
+ * The game process must format the exception to match this structure.
+ */
+type RubyExceptionInfo = {
+  /**
+   * Ruby exception type and name.
+   */
+  type: any;
+
+  /**
+   * Ruby exception message.
+   */
+  mesg: any;
+
+  /**
+   * Ruby exception backtrace list.
+   */
+  back: any[];
+};
 
 /**
  * Game exception regular expression.
  *
  * Extracts the file, line and the message with a three group matches.
+ *
+ * If the message is not present, the third group will be ``undefined``.
  */
-const GAME_EXCEPTION_REGEXP = /(.*):(\d+):(.*)/;
+const GAME_EXCEPTION_REGEXP = /(.*):(\d+)(?::(.*))?/;
 
 /**
  * Exception backtrace information class.
@@ -30,15 +56,15 @@ class GameExceptionBacktrace {
   /**
    * Backtrace message.
    */
-  readonly message: string;
+  readonly message?: string;
 
   /**
-   * Constructor
+   * Constructor.
    * @param file File absolute path.
    * @param line Line number.
-   * @param message Message.
+   * @param message Optional message.
    */
-  constructor(file: string, line: number, message: string) {
+  constructor(file: string, line: number, message?: string) {
     this.file = file;
     this.line = line;
     this.message = message;
@@ -46,10 +72,14 @@ class GameExceptionBacktrace {
 
   /**
    * Converts the backtrace into a string instance.
+   *
+   * If the backtrace message is available it will be appended.
    * @returns A string.
    */
   toString(): string {
-    return `${this.file}\n    at line ${this.line}: ${this.message}`;
+    return this.message
+      ? `${this.file}\nat line ${this.line}: ${this.message}`
+      : `${this.file}\nat line ${this.line}`;
   }
 }
 
@@ -63,16 +93,23 @@ export class GameException {
   readonly name: string;
 
   /**
+   * Exception message.
+   */
+  readonly message: string;
+
+  /**
    * Backtrace list.
    */
   readonly backtrace: GameExceptionBacktrace[];
 
   /**
-   * Constructor
+   * Constructor.
    * @param name Exception name.
+   * @param message Exception message.
    */
-  constructor(name: string) {
+  constructor(name: string, message: string) {
     this.name = name;
+    this.message = message;
     this.backtrace = [];
   }
 
@@ -80,25 +117,39 @@ export class GameException {
    * Adds a new backtrace element with the given information.
    * @param file File absolute path.
    * @param line Line number.
-   * @param message Message.
+   * @param message Optional message.
    */
-  add(file: string, line: number, message: string) {
+  addTrace(file: string, line: number, message?: string) {
     this.backtrace.push(new GameExceptionBacktrace(file, line, message));
   }
 
   /**
-   * Formats this extension to show itself on a VSCode text document.
-   * @returns Exception doc info.
+   * Formats this extension to show itself on a VSCode Markdown document.
+   * @returns Exception information.
    */
-  document(): string {
-    return (
-      'RGSS Script Editor: Last game exception report\n\n' +
-      'This document is used to show information about the las exception reported\n' +
-      'by the game executable in the last game session.\n' +
-      'If you do not want this tab to appear, you can disable it on the extension settings page.\n' +
-      'The exception information will be shown in the following lines:\n\n' +
-      this.toString()
+  markdown(): string {
+    // Document title
+    let mark = '**RGSS Script Editor: Last Game Exception Report**\n\n';
+    // Document information
+    mark = mark.concat(
+      'This document is used to display information about the exception that was thrown in the last game session.\n\n'
     );
+    mark = mark.concat(
+      'If you do not want this tab to appear in the editor, you can disable it in the extension options.\n\n'
+    );
+    mark = mark.concat(
+      'The exception thrown will be shown in the following lines:\n\n'
+    );
+    // Document exception display
+    mark = mark.concat(`# ${this.name}\n`);
+    mark = mark.concat(`${this.message}\n`);
+    mark = mark.concat('##### Backtrace\n');
+    this.backtrace.forEach((item) => {
+      mark = mark.concat('```\n');
+      mark = mark.concat(item.toString() + '\n');
+      mark = mark.concat('```\n');
+    });
+    return mark;
   }
 
   /**
@@ -106,11 +157,7 @@ export class GameException {
    * @returns A string.
    */
   toString(): string {
-    let error = `Game exception: ${this.name}\n`;
-    this.backtrace.forEach((info) => {
-      error = error.concat(`  from: ${info.toString()}\n`);
-    });
-    return error;
+    return `${this.name}: ${this.message}\n`;
   }
 }
 
@@ -134,12 +181,18 @@ export class GameplayController {
   private _lastException?: GameException;
 
   /**
+   * Text decoder instance.
+   */
+  private _textDecoder: TextDecoder;
+
+  /**
    * Constructor.
    */
   constructor() {
     this._config = undefined;
     this._executable = undefined;
     this._lastException = undefined;
+    this._textDecoder = new TextDecoder('utf8');
   }
 
   /**
@@ -167,12 +220,13 @@ export class GameplayController {
   /**
    * Disposes this gameplay controller instance.
    *
-   * This method kills the executable if it is running.
+   * This method kills the executable if it is running (not undefined).
    *
    * To avoid invalid exception processing it sets the last exception to ``undefined``.
    */
   dispose() {
     this._executable?.kill();
+    this._executable = undefined;
     this._lastException = undefined;
   }
 
@@ -278,31 +332,36 @@ export class GameplayController {
       );
       // Checks output file for possible exceptions that killed the game
       let output = this._config.gameOutputPath?.fsPath;
-      if (output && filesys.isFile(output)) {
+      if (output) {
         // If file exists, an exception ocurred in the last game session
-        let contents = filesys.readTextFile<string[]>(output, (contents) => {
-          return contents.split('\n');
-        });
-        let name = contents[0];
-        let backtrace = JSON.parse(contents[1]) as string[];
-        let exception = new GameException(name);
-        backtrace.forEach((info) => {
-          let match = info.match(GAME_EXCEPTION_REGEXP);
+        let contents = fs.readFileSync(output);
+        let rubyError = marshal.load(contents, {
+          string: 'binary',
+          hashSymbolKeysToString: true,
+        }) as RubyExceptionInfo;
+        // Process exception binary data
+        let type = this._textDecoder.decode(rubyError.type);
+        let mesg = this._textDecoder.decode(rubyError.mesg);
+        let back = rubyError.back.map((item) => this._textDecoder.decode(item));
+        // Build the extension error instance
+        let exception = new GameException(type, mesg);
+        back.forEach((backtrace) => {
+          let match = backtrace.match(GAME_EXCEPTION_REGEXP);
           if (match) {
             let file = match[1];
             let line = parseInt(match[2]);
             let mesg = match[3];
             // Skips invalid backtrace lines, only files that exists.
             // RPG Maker includes backtrace lines of scripts inside its built-in editor.
-            if (filesys.isRubyFile(file)) {
-              exception.add(file, line, mesg);
+            if (fs.existsSync(file)) {
+              exception.addTrace(file, line, mesg);
             }
           }
         });
         // Updates last exception.
         this._lastException = exception;
         // Deletes output for next game run
-        filesys.remove(output);
+        fs.unlinkSync(output);
         // Executes command to process the exception if auto-process config is enabled.
         if (this._config.configGameErrorAutoProcess()) {
           vscode.commands.executeCommand(

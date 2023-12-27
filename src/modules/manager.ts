@@ -6,6 +6,7 @@ import { logger } from './utils/logger';
 import { openFolder } from './processes/open_folder';
 import { GameplayController } from './processes/gameplay_controller';
 import {
+  EditorSectionType,
   EditorSectionBase,
   ScriptsController,
 } from './processes/scripts_controller';
@@ -96,10 +97,9 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
     logger.update(extensionConfig);
     extensionScripts.update(extensionConfig);
     extensionGameplay.update(extensionConfig);
-    // TODO: Must make sure _root is not undefined here or resolve nulliness in UI
     extensionUI.update({
       dragAndDropController: extensionScripts,
-      treeRoot: extensionScripts.root!,
+      treeRoot: extensionScripts.root,
       statusBarOptions: {
         projectFolder: folder.curProjectFolder.projectFolderName,
       },
@@ -145,7 +145,9 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
   } catch (error) {
     // Invalid folder
     logger.logErrorUnknown(error);
-    vscode.window.showErrorMessage(`Failed to open the folder!`);
+    vscode.window.showErrorMessage(
+      `Failed to open the folder, a valid RGSS version was not detected!`
+    );
 
     // Updates extension context
     context.setOpenedProjectFolder(false);
@@ -359,8 +361,8 @@ export async function processGameException() {
       // Shows the exception in a new text document besides the main editor if allowed.
       if (extensionConfig.configGameErrorShowEditor()) {
         let doc = await vscode.workspace.openTextDocument({
-          language: 'text',
-          content: exception.document(),
+          language: 'markdown',
+          content: exception.markdown(),
         });
         await vscode.window.showTextDocument(
           doc,
@@ -372,15 +374,14 @@ export async function processGameException() {
       await vscode.commands.executeCommand(
         'editor.action.peekLocations',
         vscode.Uri.file(exception.backtrace[0].file),
-        new vscode.Position(exception.backtrace[0].line, 0),
+        new vscode.Position(exception.backtrace[0].line - 1, 0),
         exception.backtrace.map((info) => {
           return new vscode.Location(
             vscode.Uri.file(info.file),
             new vscode.Position(info.line - 1, 0)
           );
         }),
-        'gotoAndPeek',
-        'Not Found'
+        'gotoAndPeek'
       );
     }
   } else {
@@ -414,7 +415,7 @@ export async function revealScriptSection(what: any) {
   let selected = extensionUI.getTreeSelection();
   if (selected && selected.length > 1) {
     logger.logWarning('You must select a single script section to reveal it!');
-  } else {
+  } else if (!(what as EditorSectionBase).isType(EditorSectionType.Separator)) {
     console.log(`revealing: "${what}"`);
     let path = (what as EditorSectionBase).resourceUri;
     vscode.commands.executeCommand('revealInExplorer', path);

@@ -11,11 +11,11 @@ import { logger } from '../utils/logger';
 /**
  * Editor section instance type enumerator.
  */
-enum EditorSectionType {
+export enum EditorSectionType {
   /**
    * Represents a separator.
    */
-  Separator,
+  Separator = 1,
 
   /**
    * Represents a folder.
@@ -29,7 +29,9 @@ enum EditorSectionType {
 }
 
 /**
- * Loader bundle creation type.
+ * Script loader configuration type.
+ *
+ * This type is used to generate the script loader with the appropiate information.
  */
 type LoaderScriptConfig = {
   /**
@@ -40,7 +42,7 @@ type LoaderScriptConfig = {
   scriptsFolder: string;
 
   /**
-   * Loader script name.
+   * Loader script name shown in the RPG Maker built-in editor.
    */
   scriptName: string;
 
@@ -56,7 +58,7 @@ type LoaderScriptConfig = {
   /**
    * Error file name.
    *
-   * The file that creates the loader with the error output of the process.
+   * The file that creates the loader with the error output of the game process.
    */
   errorFileName: string;
 
@@ -860,7 +862,7 @@ export class ScriptsController
   async checkScripts(): Promise<number> {
     logger.logInfo(`Checking project's bundle scripts file status...`);
     let bundleFilePath = this._config?.bundleFilePath;
-    logger.logInfo(`Bundle file path is: "${bundleFilePath}"`);
+    logger.logInfo(`Bundle file path is: "${bundleFilePath?.fsPath}"`);
     if (!bundleFilePath) {
       throw new Error('Cannot check bundle scripts due to invalid values!');
     }
@@ -1172,6 +1174,9 @@ export class ScriptsController
     // Reads the load order file
     this._readLoadOrder();
 
+    // Scans the scripts directory for new files
+    this._scan();
+
     // Scans the scripts folder path for scripts that wasn't on the load order
 
     // Creates the watcher instance
@@ -1182,31 +1187,6 @@ export class ScriptsController
     // Sets the watcher callbacks
     this._watcher.onDidCreate((uri) => this._onDidCreate(uri));
     this._watcher.onDidDelete((uri) => this._onDidDelete(uri));
-  }
-
-  private _scan() {
-    // Checks for validness
-    if (!this._root) {
-      return false;
-    }
-
-    // Scan directory
-    let entries = filesys
-      .readDirectory(this._root.resourceUri.fsPath, {
-        recursive: true,
-        relative: true,
-      })
-      .map((value) => {
-        return vscode.Uri.joinPath(this._root!.resourceUri, value);
-      });
-
-    entries.forEach((entry) => {
-      let sectionType = this._sectionDetermineType(entry);
-      if (sectionType) {
-        this._root?.createChild(sectionType, entry);
-      }
-    });
-    return true;
   }
 
   /**
@@ -1236,62 +1216,43 @@ export class ScriptsController
   }
 
   /**
-   * Creates an editor section based on the given type and uri path.
+   * Scans the root directory recursively for new editor sections.
    *
-   * This method will create the filesystem entry of the given editor section if it does not exists.
-   * @param type Editor section type
-   * @param uri Editor section uri
-   * @param contents File contents
+   * This method scans the scripts folder for new entries that were not on the load order.
+   *
+   * This can happen if the extension is disabled and a new Ruby file (or a folder) was created.
+   *
+   * This method is not needed to be called again after the first scan, since the file watcher will be handling this on runtime.
+   * @returns Whether the scan was successful or not.
    */
-  private _sectionCreate(type: number, uri: vscode.Uri, contents?: string) {
-    let child = this._root?.createChild(type, uri);
-    if (child) {
-      child.setCheckboxState(true);
-      // Create file if it does not exists
-      if (!fs.existsSync(child.resourceUri.fsPath)) {
-        switch (child.type) {
-          case EditorSectionType.Separator: {
-            // Separators are not real files.
-            break;
-          }
-          case EditorSectionType.Script: {
-            fs.writeFileSync(uri.fsPath, contents || '', {
-              encoding: 'utf8',
-              flag: 'w',
-            });
-            break;
-          }
-          case EditorSectionType.Folder: {
-            this._createScriptsFolder(uri);
-            break;
-          }
+  private _scan() {
+    // Checks for validness
+    if (!this._root) {
+      return false;
+    }
+
+    // Scans directory for ruby files or folders.
+    let entries = filesys
+      .readDirectory(
+        this._root.resourceUri.fsPath,
+        {
+          recursive: true,
+        },
+        (entries) => {
+          return entries.filter(
+            (entry) => filesys.isFolder(entry) || filesys.isRubyFile(entry)
+          );
         }
+      )
+      .map((entry) => vscode.Uri.file(entry));
+
+    entries.forEach((entry) => {
+      let sectionType = this._sectionDetermineType(entry);
+      if (sectionType) {
+        this._sectionCreate(sectionType, entry);
       }
-    }
-  }
-
-  private _sectionDelete(uri: vscode.Uri) {}
-
-  /**
-   * Determines the appropiate editor section type based on the given uri path.
-   *
-   * If the type cannot be determined it returns ``null``.
-   * @param uri Uri section path.
-   * @returns The appropiate editor section type
-   */
-  private _sectionDetermineType(uri: vscode.Uri) {
-    if (filesys.isFolder(uri.fsPath)) {
-      // uri path references a folder
-      return EditorSectionType.Folder;
-    } else if (filesys.isRubyFile(uri.fsPath)) {
-      // Uri path references a Ruby file
-      return EditorSectionType.Script;
-    } else if (uri.fsPath.includes(EDITOR_SECTION_SEPARATOR_NAME)) {
-      // Uri path references a separator
-      return EditorSectionType.Separator;
-    } else {
-      return null;
-    }
+    });
+    return true;
   }
 
   /**
@@ -1349,7 +1310,7 @@ export class ScriptsController
 
       // Child creation
       if (sectionType) {
-        let child = this._root.createChild(sectionType, sectionPath);
+        let child = this._sectionCreate(sectionType, sectionPath);
         child?.setCheckboxState(sectionEnabled);
       }
     }
@@ -1389,6 +1350,70 @@ export class ScriptsController
     // Close file
     fs.closeSync(fd);
     return true;
+  }
+
+  /**
+   * Creates an editor section based on the given type and uri path.
+   *
+   * If the file system file does not exists, it will be created with the optional file ``contents`` given.
+   * @param type Editor section type
+   * @param uri Editor section uri
+   * @param contents File contents
+   */
+  private _sectionCreate(type: number, uri: vscode.Uri, contents?: string) {
+    // FIXME: What happens when an uri like "./Scripts/Does/not/exists/file.rb" is given?
+    // will all directories be created to create the file?
+    let child = this._root?.createChild(type, uri);
+    if (child) {
+      child.setCheckboxState(true);
+      // Create file if it does not exists
+      if (!fs.existsSync(child.resourceUri.fsPath)) {
+        switch (child.type) {
+          case EditorSectionType.Separator: {
+            // Separators are not real files.
+            break;
+          }
+          case EditorSectionType.Script: {
+            fs.writeFileSync(uri.fsPath, contents || '', {
+              encoding: 'utf8',
+              flag: 'w',
+            });
+            break;
+          }
+          case EditorSectionType.Folder: {
+            this._createScriptsFolder(uri);
+            break;
+          }
+        }
+      }
+    }
+    return child;
+  }
+
+  private _sectionDelete(uri: vscode.Uri) {
+    // TODO: Delete section and file on fs
+  }
+
+  /**
+   * Determines the appropiate editor section type based on the given uri path.
+   *
+   * If the type cannot be determined it returns ``null``.
+   * @param uri Uri section path.
+   * @returns The appropiate editor section type
+   */
+  private _sectionDetermineType(uri: vscode.Uri) {
+    if (filesys.isFolder(uri.fsPath)) {
+      // uri path references a folder
+      return EditorSectionType.Folder;
+    } else if (filesys.isRubyFile(uri.fsPath)) {
+      // Uri path references a Ruby file
+      return EditorSectionType.Script;
+    } else if (uri.fsPath.endsWith(EDITOR_SECTION_SEPARATOR_NAME)) {
+      // Uri path references a separator
+      return EditorSectionType.Separator;
+    } else {
+      return null;
+    }
   }
 
   /**
@@ -1471,7 +1496,7 @@ export class ScriptsController
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
-# Version: 1.1.6
+# Version: 1.2.0
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
@@ -1547,7 +1572,6 @@ module ScriptLoader
   #
   def self.run
     begin
-      prepare
       @scripts = 0
       load_order_path = File.join(SCRIPTS_PATH, '${config.loadOrderFileName}')
       log("Running script loader...")
@@ -1557,18 +1581,18 @@ module ScriptLoader
       load_order = File.read(load_order_path).split("\\n")
       # Start load order processing
       load_order.each do |script|
-        load_script(script.strip)
+        load_script(script)
       end
     rescue => e
-      # Exception handling must work only in test/dev mode
+      # Exception backtrace handling must work only in test/dev mode
       if test?
         # Notifies VSCode extension of the error
         File.open('${config.errorFileName}', 'w') do |file|
-          file.write("#{e.to_s}\\n#{e.backtrace}")
+          file.write(process_exception(e))
         end
-        # Raises again the exception to kill the process
-        raise e
       end
+      # Raises again the exception to kill the process
+      raise e
     end
     # Post-load logic
     unless loaded_scripts > 0
@@ -1583,31 +1607,55 @@ module ScriptLoader
   # @param path [String] Script path
   #
   def self.load_script(path)
-    # Handles the script
+    # Handles the script if valid
     if valid_entry?(path)
       log("Loading script: '#{path}'")
       @scripts = @scripts + 1
-      Kernel.send(:require, path)
+      script_file = process_path(path)
+      Kernel.send(:require, script_file)
     else
       log("Skipping: '#{path}'")
     end
   end
 
   #
-  # Prepares the module before attempting to run the loader.
+  # Processes the given path into an absolute path.
+  # 
+  # @param path [String] Script path.
   #
-  def self.prepare
-    scripts_path = File.directory?(SCRIPTS_PATH) ?
-    SCRIPTS_PATH :
-    File.join(Dir.pwd, SCRIPTS_PATH)
-    # Pushes current working directory (XP and VX comp.)
-    unless $:.include?('.')
-      $:.push('.')
-    end
-    # Pushes external scripts directory
-    unless $:.include?(scripts_path)
-    $:.push(scripts_path)
-    end
+  # @return [String] Processed path.
+  #
+  def self.process_path(path)
+    return File.expand_path(path, SCRIPTS_PATH)
+  end
+
+  #
+  # Parses the given exception into a string.
+  #
+  # VSCode extension can interpret a hash with the following information:
+  #   - type: Exception type.
+  #   - mesg: Exception message.
+  #   - back: Eception backtrace array.
+  #
+  # @param exception [Exception] Exception instance.
+  #
+  # @return [String] Exception stringified.
+  #
+  def self.process_exception(exception)
+    return Marshal.dump({
+      :type => exception.class.name,
+      :mesg => exception.message,
+      :back => exception.backtrace 
+    })
+  end
+
+  #
+  # Gets the number of scripts that were loaded.
+  #
+  # @return [Integer] Number of scripts.
+  #
+  def self.loaded_scripts
+    @scripts
   end
 
   #
@@ -1619,18 +1667,9 @@ module ScriptLoader
   #
   def self.valid_entry?(path)
     return false if path == nil
-    return false if path[0] == '${config.skipCharacter}'
+    return false if path.strip[0] == '${config.skipCharacter}'
     return false unless File.extname(path).downcase == '.rb'
     return true
-  end
-
-  #
-  # Gets the number of scripts that were loaded by this loader.
-  #
-  # @return [Integer] Number of scripts.
-  #
-  def self.loaded_scripts
-    @scripts
   end
 
   #
