@@ -40,8 +40,10 @@ export type ExtensionUiOptions<T> = {
    * Root of the tree view provider.
    *
    * This will be used by the view provider to provide data to the tree view.
+   *
+   * If it is ``undefined`` the tree view will be empty.
    */
-  treeRoot: T;
+  treeRoot?: T;
 
   /**
    * Drag and drop controller for the tree view.
@@ -105,7 +107,7 @@ export class ExtensionUI {
     // Updates view provider
     this._editorViewProvider.update(options.treeRoot);
 
-    // Re-creates tree view
+    // Creates the tree view
     this._editorView = vscode.window.createTreeView(
       'rgss-script-editor.editorView',
       {
@@ -137,15 +139,15 @@ export class ExtensionUI {
   }
 
   /**
-   * Reveals the appropiate script section in the tree view by the given ``path``.
-   * @param path Script section path.
+   * Reveals the appropiate script section in the tree view by the given ``uri`` path.
+   * @param uri Script section uri path.
    * @param options Reveal options.
    * @returns The script section revealed.
    */
-  revealInTreeView(path: vscode.Uri, options: ExtensionUiReveal) {
+  revealInTreeView(uri: vscode.Uri, options: ExtensionUiReveal) {
     if (this._editorView?.visible || options.force) {
       // Avoids conflicts with other container auto reveals
-      let section = this._editorViewProvider?.findTreeItem(path);
+      let section = this._editorViewProvider?.findTreeItem(uri);
       if (section) {
         this._editorView?.reveal(section, {
           select: options.select,
@@ -159,6 +161,12 @@ export class ExtensionUI {
 
   /**
    * Refreshes the UI contents.
+   *
+   * If ``isRoot`` is ``true``, it will update the current root and refresh the whole tree.
+   *
+   * Otherwise it will just refresh the given tree item and all of its children.
+   * @param treeItem Tree item to refresh
+   * @param isRoot Whether tree item is root or not
    */
   refresh(treeItem: EditorSectionBase, isRoot?: boolean) {
     if (isRoot) {

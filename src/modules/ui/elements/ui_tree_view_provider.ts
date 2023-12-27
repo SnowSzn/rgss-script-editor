@@ -51,7 +51,7 @@ export class EditorViewProvider
    * This method triggers a refresh on the tree since data has been updated.
    * @param root Script section root
    */
-  update(root: EditorSectionBase) {
+  update(root?: EditorSectionBase) {
     this._root = root;
     this.refresh();
   }
