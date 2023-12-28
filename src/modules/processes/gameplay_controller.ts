@@ -332,7 +332,7 @@ export class GameplayController {
       );
       // Checks output file for possible exceptions that killed the game
       let output = this._config.gameOutputPath?.fsPath;
-      if (output) {
+      if (output && fs.existsSync(output)) {
         // If file exists, an exception ocurred in the last game session
         let contents = fs.readFileSync(output);
         let rubyError = marshal.load(contents, {
