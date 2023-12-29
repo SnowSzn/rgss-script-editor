@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as manager from './modules/manager';
+import * as fs from 'fs';
 
 // TODO: Create extension
 /*
@@ -38,14 +39,7 @@ import * as manager from './modules/manager';
           - Por cada entrada que exista, se creara una EditorSection apropiada.
           - Si la entrada no existe, se ignora.
 
-      3. Quitar la necesidad de insertar un prefijo a los ficheros cuando se extraen.
-        3.1 En lugar de prefijar todos los ficheros con un indice (0001 - ) se podria crear las instancias de EditorSection
-        mientras se extrae, de tal forma que cuando termine la extraccion, todos los ficheros estarian ordenados.
-
-      4. Implementar un comando ``scan()`` para leer recursivamente la carpeta de scripts buscando ficheros Ruby que hayan
-      sido creados mientras VSCode estaba cerrado.
-
-      5. Opcional: Hacer que la extension pueda leer opciones de un fichero JSON en la carpeta del proyecto
+      3. Opcional: Hacer que la extension pueda leer opciones de un fichero JSON en la carpeta del proyecto
       por ejemplo: un fichero 'rgss-script-editor.json' que sobreescribirá al configuracion
       de VSCode (en configuration.ts), si gameName en VSCode es 'Game.exe'
       en el fichero local se podria cambiar el gameName a 'Juego.exe' y la extension
@@ -62,26 +56,27 @@ import * as manager from './modules/manager';
  */
 export function activate(context: vscode.ExtensionContext) {
   // **********************************************************
+  // Basic configuration
+  // **********************************************************
   // VSCode Configuration change event.
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event) => {
-      if (
-        event.affectsConfiguration('rgssScriptEditor.external.scriptsFolder')
-      ) {
-        vscode.window.showInformationMessage(
-          'External scripts folder path change detected!'
-        );
-        manager.start();
-      }
+      // if (
+      //   event.affectsConfiguration('rgssScriptEditor.external.scriptsFolder')
+      // ) {
+      // }
+      // Forces a restart so extension knows about the new change
+      manager.restart();
     })
   );
-  // **********************************************************
   // VSCode Tree view update active file
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor((editor) => {
-      manager.updateActiveFile(editor);
+      manager.updateTextEditor(editor);
     })
   );
+  // **********************************************************
+  // User commands
   // **********************************************************
   // Set project folder command
   context.subscriptions.push(
@@ -101,7 +96,6 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
-  // **********************************************************
   // Open project folder command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -111,14 +105,12 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
-  // **********************************************************
   // Extract scripts
   context.subscriptions.push(
     vscode.commands.registerCommand('rgss-script-editor.extractScripts', () => {
       manager.extractScripts();
     })
   );
-  // **********************************************************
   // Create script loader
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -128,7 +120,6 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
-  // **********************************************************
   // Create bundle file from extracted scripts
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -138,41 +129,53 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
-  // **********************************************************
   // Run game command
   context.subscriptions.push(
     vscode.commands.registerCommand('rgss-script-editor.runGame', () => {
       manager.runGame();
     })
   );
-  // **********************************************************
-  // Reveal script section
+  // Process game exception
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      'rgss-script-editor.revealScriptSection',
+      'rgss-script-editor.processGameException',
+      () => {
+        manager.processGameException();
+      }
+    )
+  );
+  // Choose drop mode command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('rgss-script-editor.chooseDropMode', () => {
+      manager.chooseDropMode();
+    })
+  );
+  // Reveal script section on VSCode explorer
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.revealInVSCodeExplorer',
       (what) => {
-        manager.revealScriptSection(what);
+        manager.revealInVSCodeExplorer(what);
       }
     )
   );
   // Create script command
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      'rgss-script-editor.createScriptSection',
+      'rgss-script-editor.sectionCreate',
       (what) => {
         vscode.window
           .showQuickPick(
             ['Create Script', 'Create Folder', 'Create Separator'],
             {
+              title: 'Section Creation',
               placeHolder: 'Choose the type of section to create',
               canPickMany: false,
-              ignoreFocusOut: false,
-              title: 'RGSS Script Editor',
             }
           )
           .then((option) => {
             if (option) {
-              manager.createScriptSection(what, option);
+              manager.sectionCreate(what, option);
             } else {
               // vscode.window.showInformationMessage(
               //   'You must select a valid option to create a script section!'
@@ -185,52 +188,35 @@ export function activate(context: vscode.ExtensionContext) {
   // Delete script command
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      'rgss-script-editor.deleteScriptSection',
+      'rgss-script-editor.sectionDelete',
       (what) => {
-        manager.deleteScriptSection(what);
+        manager.sectionDelete(what);
       }
     )
   );
   // Rename script command
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      'rgss-script-editor.renameScriptSection',
+      'rgss-script-editor.sectionRename',
       (what) => {
-        manager.renameScriptSection(what);
+        manager.sectionRename(what);
       }
     )
   );
   // Alternate load status script command
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      'rgss-script-editor.alternateLoadScriptSection',
+      'rgss-script-editor.sectionAlternateLoad',
       (what) => {
-        manager.alternateLoadScriptSection(what);
+        manager.sectionAlternateLoad(what);
       }
     )
   );
-  // TODO: Refresh controllers?
+  // TODO: eliminar comando e intentar que se refresce automaticamente en el codigo
   context.subscriptions.push(
     vscode.commands.registerCommand('rgss-script-editor.refresh', () => {
       manager.refresh();
     })
-  );
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'rgss-script-editor.alternateDropMode',
-      () => {
-        manager.alternateDropMode();
-      }
-    )
-  );
-  // Process game exception
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'rgss-script-editor.processGameException',
-      () => {
-        manager.processGameException();
-      }
-    )
   );
   // **********************************************************
   // Open load order txt file.
@@ -250,9 +236,9 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
   // **********************************************************
-  // Start extension
-  manager.start();
+  // Start extension logic
   // **********************************************************
+  manager.restart();
 }
 
 /**

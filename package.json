@@ -84,6 +84,18 @@
         "icon": "$(warning)"
       },
       {
+        "command": "rgss-script-editor.chooseDropMode",
+        "title": "Choose Editor Drop Mode",
+        "category": "RGSS Script Editor",
+        "icon": "$(insert)"
+      },
+      {
+        "command": "rgss-script-editor.revealInVSCodeExplorer",
+        "title": "Reveal in Explorer...",
+        "category": "RGSS Script Editor",
+        "icon": "$(eye)"
+      },
+      {
         "command": "rgss-script-editor.openLoadOrder",
         "title": "Open Load Order File",
         "category": "RGSS Script Editor",
@@ -96,31 +108,25 @@
         "icon": "$(sync~spin)"
       },
       {
-        "command": "rgss-script-editor.revealScriptSection",
-        "title": "Reveal in Explorer...",
-        "category": "RGSS Script Editor",
-        "icon": "$(eye)"
-      },
-      {
-        "command": "rgss-script-editor.createScriptSection",
-        "title": "Create...",
+        "command": "rgss-script-editor.sectionCreate",
+        "title": "Create Section...",
         "category": "RGSS Script Editor",
         "icon": "$(new-file)"
       },
       {
-        "command": "rgss-script-editor.deleteScriptSection",
-        "title": "Delete...",
+        "command": "rgss-script-editor.sectionDelete",
+        "title": "Delete Section...",
         "category": "RGSS Script Editor",
         "icon": "$(trash)"
       },
       {
-        "command": "rgss-script-editor.renameScriptSection",
-        "title": "Rename...",
+        "command": "rgss-script-editor.sectionRename",
+        "title": "Rename Section...",
         "category": "RGSS Script Editor",
         "icon": "$(edit)"
       },
       {
-        "command": "rgss-script-editor.alternateLoadScriptSection",
+        "command": "rgss-script-editor.sectionAlternateLoad",
         "title": "Alternate Load Status...",
         "category": "RGSS Script Editor",
         "icon": "$(arrow-swap)"
@@ -130,17 +136,11 @@
         "title": "Refresh...",
         "category": "RGSS Script Editor",
         "icon": "$(sync~spin)"
-      },
-      {
-        "command": "rgss-script-editor.alternateDropMode",
-        "title": "Alternate Drop Mode",
-        "category": "RGSS Script Editor",
-        "icon": "$(arrow-swap)"
       }
     ],
     "configuration": [
       {
-        "title": "_RGSS Script Editor",
+        "title": "RGSS Script Editor",
         "properties": {
           "rgssScriptEditor.debug.logToConsole": {
             "type": "boolean",
@@ -239,11 +239,21 @@
         "command": "rgss-script-editor.runGame",
         "key": "F12",
         "when": "rgss-script-editor.openedFolder"
+      }, 
+      {
+        "command": "rgss-script-editor.sectionRename",
+        "key": "F2",
+        "when": "focusedView == 'rgss-script-editor.editorView'"
       },
       {
-        "command": "rgss-script-editor.alternateDropMode",
-        "key": "F9",
-        "when": "rgss-script-editor.openedFolder"
+        "command": "rgss-script-editor.sectionCreate",
+        "key": "insert",
+        "when": "focusedView == 'rgss-script-editor.editorView'"
+      },
+      {
+        "command": "rgss-script-editor.sectionDelete",
+        "key": "delete",
+        "when": "focusedView == 'rgss-script-editor.editorView'"
       }
     ],
     "viewsContainers": {
@@ -290,16 +300,12 @@
     "menus": {
       "view/title": [
         {
-          "command": "rgss-script-editor.updateLoadOrder",
+          "command": "rgss-script-editor.chooseDropMode",
           "when": "view == rgss-script-editor.editorView",
-          "group": "navigation"   
+          "group": "navigation"
         },
         {
-          "command": "rgss-script-editor.createScriptSection",
-          "when": "view == rgss-script-editor.editorView"
-        },
-        {
-          "command": "rgss-script-editor.alternateLoadScriptSection",
+          "command": "rgss-script-editor.sectionCreate",
           "when": "view == rgss-script-editor.editorView"
         },
         {
@@ -309,23 +315,23 @@
       ],
       "view/item/context": [
         {
-          "command": "rgss-script-editor.revealScriptSection",
+          "command": "rgss-script-editor.revealInVSCodeExplorer",
           "when": "view == rgss-script-editor.editorView"
         },
         {
-          "command": "rgss-script-editor.createScriptSection",
+          "command": "rgss-script-editor.sectionCreate",
           "when": "view == rgss-script-editor.editorView"
         },
         {
-          "command": "rgss-script-editor.renameScriptSection",
+          "command": "rgss-script-editor.sectionRename",
           "when": "view == rgss-script-editor.editorView"
         },
         {
-          "command": "rgss-script-editor.deleteScriptSection",
+          "command": "rgss-script-editor.sectionDelete",
           "when": "view == rgss-script-editor.editorView"
         },
         {
-          "command": "rgss-script-editor.alternateLoadScriptSection",
+          "command": "rgss-script-editor.sectionAlternateLoad",
           "when": "view == rgss-script-editor.editorView"
         }
       ]

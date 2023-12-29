@@ -8,9 +8,17 @@ import { GameplayController } from './processes/gameplay_controller';
 import {
   EditorSectionType,
   EditorSectionBase,
+  ControllerDropMode,
   ScriptsController,
 } from './processes/scripts_controller';
 import { ExtensionUI } from './ui/ui_extension';
+
+/**
+ * Editor section alternate load type.
+ */
+type AlternateLoadMatrix = Array<
+  [EditorSectionBase, vscode.TreeItemCheckboxState | boolean]
+>;
 
 /**
  * Extension extensionConfig.
@@ -43,13 +51,20 @@ events.registerEvent(events.EVENT_REFRESH, (treeItem: EditorSectionBase) => {
  * Extension start logic.
  * @returns A promise.
  */
-export async function start() {
+export async function restart() {
   logger.logInfo('Starting RGSS Script Editor...');
-  if (extensionConfig.configQuickstart()) {
-    quickStart();
+  let currentFolder = extensionConfig.getInfo();
+  if (currentFolder) {
+    // Folder is opened already, open it again to refresh configuration
+    await setProjectFolder(currentFolder.projectFolderPath);
   } else {
-    logger.logWarning('Quickstart is disabled!');
-    logger.logInfo('To open a folder you can use the command palette.');
+    // No folder opened, falls to quickstart
+    if (extensionConfig.configQuickstart()) {
+      quickStart();
+    } else {
+      logger.logWarning('Quickstart is disabled!');
+      logger.logInfo('To open a folder you can use the command palette.');
+    }
   }
 }
 
@@ -71,7 +86,7 @@ export async function quickStart() {
     );
     extensionUI.control({ changeProjectFolder: true });
   } else {
-    logger.logWarning(
+    logger.logInfo(
       'No valid RPG Maker folder was detected in the current workspace'
     );
     extensionUI.hide();
@@ -229,7 +244,7 @@ export async function extractScripts() {
  */
 export async function openLoadOrderFile() {
   try {
-    let loadOrderFile = extensionScripts.getLoadOrderFilePath();
+    let loadOrderFile = extensionScripts.loadOrderFilePath;
     if (loadOrderFile) {
       vscode.commands.executeCommand('vscode.open', loadOrderFile);
     }
@@ -240,7 +255,6 @@ export async function openLoadOrderFile() {
 
 // TODO: Since extension will update automatically the load order file
 // this command should be deleted to avoid confusion.
-
 /**
  * Creates the load order file within the current scripts folder path.
  * @returns A promise
@@ -392,37 +406,10 @@ export async function processGameException() {
   }
 }
 
-/**
- * Updates the selected script section on the tree view to match the file opened in the given text editor.
- *
- * Extension auto-reveal functionality must be enabled.
- * @param editor Text editor instance.
- * @returns A promise.
- */
-export async function updateActiveFile(editor: vscode.TextEditor | undefined) {
-  if (editor && extensionConfig.configAutoReveal()) {
-    extensionUI.revealInTreeView(editor.document.uri, {
-      select: true,
-      expand: true,
-    });
-  }
-}
-
 // TODO: Needs a refactor
 // Also specify args types
 
-export async function revealScriptSection(what: any) {
-  let selected = extensionUI.getTreeSelection();
-  if (selected && selected.length > 1) {
-    logger.logWarning('You must select a single script section to reveal it!');
-  } else if (!(what as EditorSectionBase).isType(EditorSectionType.Separator)) {
-    console.log(`revealing: "${what}"`);
-    let path = (what as EditorSectionBase).resourceUri;
-    vscode.commands.executeCommand('revealInExplorer', path);
-  }
-}
-
-export async function createScriptSection(what: any, option: any) {
+export async function sectionCreate(what: any, option: any) {
   // Creating from root?
   if (!(what instanceof EditorSectionBase)) {
     // Root creation
@@ -439,7 +426,7 @@ export async function createScriptSection(what: any, option: any) {
   }
 }
 
-export async function deleteScriptSection(what: any) {
+export async function sectionDelete(what: any) {
   let selected = extensionUI.getTreeSelection();
   if (selected) {
     console.log(`Deleted: ${selected}`);
@@ -448,82 +435,172 @@ export async function deleteScriptSection(what: any) {
   }
 }
 
-export async function renameScriptSection(what: any) {
+export async function sectionRename(section?: EditorSectionBase) {
+  // Check for selected tree items
   let selected = extensionUI.getTreeSelection();
-  if (selected && selected.length > 1) {
-    logger.logWarning(
-      'You must select only a single script section to rename it!'
-    );
-  } else {
-    console.log(`Renamed: ${what}`);
+  let item = section;
+  if (selected) {
+    item = selected.length > 1 ? section : selected[0];
   }
-}
-
-export async function alternateLoadScriptSection(what: any) {
-  // Alternating from root?
-  // TODO: UI Controller calls this method to alternate single scripts, the format is:
-  // [[ScriptSection1, checkboxState1], [ScriptSection2, checkboxState2], [ScriptSection3, checkboxState3]]
-  // TODO: IMPORTANT
-  // Cuando un tree item se activa o desactiva, hay que actualizar el valor de todos sus hijos.
-  // normalmente VSCode lo haria automaticamente, pero parece ser que cuando un tree item con hijos
-  // esta en estado "Collapsed", no se actualiza bien los hijos y se quedan con el estado anterior
-  // esto provoca que no se actualice bien el load_order.txt
-  // puede que tenga que poner la opcion "manageCheckboxStateManually" del tree view a ``true``
-  // para evitar que VSCode cambie el checkbox de los hijos automaticamente.
-  if (!(what instanceof EditorSectionBase)) {
-    // Root alternation
-    console.log(`Alternating all scripts`);
+  // Check validness
+  if (!item) {
+    return;
   }
-  let selected = extensionUI.getTreeSelection();
-  if (selected && selected.length > 1) {
-    console.log(selected);
-  } else {
-    console.log(what);
+  // Rename section based on type
+  switch (item.type) {
+    case EditorSectionType.Folder:
+    case EditorSectionType.Script: {
+      let name = await vscode.window.showInputBox({
+        title: `Renaming: ${item.label}`,
+        placeHolder: 'Type a new name for this section...',
+        value: item.label?.toString(),
+        validateInput(value) {
+          return extensionScripts.validateName(value)
+            ? null
+            : 'Input contains invalid characters or words!';
+        },
+      });
+      if (name) {
+        extensionScripts.renameSection(item, name);
+        refresh();
+      }
+      break;
+    }
   }
-  // TODO: UI must be refreshed everytime root is changed
-  refresh();
-}
-
-export async function alternateDropMode() {
-  // TODO: Alternates the extension scripts controller drop mode
-  // If a file is in MOVE mode and it is dropped on a folder, it will take the next priority value.
-  // If a file is in CREATE mode and it is dropped on a folder, it will be inserted as a child.
-  //
-  // Se podria alternar de la siguiente forma:
-  // const enum DropModes {
-  //   MOVE,
-  //   MERGE,
-  // }
-
-  // const Modes = [DropModes.MOVE, DropModes.MERGE];
-  // let currentMode = DropModes.MOVE; // MOVE por ejemplo
-  // currentMode = (Modes.indexOf(currentMode) + 1) % Modes.length;
-  //
-  // Con estas lineas se cambia el modo de forma ciclica
-  logger.logInfo('Alternating drop mode!');
 }
 
 /**
- * Refreshes the extension UI.
+ * Alternates the load status (checkbox) of the given element or elements.
+ *
+ * If a {@link AlternateLoadMatrix} is given, it must be a list of arrays with the section
+ * instance along with the checkbox status.
+ *
+ * If a single element is given, it will check the current tree selection and alternate
+ * the checkbox of the given element or the list of selected elements accordingly.
+ * @param section Editor section
+ * @returns A promise
+ */
+export async function sectionAlternateLoad(
+  section?: EditorSectionBase | AlternateLoadMatrix
+) {
+  // Check section validness
+  if (!section) {
+    return;
+  }
+
+  // Prepare the list of items to alternate
+  let items: AlternateLoadMatrix = [];
+  if (section instanceof Array) {
+    // A list was given already
+    items = section;
+  } else if (section instanceof EditorSectionBase) {
+    // Create list based on the current tree selection
+    for (let item of extensionUI.getTreeSelection() || [section]) {
+      items.push([item, !item.isLoaded()]);
+    }
+  }
+
+  // Alternate load status
+  for (let matrix of items) {
+    const item = matrix[0];
+    const load = matrix[1];
+    extensionScripts.alternateSectionLoad(item, load);
+  }
+  refresh();
+}
+
+/**
+ * Reveals the given editor section file system entry on the VSCode built-in file explorer.
+ * @param section Editor section
+ * @returns A promise
+ */
+export async function revealInVSCodeExplorer(section?: EditorSectionBase) {
+  // Check section validness
+  if (!section) {
+    return;
+  }
+  // Reveal file based on type
+  switch (section.type) {
+    case EditorSectionType.Script:
+    case EditorSectionType.Folder: {
+      vscode.commands.executeCommand('revealInExplorer', section.resourceUri);
+      break;
+    }
+  }
+}
+
+/**
+ * Chooses the current drop mode.
+ *
+ * Allows the editor to behave different for drag and drop operations.
+ */
+export async function chooseDropMode() {
+  // Show drop mode selector
+  let curDropMode = extensionScripts.getDropModeString();
+  let value = await vscode.window.showQuickPick(['Merge', 'Move'], {
+    title: `Current Drop Mode: ${curDropMode}`,
+    placeHolder: 'Choose the active drop mode',
+    canPickMany: false,
+  });
+  // Update drop mode
+  if (value) {
+    logger.logInfo(`Setting drop mode to: ${value}`);
+    if (value === 'Merge') {
+      extensionScripts.setDropMode(ControllerDropMode.MERGE);
+    } else if (value === 'Move') {
+      extensionScripts.setDropMode(ControllerDropMode.MOVE);
+    }
+  }
+}
+
+/**
+ * Refreshes the extension editor.
+ *
+ * Both the editor tree items and the load order file are updated.
  *
  * If a specific tree item is given, it will refresh that tree item and all of its children.
- *
- * Call ``refresh()`` with no arguments to force a root refresh.
  * @param treeItem Tree item to refresh.
  */
 export async function refresh(treeItem?: EditorSectionBase) {
-  // TODO: Esta funcion deberia ser llamada cada vez que ocurra un cambio en el root del arbol
-  // ademas, prodria actualizar el fichero load order para que existe consistencia entre el arbol
-  // de VSCode y el load order que se carga cuando se ejecuta el juego.
-  if (treeItem) {
-    // Refresh the given tree item
-    extensionUI.refresh(treeItem);
-  } else {
-    // Force root refresh
-    let root = extensionScripts.root;
-    if (root) {
-      extensionUI.refresh(root, true);
+  try {
+    let item = treeItem ?? extensionScripts.root;
+    if (item) {
+      // Refreshes item/root based on the given argument
+      extensionUI.refresh(item, !treeItem);
+      // Updates load order file to match the current VSCode editor tree
+      let response = await extensionScripts.updateLoadOrderFile();
+      if (response === 0) {
+        logger.logWarning('Load order TXT file is empty!');
+        logger.logWarning(
+          'You should use the RGSS Script Editor view in VSCode to load scripts'
+        );
+        logger.logWarning(
+          'If load order TXT file is left empty, the game will not work at all!'
+        );
+      } else {
+        logger.logInfo(
+          `${response} entries were written in the load order TXT file.`
+        );
+      }
     }
+  } catch (error) {
+    logger.logErrorUnknown(error);
+  }
+}
+
+/**
+ * Updates the selected script section on the tree view to match the file opened in the given text editor.
+ *
+ * Extension auto-reveal functionality must be enabled.
+ * @param editor Text editor instance.
+ * @returns A promise.
+ */
+export async function updateTextEditor(editor?: vscode.TextEditor) {
+  if (editor && extensionConfig.configAutoReveal()) {
+    extensionUI.revealInTreeView(editor.document.uri, {
+      select: true,
+      expand: true,
+    });
   }
 }
 

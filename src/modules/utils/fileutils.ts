@@ -9,11 +9,6 @@ export type Options = {
    * Recursive flag.
    */
   recursive?: boolean;
-
-  /**
-   * Flag option.
-   */
-  flag?: string;
 };
 
 /**
@@ -81,41 +76,14 @@ export function isRubyFile(file: string): boolean {
 }
 
 /**
- * Returns ``true`` if the entry path exists, ``false`` otherwise.
- * @param entry Entry path
- * @returns Whether entry exists or not.
- */
-export function exists(entry: string | undefined | null) {
-  if (!entry) {
-    return false;
-  }
-  return fs.existsSync(entry);
-}
-
-/**
  * Creates a folder in the given path.
  * @param folderPath Path to the folder.
  * @param options Options.
  */
 export function createFolder(folderPath: string, options?: WriteOptions) {
-  if (!fs.existsSync(folderPath)) {
+  if (!fs.existsSync(folderPath) || options?.overwrite) {
     fs.mkdirSync(folderPath, { recursive: options?.recursive });
   }
-}
-
-/**
- * Deletes the item specified by the given ``item`` path.
- *
- * If the deletion is successful it returns ``true``, otherwise ``false``.
- * @param item Item path
- * @returns Deletion result.
- */
-export function remove(item: string): boolean {
-  if (isFile(item) || isFolder(item)) {
-    fs.unlinkSync(item);
-    return true;
-  }
-  return false;
 }
 
 /**
@@ -144,51 +112,6 @@ export function copyFile(
     destination,
     options?.overwrite ? undefined : fs.constants.COPYFILE_EXCL
   );
-}
-
-/**
- * Reads the text file specified by ``file`` and returns its contents.
- *
- * If ``file`` is not file or it does not exists it returns ``undefined``.
- *
- * If a ``process`` callback is given, it will called to process the contents and returns the results.
- * @param file File path.
- * @param process Process contents callback.
- * @returns Returns the file contents.
- */
-export function readTextFile<T>(
-  file: string,
-  process?: (contents: string) => T
-) {
-  let fileContents = fs.readFileSync(file, { encoding: 'utf8' });
-  return process ? process(fileContents) : fileContents;
-}
-
-/**
- * Writes a new text file specified by ``path``.
- *
- * The file is written with ``utf-8`` encoding by default.
- *
- * The ``recursive`` flag can be used to create all folders needed to write the file.
- * @param file File path.
- * @param contents File contents.
- * @param options Write options.
- */
-export function writeTextFile(
-  file: string,
-  contents: string,
-  options?: WriteOptions
-) {
-  // Creates folder first if it does not exist and recursiveness is enabled
-  let dir = path.dirname(file);
-  if (options?.recursive) {
-    createFolder(dir, { recursive: true });
-  }
-  // Creates new file.
-  fs.writeFileSync(file, contents, {
-    encoding: 'utf8',
-    flag: options?.flag,
-  });
 }
 
 /**

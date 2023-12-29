@@ -114,7 +114,7 @@ export class ExtensionUI {
         treeDataProvider: this._editorViewProvider,
         dragAndDropController: options.dragAndDropController,
         canSelectMany: true,
-        manageCheckboxStateManually: false,
+        manageCheckboxStateManually: true,
         showCollapseAll: true,
       }
     );
@@ -122,7 +122,7 @@ export class ExtensionUI {
     // Checkbox click callback.
     this._editorView.onDidChangeCheckboxState((e) => {
       vscode.commands.executeCommand(
-        'rgss-script-editor.alternateLoadScriptSection',
+        'rgss-script-editor.sectionAlternateLoad',
         e.items
       );
     });

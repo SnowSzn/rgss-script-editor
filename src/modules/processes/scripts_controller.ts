@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as zlib from 'zlib';
 import * as marshal from '@hyrious/marshal';
 import * as vscode from 'vscode';
-import * as filesys from '../utils/filesystem';
+import * as fileutils from '../utils/fileutils';
 import { TextDecoder } from 'util';
 import { Configuration } from '../utils/configuration';
 import { logger } from '../utils/logger';
@@ -11,7 +11,7 @@ import { logger } from '../utils/logger';
 /**
  * Editor section instance type enumerator.
  */
-export enum EditorSectionType {
+export const enum EditorSectionType {
   /**
    * Represents a separator.
    */
@@ -26,6 +26,14 @@ export enum EditorSectionType {
    * Represents a Ruby script file.
    */
   Script,
+}
+
+/**
+ * Script controller drop mode enumerator.
+ */
+export const enum ControllerDropMode {
+  MERGE = 1,
+  MOVE,
 }
 
 /**
@@ -71,7 +79,8 @@ type LoaderScriptConfig = {
 /**
  * Regexp of invalid characters for Windows, Linux-based systems and this extension.
  */
-const INVALID_CHARACTERS = /[\\/:\*\?"<>\|#▼■]/g;
+const INVALID_CHARACTERS =
+  /[\\/:\*\?"<>\|#▼■]|(\bCON\b|\bPRN\b|\bAUX\b|\bNUL\b|\bCOM[1-9]\b|\bLPT[1-9]\b)/g;
 
 /**
  * Load order file name within the scripts folder.
@@ -247,6 +256,22 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   }
 
   /**
+   * Gets this editor section directory uri.
+   * @returns Editor section directory
+   */
+  getDirectory(): vscode.Uri {
+    return vscode.Uri.file(path.dirname(this.resourceUri.fsPath));
+  }
+
+  /**
+   * Gets this editor section base name.
+   * @returns Editor section name.
+   */
+  getBaseName(): string {
+    return path.basename(this.resourceUri.fsPath);
+  }
+
+  /**
    * Sets this instance prioriry to the given ``priority`` value.
    * @param priority Editor section priority.
    */
@@ -418,6 +443,19 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   }
 
   /**
+   * Checks if this instance has a child instance with the given ``name``.
+   *
+   * File name extension is also checked.
+   * @param name Section name.
+   * @returns Whether it has a child with the given name or not.
+   */
+  hasChildName(name: string) {
+    return this._children.some((child) => {
+      child.getBaseName() === name;
+    });
+  }
+
+  /**
    * Checks if this editor section instance has children instances or not.
    * @returns Whether it has children or not.
    */
@@ -462,6 +500,47 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
     });
     // Resets children list
     this._children = [];
+  }
+
+  /**
+   * Alternates this editor section load status checkbox.
+   *
+   * This method also updates the status of all child instances.
+   * @param state Checkbox state.
+   */
+  alternateLoad(state?: vscode.TreeItemCheckboxState | boolean) {
+    // Updates this editor section checkbox
+    this.setCheckboxState(state);
+    // Performs the change on all children instances
+    this._children.forEach((child) => {
+      child.alternateLoad(state);
+    });
+  }
+
+  /**
+   * Renames this editor section instance to ``name``.
+   *
+   * Both the tree item label and resource uri are updated with the new name.
+   *
+   * The item label is automatically derived from the new uri path.
+   *
+   * This method updates all children to the new path in case this instance has children.
+   * @param name New name
+   */
+  rename(name: string) {
+    // Formats path using the parent reference if available
+    let uri = vscode.Uri.joinPath(
+      this.parent?.resourceUri || this.getDirectory(),
+      name
+    );
+    this.label = path.parse(uri.fsPath).name;
+    this.resourceUri = uri;
+    this._reset();
+    // Update children if this instance has children
+    this._children.forEach((child) => {
+      let childName = child.getBaseName();
+      child.rename(childName);
+    });
   }
 
   /**
@@ -791,6 +870,11 @@ export class ScriptsController
   private _root?: EditorSectionFolder;
 
   /**
+   * Controller drop mode.
+   */
+  private _dropMode: ControllerDropMode;
+
+  /**
    * UTF-8 text decoder instance.
    */
   private _textDecoder: TextDecoder;
@@ -809,6 +893,7 @@ export class ScriptsController
    * Constructor.
    */
   constructor() {
+    this._dropMode = ControllerDropMode.MERGE;
     this._textDecoder = new TextDecoder('utf8');
   }
 
@@ -822,28 +907,42 @@ export class ScriptsController
   /**
    * Root editor section instance.
    */
-  public get root() {
+  get root() {
     return this._root;
   }
 
   /**
-   * Gets the load order TXT file absolute path.
-   *
-   * It returns ``undefined`` in case path to the load order file cannot be determined.
-   * @returns Absolute path to the load oder file.
+   * Controller drop mode.
    */
-  getLoadOrderFilePath() {
-    let scriptsFolderPath = this._config?.scriptsFolderPath;
-    if (scriptsFolderPath) {
-      return vscode.Uri.joinPath(scriptsFolderPath, LOAD_ORDER_FILE_NAME);
+  get dropMode() {
+    return this._dropMode;
+  }
+
+  /**
+   * Gets the current drop mode as a string.
+   * @returns Drop mode stringified
+   */
+  getDropModeString() {
+    switch (this._dropMode) {
+      case ControllerDropMode.MERGE:
+        return 'Merge';
+      case ControllerDropMode.MOVE:
+        return 'Move';
+      default:
+        return 'Unknown';
     }
-    return undefined;
+  }
+
+  /**
+   * Sets the controller drop mode to the given value.
+   * @param mode Drop mode
+   */
+  setDropMode(mode: ControllerDropMode) {
+    this._dropMode = mode;
   }
 
   /**
    * Updates the scripts controller instance attributes.
-   *
-   * If the given configuration instance is valid, it restarts this controller.
    * @param config Configuration.
    */
   update(config: Configuration) {
@@ -903,7 +1002,7 @@ export class ScriptsController
     let bundle = this._readBundleFile(bundleFilePath.fsPath);
     if (this._checkValidExtraction(bundle)) {
       // Creates scripts folder if it does not exists.
-      this._createScriptsFolder(scriptsFolderPath);
+      fileutils.createFolder(scriptsFolderPath.fsPath, { recursive: true });
 
       // Perform extraction loop.
       for (let i = 0; i < bundle.length; i++) {
@@ -913,30 +1012,32 @@ export class ScriptsController
         }
         let baseName = bundle[i][1] as string;
         let baseCode = bundle[i][2] as string;
+        let sectionPath = undefined;
+        let sectionCode = undefined;
+        // Determine the editor section to create
         if (baseName.trim().length === 0 && baseCode.trim().length === 0) {
-          // Untitled script and empty code block
-          let uri = vscode.Uri.joinPath(
+          // Untitled script with an empty code block: Separator
+          sectionPath = vscode.Uri.joinPath(
             scriptsFolderPath,
             EDITOR_SECTION_SEPARATOR_NAME
           );
-          this._sectionCreate(EditorSectionType.Separator, uri);
+          sectionCode = undefined;
         } else if (baseName.trim().length === 0) {
-          // Untitled script with code
-          let uri = vscode.Uri.joinPath(
+          // Untitled script with code: Script
+          sectionPath = vscode.Uri.joinPath(
             scriptsFolderPath,
             `Untitled Script ${i}.rb`
           );
-          let code = this._formatScriptCode(baseCode);
-          this._sectionCreate(EditorSectionType.Script, uri, code);
+          sectionCode = this._formatScriptCode(baseCode);
         } else {
-          // Titled script
-          let uri = vscode.Uri.joinPath(
+          // Titled script: Script
+          sectionPath = vscode.Uri.joinPath(
             scriptsFolderPath,
             this._formatScriptName(baseName)
           );
-          let code = this._formatScriptCode(baseCode);
-          this._sectionCreate(EditorSectionType.Script, uri, code);
+          sectionCode = this._formatScriptCode(baseCode);
         }
+        this._sectionCreate(sectionPath, sectionCode);
       }
       return ScriptsController.SCRIPTS_EXTRACTED;
     } else {
@@ -982,7 +1083,7 @@ export class ScriptsController
     logger.logInfo(`Resolved back up file: ${backUpFilePath.fsPath}`);
     logger.logInfo('Backing up original RPG Maker bundle file...');
     // Create backup of the bundle file
-    filesys.copyFile(bundleFilePath.fsPath, backUpFilePath.fsPath, {
+    fileutils.copyFile(bundleFilePath.fsPath, backUpFilePath.fsPath, {
       recursive: true,
       overwrite: true,
     });
@@ -1027,14 +1128,6 @@ export class ScriptsController
    * @returns A promise.
    */
   async updateLoadOrderFile(): Promise<number> {
-    // TODO: Hacer que este metodo se llama por cada 'refresh' que ocurra en la extension:
-    //  - Cualquier modificacion del tree view
-    //    -> Se cambia de nombre un fichero.
-    //    -> Se activa/desactiva el checkbox de un fichero.
-    //    -> Se elimina un fichero (que estaba activado)
-    //    -> TBD...
-    //
-    // Dentro de la funcion refresh() de manager.ts, llamar a este metodo?
     logger.logInfo(`Updating load order file...`);
     logger.logInfo(
       `Load order file path: "${this._loadOrderFilePath?.fsPath}"`
@@ -1101,12 +1194,78 @@ export class ScriptsController
     return ScriptsController.BUNDLE_CREATED;
   }
 
+  createSection(...uri: vscode.Uri[]) {
+    // TODO: Needed for sectionCreate command?
+  }
+
+  deleteSection(...uri: vscode.Uri[]) {
+    // TODO: Needed for sectionDelete command?
+    // TODO: Asegurarme de pedir confirmacion antes de borrar el fichero.
+  }
+
   /**
-   * Checks if this scripts controller instance is currently disposed or not.
-   * @returns Whether the controller is disposed.
+   * Renames the given editor section instance to the specified name.
+   * @param section Editor section
+   * @param name New name
+   * @throws An error when renaming is not possible.
    */
-  isDisposed(): boolean {
-    return this._watcher === undefined;
+  renameSection(section: EditorSectionBase, name: string) {
+    // Formats new name based on the type
+    let sectionName = undefined;
+    switch (section.type) {
+      case EditorSectionType.Folder: {
+        sectionName = this._removeInvalidCharacters(name);
+        break;
+      }
+      case EditorSectionType.Script: {
+        sectionName = this._formatScriptName(name);
+        break;
+      }
+    }
+    // Checks name validness
+    if (!sectionName) {
+      return;
+    }
+
+    // Checks for new uri path existence
+    if (section.parent?.hasChildName(sectionName)) {
+      throw new Error(
+        `Cannot rename section '${section}' to: ${sectionName} because name already exists!`
+      );
+    }
+
+    // Perform rename operation
+    this._sectionRename(section, sectionName);
+  }
+
+  /**
+   * Alternates the current load status of the given editor section to the specified ``state``.
+   * @param section Editor section
+   * @param state New state
+   */
+  alternateSectionLoad(
+    section: EditorSectionBase,
+    state: vscode.TreeItemCheckboxState | boolean
+  ) {
+    // Alternate based on type
+    switch (section.type) {
+      case EditorSectionType.Folder:
+      case EditorSectionType.Script: {
+        section.alternateLoad(state);
+        break;
+      }
+    }
+  }
+
+  /**
+   * Validates the given name.
+   *
+   * This method will check if it has invalid characters.
+   * @param name Item name
+   * @returns Whether name is valid or not.
+   */
+  validateName(name: string) {
+    return name.match(INVALID_CHARACTERS) === null;
   }
 
   /**
@@ -1166,7 +1325,7 @@ export class ScriptsController
     );
 
     // Create scripts folder path if it does not exists
-    this._createScriptsFolder(scriptsFolderPath);
+    fileutils.createFolder(scriptsFolderPath.fsPath, { recursive: true });
 
     // Updates the root script section
     this._root = new EditorSectionFolder(scriptsFolderPath);
@@ -1232,7 +1391,7 @@ export class ScriptsController
     }
 
     // Scans directory for ruby files or folders.
-    let entries = filesys
+    let entries = fileutils
       .readDirectory(
         this._root.resourceUri.fsPath,
         {
@@ -1240,17 +1399,14 @@ export class ScriptsController
         },
         (entries) => {
           return entries.filter(
-            (entry) => filesys.isFolder(entry) || filesys.isRubyFile(entry)
+            (entry) => fileutils.isFolder(entry) || fileutils.isRubyFile(entry)
           );
         }
       )
       .map((entry) => vscode.Uri.file(entry));
 
     entries.forEach((entry) => {
-      let sectionType = this._sectionDetermineType(entry);
-      if (sectionType) {
-        this._sectionCreate(sectionType, entry);
-      }
+      this._sectionCreate(entry);
     });
     return true;
   }
@@ -1305,14 +1461,9 @@ export class ScriptsController
         );
       }
 
-      // Gets the section type
-      let sectionType = this._sectionDetermineType(sectionPath);
-
       // Child creation
-      if (sectionType) {
-        let child = this._sectionCreate(sectionType, sectionPath);
-        child?.setCheckboxState(sectionEnabled);
-      }
+      let child = this._sectionCreate(sectionPath);
+      child?.setCheckboxState(sectionEnabled);
     }
     return true;
   }
@@ -1353,22 +1504,30 @@ export class ScriptsController
   }
 
   /**
-   * Creates an editor section based on the given type and uri path.
+   * Creates an editor section based on the given uri path.
    *
-   * If the file system file does not exists, it will be created with the optional file ``contents`` given.
-   * @param type Editor section type
+   * This method makes sure that a file system entry exists for each editor section created.
+   *
+   * It returns ``undefined`` in case the creation process fails.
    * @param uri Editor section uri
    * @param contents File contents
+   * @returns The child instance.
    */
-  private _sectionCreate(type: number, uri: vscode.Uri, contents?: string) {
+  private _sectionCreate(uri: vscode.Uri, contents?: string) {
     // FIXME: What happens when an uri like "./Scripts/Does/not/exists/file.rb" is given?
     // will all directories be created to create the file?
+    let type = this._sectionDetermineType(uri);
+    // Checks if type is valid
+    if (!type) {
+      return undefined;
+    }
+    // Create child instance
     let child = this._root?.createChild(type, uri);
     if (child) {
       child.setCheckboxState(true);
-      // Create file if it does not exists
+      // Creates file system entry if it does not exists
       if (!fs.existsSync(child.resourceUri.fsPath)) {
-        switch (child.type) {
+        switch (type) {
           case EditorSectionType.Separator: {
             // Separators are not real files.
             break;
@@ -1381,7 +1540,7 @@ export class ScriptsController
             break;
           }
           case EditorSectionType.Folder: {
-            this._createScriptsFolder(uri);
+            fileutils.createFolder(uri.fsPath, { recursive: true });
             break;
           }
         }
@@ -1390,8 +1549,64 @@ export class ScriptsController
     return child;
   }
 
-  private _sectionDelete(uri: vscode.Uri) {
-    // TODO: Delete section and file on fs
+  /**
+   * Deletes the given editor section instance from the root.
+   *
+   * This method makes sure to remove the appropiate file from the file system.
+   *
+   * The deleted item is not sent to the recycle bin, it is lost forever.
+   *
+   * It returns ``undefined`` in case the deletion process fails.
+   * @param section Editor section
+   */
+  private _sectionDelete(section: EditorSectionBase) {
+    let child = this._root?.deleteChild(section);
+    if (child) {
+      // Deletes file system entry if it exists
+      if (fs.existsSync(child.resourceUri.fsPath)) {
+        switch (child.type) {
+          case EditorSectionType.Separator: {
+            // Separators are not real files.
+            break;
+          }
+          case EditorSectionType.Script: {
+            fs.unlinkSync(child.resourceUri.fsPath);
+            break;
+          }
+          case EditorSectionType.Folder: {
+            fs.rmdirSync(child.resourceUri.fsPath);
+            break;
+          }
+        }
+      }
+    }
+    return child;
+  }
+
+  /**
+   * Renames the specified editor section with the given ``name``.
+   *
+   * This method makes sure to reflect the change on the appropiate file from the file system.
+   *
+   * This method won't check if the new destination exists already it will overwrite it.
+   * @param section Editor section
+   * @param name Name
+   */
+  private _sectionRename(section: EditorSectionBase, name: string) {
+    switch (section.type) {
+      case EditorSectionType.Separator: {
+        // Separators are not real files.
+        break;
+      }
+      case EditorSectionType.Folder:
+      case EditorSectionType.Script: {
+        let oldUri = section.resourceUri;
+        // Updates name of the current section
+        section.rename(name);
+        // Updates file system reference
+        fs.renameSync(oldUri.fsPath, section.resourceUri.fsPath);
+      }
+    }
   }
 
   /**
@@ -1402,10 +1617,10 @@ export class ScriptsController
    * @returns The appropiate editor section type
    */
   private _sectionDetermineType(uri: vscode.Uri) {
-    if (filesys.isFolder(uri.fsPath)) {
+    if (fileutils.isFolder(uri.fsPath)) {
       // uri path references a folder
       return EditorSectionType.Folder;
-    } else if (filesys.isRubyFile(uri.fsPath)) {
+    } else if (fileutils.isRubyFile(uri.fsPath)) {
       // Uri path references a Ruby file
       return EditorSectionType.Script;
     } else if (uri.fsPath.endsWith(EDITOR_SECTION_SEPARATOR_NAME)) {
@@ -1413,18 +1628,6 @@ export class ScriptsController
       return EditorSectionType.Separator;
     } else {
       return null;
-    }
-  }
-
-  /**
-   * Creates the scripts folder on the given uri path.
-   *
-   * If the folder exists already it won't be created again.
-   * @param scriptsFolder Uri path
-   */
-  private _createScriptsFolder(scriptsFolder: vscode.Uri) {
-    if (!filesys.isFolder(scriptsFolder.fsPath)) {
-      fs.mkdirSync(scriptsFolder.fsPath, { recursive: true });
     }
   }
 
@@ -1744,11 +1947,15 @@ ScriptLoader.run
 
   /**
    * Formats the given script name to ensure compatibility with the extension.
+   *
+   * If a path is passed it gets the name before formatting it.
    * @param scriptName Script name
    * @returns The script name processed.
    */
   private _formatScriptName(scriptName: string) {
-    let script = this._removeInvalidCharacters(scriptName);
+    let script = path.parse(scriptName).name;
+    // Removes invalid characters
+    script = this._removeInvalidCharacters(script);
     // Appends extension if missing
     if (!script.toLowerCase().endsWith('.rb')) {
       script = script.concat('.rb');
