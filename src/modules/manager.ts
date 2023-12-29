@@ -253,34 +253,6 @@ export async function openLoadOrderFile() {
   }
 }
 
-// TODO: Since extension will update automatically the load order file
-// this command should be deleted to avoid confusion.
-/**
- * Creates the load order file within the current scripts folder path.
- * @returns A promise
- */
-export async function createLoadOrderFile() {
-  try {
-    let response = await extensionScripts.updateLoadOrderFile();
-    logger.logInfo('Load order TXT file updated successfully!');
-    if (response === 0) {
-      logger.logWarning('Load order TXT file is empty!');
-      logger.logWarning(
-        'You should use the RGSS Script Editor view in VSCode to load scripts'
-      );
-      logger.logWarning(
-        'If load order TXT file is left empty, the game will not work at all!'
-      );
-    } else {
-      logger.logInfo(
-        `${response} entries were written in the load order TXT file.`
-      );
-    }
-  } catch (error) {
-    logger.logErrorUnknown(error);
-  }
-}
-
 /**
  * Asynchronously creates the bundle script loader file for RPG Maker engine
  * @returns A promise
@@ -409,32 +381,29 @@ export async function processGameException() {
 // TODO: Needs a refactor
 // Also specify args types
 
-export async function sectionCreate(what: any, option: any) {
-  // Creating from root?
-  if (!(what instanceof EditorSectionBase)) {
-    // Root creation
-    console.log(`Created: ${what} in root as a: ${option}`);
-    return;
-  }
-  let selected = extensionUI.getTreeSelection();
-  if (selected && selected.length > 1) {
-    logger.logWarning(
-      'You must select only a single script section to create a new one!'
-    );
-  } else {
-    console.log(`Created: ${what} as a: ${option}`);
-  }
-}
+export async function sectionCreate(section?: EditorSectionBase) {}
 
+/**
+ * Deletes the given editor section or all editor sections selected in the editor.
+ *
+ * Before deletion is done, this function asks the user for confirmation.
+ * @param section Editor section
+ * @returns A promise
+ */
 export async function sectionDelete(section?: EditorSectionBase) {
-  // let selected = extensionUI.getTreeSelection();
-  // if (selected) {
-  //   console.log(`Deleted: ${selected}`);
-  // } else {
-  //   console.log(`Deleted: ${what}`);
-  // }
-  let items = extensionUI.getTreeSelection() || [section];
-  console.log(items);
+  let items = extensionUI.getTreeSelection() || (section ? [section] : []);
+  let option = await vscode.window.showQuickPick(['Yes', 'No'], {
+    title: 'Are you sure you want to delete the selected items?',
+    placeHolder: 'Deleted items are lost forever',
+    canPickMany: false,
+  });
+  // Checks for user option
+  if (option === 'Yes') {
+    for (let item of items) {
+      extensionScripts.deleteSection(item);
+    }
+    refresh();
+  }
 }
 
 /**
@@ -444,18 +413,14 @@ export async function sectionDelete(section?: EditorSectionBase) {
  */
 export async function sectionRename(section?: EditorSectionBase) {
   try {
-    // Check for selected tree items
     let selected = extensionUI.getTreeSelection();
-    let item = section;
-    if (selected) {
-      // This is needed since command can activated through a keybind
-      item = selected.length > 1 ? section : selected[0];
-    }
+    let item = section ? section : selected ? selected[0] : undefined;
     // Check item validness
     if (!item || item.isType(EditorSectionType.Separator)) {
       return;
     }
-    // Ask user for input
+
+    // Determine section name
     let name = await vscode.window.showInputBox({
       title: `Renaming: ${item.label}`,
       placeHolder: 'Type a new name for this section...',
@@ -466,6 +431,7 @@ export async function sectionRename(section?: EditorSectionBase) {
           : 'Input contains invalid characters or words!';
       },
     });
+
     // If input is valid, perform rename operation
     if (name) {
       extensionScripts.renameSection(item, name);

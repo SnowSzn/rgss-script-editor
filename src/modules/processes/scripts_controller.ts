@@ -658,6 +658,10 @@ class EditorSectionSeparator extends EditorSectionBase {
     return undefined;
   }
 
+  toString(): string {
+    return 'Separator';
+  }
+
   protected _reset() {
     this.setDescription(undefined);
     this.setTooltip('Separator');
@@ -1170,13 +1174,24 @@ export class ScriptsController
     return ScriptsController.BUNDLE_CREATED;
   }
 
-  createSection(...uri: vscode.Uri[]) {
+  createSection(
+    type: EditorSectionType,
+    name: string,
+    target?: EditorSectionBase
+  ) {
     // TODO: Needed for sectionCreate command?
+    console.log(type);
+    console.log(name);
+    console.log(target);
   }
 
-  deleteSection(...uri: vscode.Uri[]) {
-    // TODO: Needed for sectionDelete command?
-    // TODO: Asegurarme de pedir confirmacion antes de borrar el fichero.
+  /**
+   * Deletes the given editor section instance from the parent section.
+   * @param section Editor section
+   */
+  deleteSection(section: EditorSectionBase) {
+    logger.logInfo(`Deleting section: '${section}'`);
+    this._sectionDelete(section);
   }
 
   /**
@@ -1495,6 +1510,7 @@ export class ScriptsController
    * @returns The child instance.
    */
   private _sectionCreate(uri: vscode.Uri, contents?: string) {
+    // TODO: Go back to receiving type on the args and delete "_sectionDetermineType"
     // Determine the type based on the given uri
     let type = this._sectionDetermineType(uri);
     // Checks if type is valid
@@ -1530,7 +1546,7 @@ export class ScriptsController
   }
 
   /**
-   * Deletes the given editor section instance from the root.
+   * Deletes the given editor section instance from the parent section.
    *
    * This method makes sure to remove the appropiate file from the file system.
    *
@@ -1540,7 +1556,7 @@ export class ScriptsController
    * @param section Editor section
    */
   private _sectionDelete(section: EditorSectionBase) {
-    let child = this._root?.deleteChild(section);
+    let child = section.parent?.deleteChild(section);
     if (child) {
       // Deletes file system entry if it exists
       if (fs.existsSync(child.resourceUri.fsPath)) {
