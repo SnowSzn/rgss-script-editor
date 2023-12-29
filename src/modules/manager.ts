@@ -426,46 +426,53 @@ export async function sectionCreate(what: any, option: any) {
   }
 }
 
-export async function sectionDelete(what: any) {
-  let selected = extensionUI.getTreeSelection();
-  if (selected) {
-    console.log(`Deleted: ${selected}`);
-  } else {
-    console.log(`Deleted: ${what}`);
-  }
+export async function sectionDelete(section?: EditorSectionBase) {
+  // let selected = extensionUI.getTreeSelection();
+  // if (selected) {
+  //   console.log(`Deleted: ${selected}`);
+  // } else {
+  //   console.log(`Deleted: ${what}`);
+  // }
+  let items = extensionUI.getTreeSelection() || [section];
+  console.log(items);
 }
 
+/**
+ * Ask the user for a new name and renames the given editor section to the new name.
+ * @param section Editor section
+ * @returns A promise
+ */
 export async function sectionRename(section?: EditorSectionBase) {
-  // Check for selected tree items
-  let selected = extensionUI.getTreeSelection();
-  let item = section;
-  if (selected) {
-    item = selected.length > 1 ? section : selected[0];
-  }
-  // Check validness
-  if (!item) {
-    return;
-  }
-  // Rename section based on type
-  switch (item.type) {
-    case EditorSectionType.Folder:
-    case EditorSectionType.Script: {
-      let name = await vscode.window.showInputBox({
-        title: `Renaming: ${item.label}`,
-        placeHolder: 'Type a new name for this section...',
-        value: item.label?.toString(),
-        validateInput(value) {
-          return extensionScripts.validateName(value)
-            ? null
-            : 'Input contains invalid characters or words!';
-        },
-      });
-      if (name) {
-        extensionScripts.renameSection(item, name);
-        refresh();
-      }
-      break;
+  try {
+    // Check for selected tree items
+    let selected = extensionUI.getTreeSelection();
+    let item = section;
+    if (selected) {
+      // This is needed since command can activated through a keybind
+      item = selected.length > 1 ? section : selected[0];
     }
+    // Check item validness
+    if (!item || item.isType(EditorSectionType.Separator)) {
+      return;
+    }
+    // Ask user for input
+    let name = await vscode.window.showInputBox({
+      title: `Renaming: ${item.label}`,
+      placeHolder: 'Type a new name for this section...',
+      value: item.label?.toString(),
+      validateInput(value) {
+        return extensionScripts.validateName(value)
+          ? null
+          : 'Input contains invalid characters or words!';
+      },
+    });
+    // If input is valid, perform rename operation
+    if (name) {
+      extensionScripts.renameSection(item, name);
+      refresh();
+    }
+  } catch (error) {
+    logger.logErrorUnknown(error);
   }
 }
 

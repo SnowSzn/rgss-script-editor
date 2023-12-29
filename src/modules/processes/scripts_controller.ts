@@ -432,30 +432,6 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   }
 
   /**
-   * Checks if this instance has a child instance with the given ``path``.
-   * @param uri Uri path.
-   * @returns Whether it has a child with the given path or not.
-   */
-  hasChildPath(uri: vscode.Uri) {
-    return this._children.some((child) => {
-      child.isPath(uri);
-    });
-  }
-
-  /**
-   * Checks if this instance has a child instance with the given ``name``.
-   *
-   * File name extension is also checked.
-   * @param name Section name.
-   * @returns Whether it has a child with the given name or not.
-   */
-  hasChildName(name: string) {
-    return this._children.some((child) => {
-      child.getBaseName() === name;
-    });
-  }
-
-  /**
    * Checks if this editor section instance has children instances or not.
    * @returns Whether it has children or not.
    */
@@ -1227,14 +1203,19 @@ export class ScriptsController
       return;
     }
 
-    // Checks for new uri path existence
-    if (section.parent?.hasChildName(sectionName)) {
+    // Checks if there is a child instance with the given name already
+    // Child search must be case insensitive due to a Windows limitation
+    let children = section.parent?.filterChildren((child) => {
+      return child.getBaseName().toLowerCase() === sectionName!.toLowerCase();
+    });
+    if (children && children.length > 0) {
       throw new Error(
-        `Cannot rename section '${section}' to: ${sectionName} because name already exists!`
+        `Cannot rename section '${section.getBaseName()}' to: '${sectionName}' because name already exists!`
       );
     }
 
     // Perform rename operation
+    logger.logInfo(`Renaming: '${section.getBaseName()}' to: '${sectionName}'`);
     this._sectionRename(section, sectionName);
   }
 
@@ -1514,8 +1495,7 @@ export class ScriptsController
    * @returns The child instance.
    */
   private _sectionCreate(uri: vscode.Uri, contents?: string) {
-    // FIXME: What happens when an uri like "./Scripts/Does/not/exists/file.rb" is given?
-    // will all directories be created to create the file?
+    // Determine the type based on the given uri
     let type = this._sectionDetermineType(uri);
     // Checks if type is valid
     if (!type) {
@@ -1617,15 +1597,15 @@ export class ScriptsController
    * @returns The appropiate editor section type
    */
   private _sectionDetermineType(uri: vscode.Uri) {
-    if (fileutils.isFolder(uri.fsPath)) {
-      // uri path references a folder
-      return EditorSectionType.Folder;
-    } else if (fileutils.isRubyFile(uri.fsPath)) {
-      // Uri path references a Ruby file
-      return EditorSectionType.Script;
-    } else if (uri.fsPath.endsWith(EDITOR_SECTION_SEPARATOR_NAME)) {
+    if (uri.fsPath.endsWith(EDITOR_SECTION_SEPARATOR_NAME)) {
       // Uri path references a separator
       return EditorSectionType.Separator;
+    } else if (fileutils.isRubyFileLike(uri.fsPath)) {
+      // Uri path references a Ruby file
+      return EditorSectionType.Script;
+    } else if (fileutils.isFolderLike(uri.fsPath)) {
+      // Uri path references a folder
+      return EditorSectionType.Folder;
     } else {
       return null;
     }

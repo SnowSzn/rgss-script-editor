@@ -57,7 +57,7 @@ export function isFile(file: string): boolean {
   if (!fs.existsSync(file)) {
     return false;
   }
-  // Checks if file is a directory.
+  // Checks if file is actually a file.
   return fs.statSync(file).isFile();
 }
 
@@ -71,6 +71,42 @@ export function isRubyFile(file: string): boolean {
   if (!isFile(file)) {
     return false;
   }
+  // Checks if file is a Ruby script.
+  return path.extname(file).toLowerCase() === '.rb';
+}
+
+/**
+ * Checks if the given folder path is a directory or not.
+ *
+ * This function won't check for the file existence.
+ * @param folder Folder path
+ * @returns Whether path is a directory.
+ */
+export function isFolderLike(folder: string): boolean {
+  // Checks if file is a directory.
+  return path.extname(folder) === '';
+}
+
+/**
+ * Checks if the given file path is a file or not.
+ *
+ * This function won't check for the file existence.
+ * @param file File path
+ * @returns Whether path is a file.
+ */
+export function isFileLike(file: string): boolean {
+  // Checks if file is actually a file.
+  return path.extname(file) !== '';
+}
+
+/**
+ * Checks if the given file path is a Ruby script file or not.
+ *
+ * This function won't check for the file existence.
+ * @param file File path
+ * @returns Whether path is a Ruby file.
+ */
+export function isRubyFileLike(file: string): boolean {
   // Checks if file is a Ruby script.
   return path.extname(file).toLowerCase() === '.rb';
 }
