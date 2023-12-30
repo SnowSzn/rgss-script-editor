@@ -2,7 +2,9 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as zlib from 'zlib';
 import * as marshal from '@hyrious/marshal';
+import * as crypto from 'crypto';
 import * as vscode from 'vscode';
+import * as events from '../utils/events_handler';
 import * as fileutils from '../utils/fileutils';
 import { TextDecoder } from 'util';
 import { Configuration } from '../utils/configuration';
@@ -29,9 +31,9 @@ export const enum EditorSectionType {
 }
 
 /**
- * Script controller drop mode enumerator.
+ * Script controller editor mode enumerator.
  */
-export const enum ControllerDropMode {
+export const enum ControllerEditorMode {
   MERGE = 1,
   MOVE,
 }
@@ -123,6 +125,11 @@ const LOADER_SCRIPT_NAME = 'RGSS Script Editor Loader';
 const RPG_MAKER_SECTION_MAX_VAL = 133_769_419;
 
 /**
+ * Script controller MIME type.
+ */
+const MIME_TYPE = 'application/rgss.script.editor';
+
+/**
  * Editor section base class.
  *
  * The virtual representation of a RPG Maker script section.
@@ -161,6 +168,11 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   protected _parent?: EditorSectionBase;
 
   /**
+   * Editor section ID.
+   */
+  readonly id: crypto.UUID;
+
+  /**
    * The {@link vscode.Uri Uri} of the resource representing this item.
    *
    * Will be used to derive the {@link vscode.TreeItem.label label}, when it is not provided.
@@ -179,6 +191,7 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
     super(label);
     this._type = type;
     this.resourceUri = uri;
+    this.id = crypto.randomUUID();
     this._children = [];
     this._priority = 0;
     this._parent = undefined;
@@ -481,7 +494,7 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   /**
    * Alternates this editor section load status checkbox.
    *
-   * This method also updates the status of all child instances.
+   * This method also updates the status of all child instances and the parent reference if it is valid.
    * @param state Checkbox state.
    */
   alternateLoad(state?: vscode.TreeItemCheckboxState | boolean) {
@@ -577,6 +590,30 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
     } else {
       child = this._children.find((section) => {
         return section.isPath(uri);
+      });
+    }
+    return child;
+  }
+
+  /**
+   * Returns the child instance that matches the given ``uuid`` ID.
+   *
+   * If the ``nested`` flag is set, it will search each child recursively until found.
+   *
+   * If no script section is found, it returns ``undefined``.
+   * @param uuid Unique ID.
+   * @param nested Nested flag.
+   * @returns Child instance.
+   */
+  findChildID(uuid: crypto.UUID, nested?: boolean) {
+    let child: EditorSectionBase | undefined = undefined;
+    if (nested) {
+      child = this.nestedChildren().find((section) => {
+        return section.id === uuid;
+      });
+    } else {
+      child = this._children.find((section) => {
+        return section.id === uuid;
       });
     }
     return child;
@@ -754,14 +791,18 @@ class EditorSectionFolder extends EditorSectionBase {
       switch (type) {
         case EditorSectionType.Separator:
           child = new EditorSectionSeparator(uri);
-          child.setPriority(priority ? priority : this.getChildrenCount());
+          child.setPriority(
+            priority !== undefined ? priority : this.getChildrenCount()
+          );
           this.addChild(child);
           break;
         case EditorSectionType.Script:
           child = this.findChild(uri);
           if (!child) {
             child = new EditorSectionScript(uri);
-            child.setPriority(priority ? priority : this.getChildrenCount());
+            child.setPriority(
+              priority !== undefined ? priority : this.getChildrenCount()
+            );
             this.addChild(child);
           }
           break;
@@ -769,7 +810,9 @@ class EditorSectionFolder extends EditorSectionBase {
           child = this.findChild(uri);
           if (!child) {
             child = new EditorSectionFolder(uri);
-            child.setPriority(priority ? priority : this.getChildrenCount());
+            child.setPriority(
+              priority !== undefined ? priority : this.getChildrenCount()
+            );
             this.addChild(child);
           }
           break;
@@ -784,7 +827,7 @@ class EditorSectionFolder extends EditorSectionBase {
         vscode.Uri.file(path.dirname(uri.fsPath))
       );
       // Create child for parent and return it.
-      child = parent?.createChild(type, uri);
+      child = parent?.createChild(type, uri, priority);
     }
     return child;
   }
@@ -852,7 +895,7 @@ export class ScriptsController
   /**
    * Controller drop mode.
    */
-  private _dropMode: ControllerDropMode;
+  private _editorMode: ControllerEditorMode;
 
   /**
    * UTF-8 text decoder instance.
@@ -862,18 +905,18 @@ export class ScriptsController
   /**
    * Drop accepted MIME types.
    */
-  dropMimeTypes: readonly string[] = ['application/rgss.script.editor'];
+  dropMimeTypes: readonly string[] = [MIME_TYPE];
 
   /**
    * Drag accepted MIME types.
    */
-  dragMimeTypes: readonly string[] = ['application/rgss.script.editor'];
+  dragMimeTypes: readonly string[] = [MIME_TYPE];
 
   /**
    * Constructor.
    */
   constructor() {
-    this._dropMode = ControllerDropMode.MERGE;
+    this._editorMode = ControllerEditorMode.MERGE;
     this._textDecoder = new TextDecoder('utf8');
   }
 
@@ -894,19 +937,19 @@ export class ScriptsController
   /**
    * Controller drop mode.
    */
-  get dropMode() {
-    return this._dropMode;
+  get editorMode() {
+    return this._editorMode;
   }
 
   /**
    * Gets the current drop mode as a string.
    * @returns Drop mode stringified
    */
-  getDropModeString() {
-    switch (this._dropMode) {
-      case ControllerDropMode.MERGE:
+  getEditorModeString() {
+    switch (this._editorMode) {
+      case ControllerEditorMode.MERGE:
         return 'Merge';
-      case ControllerDropMode.MOVE:
+      case ControllerEditorMode.MOVE:
         return 'Move';
       default:
         return 'Unknown';
@@ -914,11 +957,19 @@ export class ScriptsController
   }
 
   /**
+   * Gets the name of a separator.
+   * @returns Separator name
+   */
+  getSeparatorName() {
+    return EDITOR_SECTION_SEPARATOR_NAME;
+  }
+
+  /**
    * Sets the controller drop mode to the given value.
    * @param mode Drop mode
    */
-  setDropMode(mode: ControllerDropMode) {
-    this._dropMode = mode;
+  setEditorMode(mode: ControllerEditorMode) {
+    this._editorMode = mode;
   }
 
   /**
@@ -937,6 +988,7 @@ export class ScriptsController
    *
    * **If the check fails it rejects the promise with an error instance.**
    * @returns A promise
+   * @throws An error if checking is not possible
    */
   async checkScripts(): Promise<number> {
     logger.logInfo(`Checking project's bundle scripts file status...`);
@@ -967,6 +1019,7 @@ export class ScriptsController
    *
    * **If the extraction was impossible it rejects the promise with an error.**
    * @returns A promise
+   * @throws An error if extraction is not possible
    */
   async extractScripts(): Promise<number> {
     logger.logInfo('Extracting scripts from RPG Maker bundle file...');
@@ -978,7 +1031,7 @@ export class ScriptsController
     if (!bundleFilePath || !scriptsFolderPath) {
       throw new Error(`Cannot extract scripts due to invalid values!`);
     }
-    // Extraction logic
+    // Reads bundle file (may throw an error if it does not exists)
     let bundle = this._readBundleFile(bundleFilePath.fsPath);
     if (this._checkValidExtraction(bundle)) {
       // Creates scripts folder if it does not exists.
@@ -992,32 +1045,36 @@ export class ScriptsController
         }
         let baseName = bundle[i][1] as string;
         let baseCode = bundle[i][2] as string;
+        let sectionType = undefined;
         let sectionPath = undefined;
         let sectionCode = undefined;
         // Determine the editor section to create
         if (baseName.trim().length === 0 && baseCode.trim().length === 0) {
           // Untitled script with an empty code block: Separator
+          sectionType = EditorSectionType.Separator;
           sectionPath = vscode.Uri.joinPath(
             scriptsFolderPath,
-            EDITOR_SECTION_SEPARATOR_NAME
+            this.getSeparatorName()
           );
           sectionCode = undefined;
         } else if (baseName.trim().length === 0) {
           // Untitled script with code: Script
+          sectionType = EditorSectionType.Script;
           sectionPath = vscode.Uri.joinPath(
             scriptsFolderPath,
             `Untitled Script ${i}.rb`
           );
-          sectionCode = this._formatScriptCode(baseCode);
+          sectionCode = baseCode;
         } else {
           // Titled script: Script
+          sectionType = EditorSectionType.Script;
           sectionPath = vscode.Uri.joinPath(
             scriptsFolderPath,
             this._formatScriptName(baseName)
           );
-          sectionCode = this._formatScriptCode(baseCode);
+          sectionCode = baseCode;
         }
-        this._sectionCreate(sectionPath, sectionCode);
+        this._sectionCreate(sectionType, sectionPath, i, sectionCode);
       }
       return ScriptsController.SCRIPTS_EXTRACTED;
     } else {
@@ -1034,6 +1091,7 @@ export class ScriptsController
    *
    * **If the creation was impossible it rejects the promise with an error.**
    * @returns A promise
+   * @throws An error when creation is not possible
    */
   async createLoader(): Promise<number> {
     logger.logInfo('Creating script loader bundle file...');
@@ -1106,6 +1164,7 @@ export class ScriptsController
    *
    * If the load order file couldn't be created it rejects the promise with an error.
    * @returns A promise.
+   * @throws An error when updating load order is not possible.
    */
   async updateLoadOrderFile(): Promise<number> {
     logger.logInfo(`Updating load order file...`);
@@ -1174,15 +1233,83 @@ export class ScriptsController
     return ScriptsController.BUNDLE_CREATED;
   }
 
+  /**
+   * Creates a new editor section with the given information at the given target.
+   *
+   * This will take into consideration the current editor mode.
+   * @param type Editor section type
+   * @param name Editor section name
+   * @param target Target editor section instance
+   * @returns The new editor section
+   * @throws An error when creation is not possible.
+   */
   createSection(
     type: EditorSectionType,
     name: string,
-    target?: EditorSectionBase
+    target: EditorSectionBase
   ) {
-    // TODO: Needed for sectionCreate command?
-    console.log(type);
-    console.log(name);
-    console.log(target);
+    // New section values
+    let sectionName: string | undefined = undefined;
+    let parent: EditorSectionBase | undefined = undefined;
+    let priority: number | undefined = undefined;
+
+    // Processes the new name based on the type.
+    switch (type) {
+      case EditorSectionType.Separator: {
+        sectionName = this.getSeparatorName();
+        break;
+      }
+      case EditorSectionType.Folder: {
+        sectionName = this._removeInvalidCharacters(name);
+        break;
+      }
+      case EditorSectionType.Script: {
+        sectionName = this._formatScriptName(name);
+        break;
+      }
+      default: {
+        sectionName = undefined;
+        break;
+      }
+    }
+
+    // Processes the parent based on the editor mode
+    if (this._editorMode === ControllerEditorMode.MERGE) {
+      if (target.isType(EditorSectionType.Folder)) {
+        parent = target;
+        priority = parent.getChildrenCount();
+      } else {
+        parent = target.parent;
+        priority = target.priority;
+      }
+    } else if (this._editorMode === ControllerEditorMode.MOVE) {
+      parent = target.parent;
+      priority = target.priority;
+    } else {
+      parent = undefined;
+    }
+
+    // Check validness
+    if (!sectionName || !parent) {
+      throw new Error(`Cannot create new section due to invalid values!`);
+    }
+
+    // Check name availability
+    if (
+      sectionName !== this.getSeparatorName() &&
+      this._sectionFilterName(parent, sectionName).length > 0
+    ) {
+      throw new Error(
+        `Cannot create new section: '${sectionName}' because it exists already!`
+      );
+    }
+
+    // Process uri path based on parent
+    let uri = vscode.Uri.joinPath(parent.resourceUri, sectionName);
+
+    // Create section
+    logger.logInfo(`Creating new section: '${uri.fsPath}'`);
+    return this._sectionCreate(type, uri, priority);
   }
 
   /**
@@ -1213,17 +1340,17 @@ export class ScriptsController
         break;
       }
     }
+
     // Checks name validness
     if (!sectionName) {
       return;
     }
 
     // Checks if there is a child instance with the given name already
-    // Child search must be case insensitive due to a Windows limitation
-    let children = section.parent?.filterChildren((child) => {
-      return child.getBaseName().toLowerCase() === sectionName!.toLowerCase();
-    });
-    if (children && children.length > 0) {
+    if (
+      section.parent &&
+      this._sectionFilterName(section.parent, sectionName).length > 0
+    ) {
       throw new Error(
         `Cannot rename section '${section.getBaseName()}' to: '${sectionName}' because name already exists!`
       );
@@ -1283,7 +1410,13 @@ export class ScriptsController
     dataTransfer: vscode.DataTransfer,
     token: vscode.CancellationToken
   ): void | Thenable<void> {
-    logger.logInfo('Dragging handler called!');
+    // Prepares data (must be stringified)
+    let data: crypto.UUID[] = [];
+    source.forEach((section) => {
+      data.push(section.id);
+    });
+    // Sets data transfer package with the data
+    dataTransfer.set(MIME_TYPE, new vscode.DataTransferItem(data));
   }
 
   /**
@@ -1297,7 +1430,30 @@ export class ScriptsController
     dataTransfer: vscode.DataTransfer,
     token: vscode.CancellationToken
   ): void | Thenable<void> {
-    logger.logInfo('Dropping handler called!');
+    // Checks target validness
+    if (!target) {
+      return;
+    }
+
+    // Gets data from the transfer package
+    const ids = dataTransfer.get(MIME_TYPE)?.value as crypto.UUID[];
+    let sections: EditorSectionBase[] = [];
+    if (!ids) {
+      return;
+    }
+
+    // Fetchs the appropiate editor section instances by UUID.
+    ids.forEach((id) => {
+      const child = this._root?.findChildID(id, true);
+      if (child) {
+        sections.push(child);
+      }
+    });
+
+    // Performs move operation
+    this._sectionMove(target, ...sections);
+    // Notifies refresh
+    events.sendEvent(events.EVENT_REFRESH);
   }
 
   /**
@@ -1332,6 +1488,9 @@ export class ScriptsController
     // Scans the scripts directory for new files
     this._scan();
 
+    // Saves load order after reading and scanning
+    this._saveLoadOrder(this._root.nestedChildren());
+
     // Scans the scripts folder path for scripts that wasn't on the load order
 
     // Creates the watcher instance
@@ -1349,12 +1508,18 @@ export class ScriptsController
    * @param uri Entry uri
    */
   private _onDidCreate(uri: vscode.Uri) {
-    // TODO: Process entry create, possible valid cases:
-    //  -> ``uri`` is the scripts folder.
-    //  -> ``uri`` is load_order.txt
-    //  -> ``uri`` is a folder.
-    //  -> ``uri`` is a script section inside the scripts folder.
+    if (this._root?.isPath(uri)) {
+      return;
+    }
     logger.logInfo(`Entry created: ${uri.fsPath}`);
+    let type = this._sectionDetermineType(uri);
+    let contents = fileutils.isFile(uri.fsPath)
+      ? fs.readFileSync(uri.fsPath, { encoding: 'utf8' })
+      : '';
+    if (type) {
+      let child = this._sectionCreate(type, uri, undefined, contents);
+      events.sendEvent(events.EVENT_REFRESH, child?.parent);
+    }
   }
 
   /**
@@ -1362,12 +1527,15 @@ export class ScriptsController
    * @param uri Entry uri
    */
   private _onDidDelete(uri: vscode.Uri) {
-    // TODO: Process entry deletion, possible valid cases:
-    //  -> ``uri`` is the scripts folder.
-    //  -> ``uri`` is load_order.txt
-    //  -> ``uri`` is a folder.
-    //  -> ``uri`` is a script section inside the scripts folder.
+    if (this._root?.isPath(uri)) {
+      return;
+    }
     logger.logInfo(`Entry deleted: ${uri.fsPath}`);
+    let child = this._root?.findChild(uri, true);
+    if (child) {
+      this._sectionDelete(child);
+      events.sendEvent(events.EVENT_REFRESH, child.parent);
+    }
   }
 
   /**
@@ -1402,7 +1570,10 @@ export class ScriptsController
       .map((entry) => vscode.Uri.file(entry));
 
     entries.forEach((entry) => {
-      this._sectionCreate(entry);
+      let type = this._sectionDetermineType(entry);
+      if (type) {
+        let child = this._sectionCreate(type, entry);
+      }
     });
     return true;
   }
@@ -1457,9 +1628,14 @@ export class ScriptsController
         );
       }
 
+      // Determine type
+      let type = this._sectionDetermineType(sectionPath);
+
       // Child creation
-      let child = this._sectionCreate(sectionPath);
-      child?.setCheckboxState(sectionEnabled);
+      if (type) {
+        let child = this._sectionCreate(type, sectionPath);
+        child?.setCheckboxState(sectionEnabled);
+      }
     }
     return true;
   }
@@ -1505,20 +1681,20 @@ export class ScriptsController
    * This method makes sure that a file system entry exists for each editor section created.
    *
    * It returns ``undefined`` in case the creation process fails.
-   * @param uri Editor section uri
+   * @param type Editor section type
+   * @param uri Editor section uri path
+   * @param priority Editor section priority
    * @param contents File contents
    * @returns The child instance.
    */
-  private _sectionCreate(uri: vscode.Uri, contents?: string) {
-    // TODO: Go back to receiving type on the args and delete "_sectionDetermineType"
-    // Determine the type based on the given uri
-    let type = this._sectionDetermineType(uri);
-    // Checks if type is valid
-    if (!type) {
-      return undefined;
-    }
+  private _sectionCreate(
+    type: EditorSectionType,
+    uri: vscode.Uri,
+    priority?: number,
+    contents?: string
+  ) {
     // Create child instance
-    let child = this._root?.createChild(type, uri);
+    let child = this._root?.createChild(type, uri, priority);
     if (child) {
       child.setCheckboxState(true);
       // Creates file system entry if it does not exists
@@ -1529,10 +1705,14 @@ export class ScriptsController
             break;
           }
           case EditorSectionType.Script: {
-            fs.writeFileSync(uri.fsPath, contents || '', {
-              encoding: 'utf8',
-              flag: 'w',
-            });
+            fs.writeFileSync(
+              uri.fsPath,
+              this._formatScriptCode(contents || ''),
+              {
+                encoding: 'utf8',
+                flag: 'w',
+              }
+            );
             break;
           }
           case EditorSectionType.Folder: {
@@ -1570,13 +1750,78 @@ export class ScriptsController
             break;
           }
           case EditorSectionType.Folder: {
-            fs.rmdirSync(child.resourceUri.fsPath);
+            fs.rmSync(child.resourceUri.fsPath, { recursive: true });
             break;
           }
         }
       }
     }
     return child;
+  }
+
+  private _sectionMove(
+    target: EditorSectionBase,
+    ...source: EditorSectionBase[]
+  ) {
+    // Prepares movement data
+    let parent: EditorSectionBase | undefined = undefined;
+    let priority: number | undefined = undefined;
+    let data: EditorSectionBase[] = [];
+
+    // Processes the parent based on the editor mode
+    if (this._editorMode === ControllerEditorMode.MERGE) {
+      if (target.isType(EditorSectionType.Folder)) {
+        parent = target;
+        priority = parent.getChildrenCount();
+      } else {
+        parent = target.parent;
+        priority = target.priority;
+      }
+    } else if (this._editorMode === ControllerEditorMode.MOVE) {
+      parent = target.parent;
+      priority = target.priority;
+    } else {
+      parent = undefined;
+    }
+
+    // Check validness (priority 0 is a valid value)
+    if (!parent || priority === undefined) {
+      return;
+    }
+
+    // Prepares new data
+    for (let section of source) {
+      // Gets section name
+      let name = section.getBaseName();
+      if (section.id === parent.id) {
+        continue;
+      }
+      if (section.findChild(parent.resourceUri, true)) {
+        continue;
+      }
+      if (
+        name !== this.getSeparatorName() &&
+        this._sectionFilterName(parent, name).length > 1
+      ) {
+        continue;
+      }
+      data.push(section);
+    }
+
+    // Peforms movement
+    for (let i = 0; i < data.length; i++) {
+      const item = data[i];
+      const type = item.type;
+      const name = item.getBaseName();
+      const uri = vscode.Uri.joinPath(parent.resourceUri, name);
+      const contents = item.isType(EditorSectionType.Script)
+        ? fs.readFileSync(item.resourceUri.fsPath, { encoding: 'utf8' })
+        : '';
+      // Delete current item
+      this._sectionDelete(item);
+      // Add new item
+      this._sectionCreate(type, uri, priority + i, contents);
+    }
   }
 
   /**
@@ -1601,19 +1846,36 @@ export class ScriptsController
         section.rename(name);
         // Updates file system reference
         fs.renameSync(oldUri.fsPath, section.resourceUri.fsPath);
+        break;
       }
     }
   }
 
   /**
+   * Gets a list of editor section children instances that matches the given name from the specified ``section``.
+   *
+   * Due to Windows limitations, the check is case insensitive.
+   * @param section Editor section
+   * @param sectionName Name
+   */
+  private _sectionFilterName(section: EditorSectionBase, sectionName: string) {
+    let children = section.filterChildren((child) => {
+      return child.getBaseName().toLowerCase() === sectionName.toLowerCase();
+    });
+    return children;
+  }
+
+  /**
    * Determines the appropiate editor section type based on the given uri path.
+   *
+   * This method won't check if the section exists.
    *
    * If the type cannot be determined it returns ``null``.
    * @param uri Uri section path.
    * @returns The appropiate editor section type
    */
   private _sectionDetermineType(uri: vscode.Uri) {
-    if (uri.fsPath.endsWith(EDITOR_SECTION_SEPARATOR_NAME)) {
+    if (uri.fsPath.endsWith(this.getSeparatorName())) {
       // Uri path references a separator
       return EditorSectionType.Separator;
     } else if (fileutils.isRubyFileLike(uri.fsPath)) {

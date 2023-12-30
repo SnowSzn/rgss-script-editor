@@ -28,7 +28,7 @@
   "bugs": {
     "url": "https://github.com/SnowSzn/rgss-script-editor/issues"
   },
-  "version": "0.1.0",
+  "version": "1.0.0",
   "engines": {
     "vscode": "^1.80.0"
   },
@@ -84,16 +84,10 @@
         "icon": "$(warning)"
       },
       {
-        "command": "rgss-script-editor.chooseDropMode",
-        "title": "Choose Editor Drop Mode",
+        "command": "rgss-script-editor.chooseEditorMode",
+        "title": "Choose Editor Mode",
         "category": "RGSS Script Editor",
         "icon": "$(insert)"
-      },
-      {
-        "command": "rgss-script-editor.revealInVSCodeExplorer",
-        "title": "Reveal in Explorer...",
-        "category": "RGSS Script Editor",
-        "icon": "$(eye)"
       },
       {
         "command": "rgss-script-editor.openLoadOrder",
@@ -102,10 +96,10 @@
         "icon": "$(tasklist)"
       },
       {
-        "command": "rgss-script-editor.updateLoadOrder",
-        "title": "Update Load Order File",
+        "command": "rgss-script-editor.revealInVSCodeExplorer",
+        "title": "Reveal in Explorer...",
         "category": "RGSS Script Editor",
-        "icon": "$(sync~spin)"
+        "icon": "$(eye)"
       },
       {
         "command": "rgss-script-editor.sectionCreate",
@@ -130,12 +124,6 @@
         "title": "Alternate Load Status...",
         "category": "RGSS Script Editor",
         "icon": "$(arrow-swap)"
-      },
-      {
-        "command": "rgss-script-editor.refresh",
-        "title": "Refresh...",
-        "category": "RGSS Script Editor",
-        "icon": "$(sync~spin)"
       }
     ],
     "configuration": [
@@ -239,7 +227,7 @@
         "command": "rgss-script-editor.runGame",
         "key": "F12",
         "when": "rgss-script-editor.openedFolder"
-      }, 
+      },
       {
         "command": "rgss-script-editor.sectionRename",
         "key": "F2",
@@ -253,6 +241,11 @@
       {
         "command": "rgss-script-editor.sectionDelete",
         "key": "delete",
+        "when": "focusedView == 'rgss-script-editor.editorView'"
+      },
+      {
+        "command": "rgss-script-editor.sectionAlternateLoad",
+        "key": "F4",
         "when": "focusedView == 'rgss-script-editor.editorView'"
       }
     ],
@@ -300,17 +293,14 @@
     "menus": {
       "view/title": [
         {
-          "command": "rgss-script-editor.chooseDropMode",
+          "command": "rgss-script-editor.chooseEditorMode",
           "when": "view == rgss-script-editor.editorView",
           "group": "navigation"
         },
         {
-          "command": "rgss-script-editor.sectionCreate",
-          "when": "view == rgss-script-editor.editorView"
-        },
-        {
           "command": "rgss-script-editor.openLoadOrder",
-          "when": "view == rgss-script-editor.editorView"
+          "when": "view == rgss-script-editor.editorView",
+          "group": "navigation"
         }
       ],
       "view/item/context": [

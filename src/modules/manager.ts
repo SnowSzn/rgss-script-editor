@@ -7,8 +7,8 @@ import { openFolder } from './processes/open_folder';
 import { GameplayController } from './processes/gameplay_controller';
 import {
   EditorSectionType,
+  ControllerEditorMode,
   EditorSectionBase,
-  ControllerDropMode,
   ScriptsController,
 } from './processes/scripts_controller';
 import { ExtensionUI } from './ui/ui_extension';
@@ -43,7 +43,7 @@ const extensionUI: ExtensionUI = new ExtensionUI();
 /**
  * Register refresh event.
  */
-events.registerEvent(events.EVENT_REFRESH, (treeItem: EditorSectionBase) => {
+events.registerEvent(events.EVENT_REFRESH, (treeItem?: EditorSectionBase) => {
   refresh(treeItem);
 });
 
@@ -378,10 +378,76 @@ export async function processGameException() {
   }
 }
 
-// TODO: Needs a refactor
-// Also specify args types
+/**
+ * Creates a new editor section in the specified section.
+ * @param section Editor section
+ * @returns A promise
+ */
+export async function sectionCreate(section?: EditorSectionBase) {
+  let selected = extensionUI.getTreeSelection();
+  let target = section ? section : selected ? selected[0] : undefined;
 
-export async function sectionCreate(section?: EditorSectionBase) {}
+  // Check target validness
+  if (!target) {
+    return;
+  }
+
+  // Prepare creation input
+  let type = undefined;
+  let name = undefined;
+
+  // Determine section type
+  let typeOption = await vscode.window.showQuickPick(
+    ['Create Script', 'Create Folder', 'Create Separator'],
+    {
+      title: `Create a new section at: ${target}`,
+      placeHolder: 'Choose the type...',
+      canPickMany: false,
+    }
+  );
+  switch (typeOption) {
+    case 'Create Separator': {
+      type = EditorSectionType.Separator;
+      // Automatically sets separator name
+      name = extensionScripts.getSeparatorName();
+      break;
+    }
+    case 'Create Folder': {
+      type = EditorSectionType.Folder;
+      break;
+    }
+    case 'Create Script': {
+      type = EditorSectionType.Script;
+      break;
+    }
+    default: {
+      type = undefined;
+      break;
+    }
+  }
+
+  // Determine section name (if not set automatically)
+  if (type && !name) {
+    name = await vscode.window.showInputBox({
+      title: `Create a new section at: ${target}`,
+      placeHolder: 'Type a name for the new section...',
+      validateInput(value) {
+        return extensionScripts.validateName(value)
+          ? null
+          : 'Input contains invalid characters or words!';
+      },
+    });
+  }
+
+  // Check user input validness
+  if (!name || !type) {
+    return;
+  }
+
+  // Create new section
+  extensionScripts.createSection(type, name, target);
+  refresh();
+}
 
 /**
  * Deletes the given editor section or all editor sections selected in the editor.
@@ -393,8 +459,8 @@ export async function sectionCreate(section?: EditorSectionBase) {}
 export async function sectionDelete(section?: EditorSectionBase) {
   let items = extensionUI.getTreeSelection() || (section ? [section] : []);
   let option = await vscode.window.showQuickPick(['Yes', 'No'], {
-    title: 'Are you sure you want to delete the selected items?',
-    placeHolder: 'Deleted items are lost forever',
+    title: `Deleting: ${items}`,
+    placeHolder: 'Are you sure you want to delete the selected items?',
     canPickMany: false,
   });
   // Checks for user option
@@ -415,6 +481,7 @@ export async function sectionRename(section?: EditorSectionBase) {
   try {
     let selected = extensionUI.getTreeSelection();
     let item = section ? section : selected ? selected[0] : undefined;
+
     // Check item validness
     if (!item || item.isType(EditorSectionType.Separator)) {
       return;
@@ -445,7 +512,7 @@ export async function sectionRename(section?: EditorSectionBase) {
 /**
  * Alternates the load status (checkbox) of the given element or elements.
  *
- * If a {@link AlternateLoadMatrix} is given, it must be a list of arrays with the section
+ * If a {@link AlternateLoadMatrix} is given, it must be an array with the section
  * instance along with the checkbox status.
  *
  * If a single element is given, it will check the current tree selection and alternate
@@ -456,20 +523,18 @@ export async function sectionRename(section?: EditorSectionBase) {
 export async function sectionAlternateLoad(
   section?: EditorSectionBase | AlternateLoadMatrix
 ) {
-  // Check section validness
-  if (!section) {
-    return;
-  }
-
-  // Prepare the list of items to alternate
   let items: AlternateLoadMatrix = [];
+
+  // Handles arguments
   if (section instanceof Array) {
-    // A list was given already
+    // AlternateLoadMatrix
     items = section;
-  } else if (section instanceof EditorSectionBase) {
-    // Create list based on the current tree selection
+  } else {
+    // Can be a section or undefined if called using a keyboard shortcut
     for (let item of extensionUI.getTreeSelection() || [section]) {
-      items.push([item, !item.isLoaded()]);
+      if (item) {
+        items.push([item, !item.isLoaded()]);
+      }
     }
   }
 
@@ -488,40 +553,47 @@ export async function sectionAlternateLoad(
  * @returns A promise
  */
 export async function revealInVSCodeExplorer(section?: EditorSectionBase) {
-  // Check section validness
-  if (!section) {
+  let selected = extensionUI.getTreeSelection();
+  let item = section ? section : selected ? selected[0] : undefined;
+
+  // Check item validness
+  if (!item) {
     return;
   }
+
   // Reveal file based on type
-  switch (section.type) {
+  switch (item.type) {
     case EditorSectionType.Script:
     case EditorSectionType.Folder: {
-      vscode.commands.executeCommand('revealInExplorer', section.resourceUri);
+      await vscode.commands.executeCommand(
+        'revealInExplorer',
+        item.resourceUri
+      );
       break;
     }
   }
 }
 
 /**
- * Chooses the current drop mode.
+ * Chooses the current editor mode.
  *
  * Allows the editor to behave different for drag and drop operations.
  */
-export async function chooseDropMode() {
+export async function chooseEditorMode() {
   // Show drop mode selector
-  let curDropMode = extensionScripts.getDropModeString();
+  let curMode = extensionScripts.getEditorModeString();
   let value = await vscode.window.showQuickPick(['Merge', 'Move'], {
-    title: `Current Drop Mode: ${curDropMode}`,
-    placeHolder: 'Choose the active drop mode',
+    title: `Current Editor Mode: ${curMode}`,
+    placeHolder: 'Choose the editor mode...',
     canPickMany: false,
   });
   // Update drop mode
   if (value) {
-    logger.logInfo(`Setting drop mode to: ${value}`);
+    logger.logInfo(`Setting editor mode to: ${value}`);
     if (value === 'Merge') {
-      extensionScripts.setDropMode(ControllerDropMode.MERGE);
+      extensionScripts.setEditorMode(ControllerEditorMode.MERGE);
     } else if (value === 'Move') {
-      extensionScripts.setDropMode(ControllerDropMode.MOVE);
+      extensionScripts.setEditorMode(ControllerEditorMode.MOVE);
     }
   }
 }
