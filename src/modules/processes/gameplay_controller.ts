@@ -141,8 +141,8 @@ export class GameException {
       'The exception thrown will be shown in the following lines:\n\n'
     );
     // Document exception display
-    mark = mark.concat(`# ${this.name}\n`);
-    mark = mark.concat(`${this.message}\n`);
+    mark = mark.concat(`# ${this.name}\n\n`);
+    mark = mark.concat(`${this.message}\n\n`);
     mark = mark.concat('##### Backtrace\n');
     this.backtrace.forEach((item) => {
       mark = mark.concat('```\n');
