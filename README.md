@@ -26,20 +26,39 @@ As a security measure, the extension will not allow overwriting the script bundl
 
 ## Features
 
-- **Run Game:** You can run the game within VSCode using a keybind (F12 by default)
+- **Run Game:** You can run the game within VSCode using a key shortcut (F12 by default)
   - Both `test` (`debug`) and `console` modes are supported.
+  - Optionally, custom arguments can be used instead of the default ones.
 - **Backup Creation:** Backs up the scripts bundled file when extraction is done.
 - **Scripts Extraction:** You can extracts all scripts inside the data file to a custom directory within the project's folder.
 - **Script Loader:** The game will load all scripts files individually based on a load order
-  - You can ignore to load any script by adding a `#` character before the script path.
+  - Any script can be ignored and not loaded when the game runs.
 - **Workspace Support**: You can change the active folder easily in a workspace.
-- TODO: Finish features with RGSS Script Editor container and bundle file creation
+- **Script Editor**: This extension enables a view in VSCode where you can perform several operations on sections.
+  - Create new sections.
+    - You can create new sections: scripts, folders and separators.
+  - Enable/Disable sections.
+  - Delete sections.
+    - Any section can be deleted along with all of its children.
+  - Rename sections.
+    - You can rename a section with a key shortcut.
+  - Move sections.
+    - The tree can be arranged in any order desired.
+- **Game Exception Processing**: The extension can process the exception that killed the game in the last test game session.
+  - The extension backtrace will be shown in a markdown file besides the active editor.
+  - VSCode built-in peek menu will be used to show each backtrace location.
 
-TODO: Add some GIFs or screenshots
+## Screenshots
 
-For example if there is an image subfolder under your extension project workspace:
+### Extension Editor View
+![Editor View](./images/feature-editor.gif)
+![Editor View 2](./images/feature-editor-2.gif)
 
-using: \!\[feature X\]\(images/feature-x.png\)
+### Run Game Process
+![Run Game](./images/feature-run-game.gif)
+
+### Game Exception Processing
+![Game Exception](./images/feature-game-exception.gif)
 
 ## Requirements
 
@@ -52,6 +71,7 @@ using: \!\[feature X\]\(images/feature-x.png\)
   - You can check if Wine is installed in your system with: ``wine --version``
   - **IMPORTANT: If you use MKXP-Z for Linux and you have created a Linux executable for your game, you won't need to install Wine.** 
     - Wine is only required for RPG Maker base executables.
+- **Not tested in Linux**
 ### macOS
 - [Visual Studio Code](https://code.visualstudio.com/)
 - **Not tested in macOS**
@@ -60,18 +80,19 @@ using: \!\[feature X\]\(images/feature-x.png\)
 
 This extension contributes the following settings:
 
+* `rgssScriptEditor.debug.logToConsole`: Enables this extension to log information to the Visual Studio Code debug console.
+* `rgssScriptEditor.debug.logToFile`: Enables this extension to log information to a file.
 * `rgssScriptEditor.extension.quickStart`: Enable/disable quick start mode.
   * Quick start will set the extension's project folder based on the current context:
     * If only one folder is opened and it is a valid RPG Maker project it will be activated.
     * If a workspace is opened (several folders) you will be able to choose the appropiate folder to activate with a button in the status bar.
     * If no folder is opened or the opened folders are not valid RPG Maker projects the extension will deactivate its UI elements automatically.
-* `rgssScriptEditor.debug.logToConsole`: Enable/disable logging to VSCode console.
-* `rgssScriptEditor.debug.logToFile`: Enable/disable logging to a log file.
-* `rgssScriptEditor.external.backUpsFolder`: Sets the relative path within the active RPG Maker project where all backups will be stored.
-* `rgssScriptEditor.external.scriptsFolder`: Sets the relative path within the active RPG Maker project where all scripts will be extracted.
-* `rgssScriptEditor.gameplay.gameExecutablePath`: Sets the relative path within the active RPG Maker project where the game executable is.
+* `rgssScriptEditor.extension.autoReveal`: Allows the extension to reveal the active file on the script editor view.
+* `rgssScriptEditor.external.backUpsFolder`: The relative path within the project's folder where all back ups will be saved.
+* `rgssScriptEditor.external.scriptsFolder`: The relative path within the project's folder where all scripts will be extracted.
+* `rgssScriptEditor.gameplay.gameExecutablePath`: The relative path to the game executable inside the project folder.
   * You can change this option to allow MKXP-Z executable to be launched.
-* `rgssScriptEditor.gameplay.useWine`: Whether to use Wine to execute the game executable or not. (**Linux Only**)
+* `rgssScriptEditor.gameplay.useWine`: Whether to use Wine to execute the game executable in Linux or not. (**Linux Only**)
   * Since you can also build MKXP-Z for Linux, you should uncheck this box when running MKXP-Z in Linux if you have built a Linux-specific executable.
 * `rgssScriptEditor.gameplay.automaticArgumentsDetection`: Enable/disable automatic arguments detection.
   * If enabled, the extension will automatically choose the appropiate arguments based on the RPG Maker version.
@@ -87,6 +108,11 @@ This extension contributes the following settings:
   * **IMPORTANT: Auto. Arguments Detection mode must be disabled**
   * Launchs the game with the arguments specified here.
   * Arguments must be separated by a whitespace.
+* `rgssScriptEditor.gameplay.gameExceptionAutoProcess`: Enables/Disables game exception auto process mode.
+  * The extension is able to read the exception that killed the process and show the backtrace on VSCode.
+* `rgssScriptEditor.gameplay.gameExceptionShowInEditor`: Allows the extension to show a new text document besides the active editor with the last exception information.
+  * Shows a markdown file besides the active editor with the backtrace information.
+    * This is pretty much required since VSCode peek menu does not support sorting the files.
 
 ## Known Issues
 
@@ -98,7 +124,7 @@ RPG Maker VX Ace is the only RPG Maker editor running RGSS3 which it is based on
 
 The other versions of the engine (XP and VX) runs with older versions of Ruby in which ``$KCODE`` is supported, this global variable is used to determine the encoding of a script file when Ruby is trying to load it.
 
-So basically, when using RPG Maker VX Ace, errors may occur because Ruby 1.9+ does not *"detect"* the script file encoding, so it fails when trying to load it using ``Kernel.load``.
+So basically, when using RPG Maker VX Ace, errors may occur because Ruby 1.9+ does not *"detect"* the script file encoding, so it fails when trying to load it using ``Kernel.load`` or ``Kernel.require``.
 
 **The other RPG Maker editors (``RPG Maker XP`` and ``RPG Maker VX``) seems to work fine on my end.**
 
@@ -109,19 +135,17 @@ If you find an issue not listed here, feel free to report it back.
 
 * > [SyntaxError] Invalid Multibyte char (US-ASCII) Exception
 
-It may happen if using RPG Maker VX Ace.
+It is more likely to occur in RPG Maker VX Ace.
 
 This exception is easily fixed by adding ``# encoding: utf-8`` in the first line of the script contents.
 
-Like I said before, this workaround is not needed for older versions of RPG Maker that still uses ``$KCODE``, but to avoid problems, I have made the extension add this line in *every script* that it is extracted from the bundle file automatically so you won't have to.
-
-**For new scripts you may have to add it yourself if it crashes!**
+Like I said before, this workaround is not needed for older versions of RPG Maker that still uses ``$KCODE``, but to avoid problems, I have made the extension add this line in *every script* that it is extracted from the bundle file or created using the extension's editor view automatically so you won't have to.
 
 * > [LoadError] no such file to load -- Exception
 
 This exception may happen for a number of reasons:
 
-**The file trying to load simply does not exists**
+**The file trying to load simply does not exists:**
 
 Make sure that **all files** within the text file that defines the load order **exists** in the specified path.
 
@@ -135,11 +159,9 @@ Subfolder/
 #Skipped Subfolder/
 ```
 
-**The file exists, but it still crashes**
+**The file exists, but it still crashes:**
 
-If the file exists and RPG Maker still crashes you may be using RPG Maker VX Ace.
-
-You should make sure the path to the script file does not have special characters, specially in the script's name.
+If the file exists and the game still crashes you should make sure the path to the script file does not have special characters, specially in the script's name.
 
 I made sure to remove all of them that I know from all scripts when extraction is done, but to be fully sure try not to use special characters to name your scripts.
 
@@ -150,6 +172,8 @@ These characters, that RPG Maker uses in their built-in editor are invalid:
 For example:
   - "./Scripts/ 0000 - ▼ Modules.rb"
   - "./Scripts/ 0010 - ■ My Ruby Script ■.rb"
+
+The extension uses a regular expression to remove invalid characters from the script's name, I tried to include as many invalid combinations as possible but I may have missed some.
 
 ## Release Notes
 

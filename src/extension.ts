@@ -2,6 +2,9 @@ import * as vscode from 'vscode';
 import * as manager from './modules/manager';
 
 // TODO: Bugfixing
+// FIXME: La funcion de mover items dentro del arbol elimina a todos los hijos de una carpeta si se mueve
+// esto se debe a que la operacion de mover no se hace de forma recursiva para todos los hijos de la seccion
+// ya que se hace una operacion de delete y create sobre el item
 
 /**
  * Entry point.
