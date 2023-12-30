@@ -1957,7 +1957,7 @@ export class ScriptsController
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
-# Version: 1.2.1
+# Version: 1.2.2
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
@@ -2101,9 +2101,9 @@ module ScriptLoader
   #
   def self.process_exception(exception)
     return Marshal.dump({
-      :type => exception.class.name,
-      :mesg => exception.message,
-      :back => exception.backtrace 
+      :type => "'#{exception.class.name}'",
+      :mesg => "'#{exception.message}'",
+      :back => exception.backtrace
     })
   end
 

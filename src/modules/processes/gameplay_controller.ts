@@ -326,6 +326,9 @@ export class GameplayController {
    * @param signal Exit signal.
    */
   private _onProcessExit(code: number | null, signal: NodeJS.Signals | null) {
+    // Resets for next game run
+    this._executable = undefined;
+    // Checks exception
     if (this._config) {
       logger.logInfo(
         `Game execution finished with code: ${code}, signal: ${signal}`
@@ -370,8 +373,6 @@ export class GameplayController {
         }
       }
     }
-    // Resets for next game run
-    this._executable = undefined;
   }
 
   /**
