@@ -1957,7 +1957,7 @@ export class ScriptsController
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
-# Version: 1.2.0
+# Version: 1.2.1
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
@@ -2045,12 +2045,9 @@ module ScriptLoader
         load_script(script)
       end
     rescue => e
-      # Exception backtrace handling must work only in test/dev mode
-      if test?
-        # Notifies VSCode extension of the error
-        File.open('${config.errorFileName}', 'w') do |file|
-          file.write(process_exception(e))
-        end
+      # Notifies VSCode extension of the error
+      File.open('${config.errorFileName}', 'w') do |file|
+        file.write(process_exception(e))
       end
       # Raises again the exception to kill the process
       raise e
