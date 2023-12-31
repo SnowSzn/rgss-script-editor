@@ -1280,11 +1280,11 @@ export class ScriptsController
         priority = parent.getChildrenCount();
       } else {
         parent = target.parent;
-        priority = target.priority;
+        priority = target.priority + 1;
       }
     } else if (this._editorMode === ControllerEditorMode.MOVE) {
       parent = target.parent;
-      priority = target.priority;
+      priority = target.priority + 1;
     } else {
       parent = undefined;
     }
@@ -1775,11 +1775,11 @@ export class ScriptsController
         priority = parent.getChildrenCount();
       } else {
         parent = target.parent;
-        priority = target.priority;
+        priority = target.priority + 1;
       }
     } else if (this._editorMode === ControllerEditorMode.MOVE) {
       parent = target.parent;
-      priority = target.priority;
+      priority = target.priority + 1;
     } else {
       parent = undefined;
     }
