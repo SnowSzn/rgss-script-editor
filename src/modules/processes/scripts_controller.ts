@@ -1651,6 +1651,15 @@ export class ScriptsController {
   }
 
   /**
+   * Matches extension's invalid characters on the given string.
+   * @param str String
+   * @returns The match
+   */
+  matchInvalidCharacters(str: string) {
+    return str.match(INVALID_CHARACTERS);
+  }
+
+  /**
    * Restarts this instance based on the current attributes.
    */
   private _restart() {

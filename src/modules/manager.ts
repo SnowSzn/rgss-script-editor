@@ -788,7 +788,8 @@ function validateUserInput(
   let uriValidness = extensionScripts.validateUri(parent, uri);
   // Checks name validness
   if (!nameValidness) {
-    return 'Input contains invalid characters or words!';
+    let match = extensionScripts.matchInvalidCharacters(name);
+    return `Input contains invalid characters or words! (${match})`;
   }
   // Checks uri validness
   if (!uriValidness) {
