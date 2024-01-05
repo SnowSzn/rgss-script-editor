@@ -2,8 +2,14 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
-Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+## [1.0.1] - 05/01/2024
 
-## [Unreleased]
+### Changed
+
++ Invalid characters shown on user input window
+
+## [1.0.0] - 05/01/2024
+
+### Added
 
 - Initial release
