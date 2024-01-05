@@ -1,4 +1,9 @@
-# RGSS Script Editor
+
+<p align="center">
+    <img src='./icons/logo.png'>
+</p>
+
+<h1 align="center">RGSS Script Editor</h1>
 
 This is an extension for Visual Studio Code that makes VSCode usable as the script editor for any RPG Maker editor based on the RGSS framework:
 - RPG Maker XP
@@ -27,7 +32,7 @@ As a security measure, the extension will not allow overwriting the script bundl
 ## Features
 
 - **Run Game:** You can run the game within VSCode using a key shortcut (F12 by default)
-  - Both `test` (`debug`) and `console` modes are supported.
+  - Both `test` (`debug`) and `console` (RPG Maker VX Ace) modes are supported.
   - Optionally, custom arguments can be used instead of the default ones.
 - **Backup Creation:** Backs up the scripts bundled file when extraction is done.
 - **Scripts Extraction:** You can extracts all scripts inside the data file to a custom directory within the project's folder.
@@ -52,7 +57,10 @@ As a security measure, the extension will not allow overwriting the script bundl
 
 ### Extension Editor View
 ![Editor View](./images/feature-editor.gif)
+
 ![Editor View 2](./images/feature-editor-2.gif)
+
+![Editor View Collapsed](./images/feature-editor-collapsed.jpg)
 
 ### Run Game Process
 ![Run Game](./images/feature-run-game.gif)
@@ -177,11 +185,13 @@ The extension uses a regular expression to remove invalid characters from the sc
 
 ## Release Notes
 
+### 1.0.1
+
++ Invalid characters shown on user input window
+
 ### 1.0.0
 
-Initial release.
-
----
++ Initial release.
 
 ## Contributors
 - [marshal](https://github.com/hyrious/marshal)
