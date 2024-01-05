@@ -1904,7 +1904,7 @@ export class ScriptsController {
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
-# Version: 1.2.2
+# Version: 1.2.3
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
@@ -2072,7 +2072,7 @@ module ScriptLoader
   #
   def self.valid_entry?(path)
     return false if path == nil
-    return false if path.strip[0] == '${config.skipCharacter}'
+    return false if starts_with?(path.strip, '${config.skipCharacter}')
     return false unless File.extname(path).downcase == '.rb'
     return true
   end
@@ -2111,6 +2111,18 @@ module ScriptLoader
   #
   def self.test?
     $DEBUG || $TEST || $BTEST
+  end
+
+  #
+  # Checks if the given string (str) starts with the specified substring (substr)
+  #
+  # @param str [String] String.
+  # @param substr [String] Substring.
+  #
+  # @return [Boolean] String starts with substring.
+  #
+  def self.starts_with?(str, substr)
+    return !(str =~ /^#{Regexp.escape(substr)}/).nil?
   end
 
   #
