@@ -1,11 +1,6 @@
 import * as vscode from 'vscode';
 import * as manager from './modules/manager';
 
-// TODO: Bugfixing
-// FIXME: La funcion de mover items dentro del arbol elimina a todos los hijos de una carpeta si se mueve
-// esto se debe a que la operacion de mover no se hace de forma recursiva para todos los hijos de la seccion
-// ya que se hace una operacion de delete y create sobre el item
-
 /**
  * Entry point.
  *
@@ -118,7 +113,7 @@ export function activate(context: vscode.ExtensionContext) {
   // **********************************************************
   // Extension commands (won't be used by the user)
   // **********************************************************
-  // Reveal script section on VSCode explorer
+  // Reveal script section on VSCode explorer command
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'rgss-script-editor.revealInVSCodeExplorer',
@@ -151,6 +146,15 @@ export function activate(context: vscode.ExtensionContext) {
       'rgss-script-editor.sectionRename',
       (what) => {
         manager.sectionRename(what);
+      }
+    )
+  );
+  // Drag and drop handler command
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.sectionMove',
+      (...what: any[]) => {
+        manager.sectionMove(...what);
       }
     )
   );

@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import * as context from './context/vscode_context';
-import * as events from './utils/events_handler';
+import { FileSystemWatcher } from './utils/filewatcher';
 import { Configuration } from './utils/configuration';
 import { logger } from './utils/logger';
 import { openFolder } from './processes/open_folder';
@@ -41,10 +41,16 @@ const extensionGameplay: GameplayController = new GameplayController();
 const extensionUI: ExtensionUI = new ExtensionUI();
 
 /**
- * Register refresh event.
+ * Extension file system watcher
  */
-events.registerEvent(events.EVENT_REFRESH, (treeItem?: EditorSectionBase) => {
-  refresh(treeItem);
+const extensionWatcher: FileSystemWatcher = new FileSystemWatcher();
+
+// Sets extension file system watcher callbacks
+extensionWatcher.onDidCreate((uri) => {
+  watcherOnDidCreate(uri);
+});
+extensionWatcher.onDidDelete((uri) => {
+  watcherOnDidDelete(uri);
 });
 
 /**
@@ -110,10 +116,10 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
 
     // Updates extension instances
     logger.update(extensionConfig);
-    extensionScripts.update(extensionConfig);
     extensionGameplay.update(extensionConfig);
+    extensionScripts.update(extensionConfig);
+    extensionWatcher.update(extensionConfig);
     extensionUI.update({
-      dragAndDropController: extensionScripts,
       treeRoot: extensionScripts.root,
       statusBarOptions: {
         projectFolder: folder.curProjectFolder.projectFolderName,
@@ -220,7 +226,7 @@ export async function extractScripts() {
       context.setExtractedScripts(true);
 
       // Refresh UI
-      refresh();
+      await refresh();
     } else if (extractionResponse === ScriptsController.SCRIPTS_NOT_EXTRACTED) {
       logger.logInfo(
         "Extraction not needed, there aren't scripts left in the bundle file!"
@@ -335,9 +341,18 @@ export async function runGame() {
  * @returns A promise.
  */
 export async function processGameException() {
-  logger.logInfo('Processing game exception...');
-  let exception = extensionGameplay.lastException;
-  if (exception) {
+  try {
+    logger.logInfo('Processing game exception...');
+    let exception = extensionGameplay.lastException;
+    // Check exception existence
+    if (!exception) {
+      logger.logInfo('No exception was reported in the last game session!');
+      vscode.window.showInformationMessage(
+        'No exception was reported in the last game session!'
+      );
+      return;
+    }
+    // Process exception
     let option = await vscode.window.showWarningMessage(
       'An exception was reported in the last game session.',
       'Peek Backtrace',
@@ -370,11 +385,8 @@ export async function processGameException() {
         'gotoAndPeek'
       );
     }
-  } else {
-    logger.logInfo('No exception was reported in the last game session!');
-    vscode.window.showInformationMessage(
-      'No exception was reported in the last game session!'
-    );
+  } catch (error) {
+    logger.logErrorUnknown(error);
   }
 }
 
@@ -384,69 +396,81 @@ export async function processGameException() {
  * @returns A promise
  */
 export async function sectionCreate(section?: EditorSectionBase) {
-  let selected = extensionUI.getTreeSelection();
-  let target = section ? section : selected ? selected[0] : undefined;
+  try {
+    let selected = extensionUI.getTreeSelection();
+    let target = section ? section : selected ? selected[0] : undefined;
 
-  // Check target validness
-  if (!target) {
-    return;
+    // Check target validness
+    if (!target) {
+      return;
+    }
+
+    // Prepare creation input
+    let type: EditorSectionType | undefined = undefined;
+    let name: string | undefined = undefined;
+
+    // Determine section type
+    let typeOption = await vscode.window.showQuickPick(
+      ['Create Script', 'Create Folder', 'Create Separator'],
+      {
+        title: `Create a new section at: ${target}`,
+        placeHolder: 'Choose the type...',
+        canPickMany: false,
+      }
+    );
+    switch (typeOption) {
+      case 'Create Separator': {
+        type = EditorSectionType.Separator;
+        // Automatically sets separator name
+        name = extensionScripts.getSeparatorName();
+        break;
+      }
+      case 'Create Folder': {
+        type = EditorSectionType.Folder;
+        break;
+      }
+      case 'Create Script': {
+        type = EditorSectionType.Script;
+        break;
+      }
+      default: {
+        type = undefined;
+        break;
+      }
+    }
+
+    // Determine section name (if not set automatically)
+    if (type && !name) {
+      name = await vscode.window.showInputBox({
+        title: `Create a new section at: ${target}`,
+        placeHolder: 'Type a name for the new section...',
+        validateInput(value) {
+          let info = extensionScripts.determineSectionInfo(
+            type!,
+            value,
+            target!
+          );
+          return info
+            ? validateUserInput(info.parent, info.uri, value)
+            : 'Cannot determine validness!';
+        },
+      });
+    }
+
+    // Check user input validness
+    if (!name || !type) {
+      return;
+    }
+
+    // Create new section
+    let info = extensionScripts.determineSectionInfo(type, name, target);
+    if (info) {
+      extensionScripts.sectionCreate(info);
+      await refresh();
+    }
+  } catch (error) {
+    logger.logErrorUnknown(error);
   }
-
-  // Prepare creation input
-  let type = undefined;
-  let name = undefined;
-
-  // Determine section type
-  let typeOption = await vscode.window.showQuickPick(
-    ['Create Script', 'Create Folder', 'Create Separator'],
-    {
-      title: `Create a new section at: ${target}`,
-      placeHolder: 'Choose the type...',
-      canPickMany: false,
-    }
-  );
-  switch (typeOption) {
-    case 'Create Separator': {
-      type = EditorSectionType.Separator;
-      // Automatically sets separator name
-      name = extensionScripts.getSeparatorName();
-      break;
-    }
-    case 'Create Folder': {
-      type = EditorSectionType.Folder;
-      break;
-    }
-    case 'Create Script': {
-      type = EditorSectionType.Script;
-      break;
-    }
-    default: {
-      type = undefined;
-      break;
-    }
-  }
-
-  // Determine section name (if not set automatically)
-  if (type && !name) {
-    name = await vscode.window.showInputBox({
-      title: `Create a new section at: ${target}`,
-      placeHolder: 'Type a name for the new section...',
-      validateInput(value) {
-        return extensionScripts.validateName(value)
-          ? null
-          : 'Input contains invalid characters or words!';
-      },
-    });
-  }
-
-  // Check user input validness
-  if (!name || !type) {
-    return;
-  }
-
-  // Create new section
-  extensionScripts.createSection(type, name, target);
-  refresh();
 }
 
 /**
@@ -457,18 +481,22 @@ export async function sectionCreate(section?: EditorSectionBase) {
  * @returns A promise
  */
 export async function sectionDelete(section?: EditorSectionBase) {
-  let items = extensionUI.getTreeSelection() || (section ? [section] : []);
-  let option = await vscode.window.showQuickPick(['Yes', 'No'], {
-    title: `Deleting: ${items}`,
-    placeHolder: 'Are you sure you want to delete the selected items?',
-    canPickMany: false,
-  });
-  // Checks for user option
-  if (option === 'Yes') {
-    for (let item of items) {
-      extensionScripts.deleteSection(item);
+  try {
+    let items = extensionUI.getTreeSelection() || (section ? [section] : []);
+    let option = await vscode.window.showQuickPick(['Yes', 'No'], {
+      title: `Deleting: ${items}`,
+      placeHolder: 'Are you sure you want to delete the selected items?',
+      canPickMany: false,
+    });
+    // Checks for user option
+    if (option === 'Yes') {
+      for (let item of items) {
+        extensionScripts.sectionDelete(item);
+      }
+      await refresh();
     }
-    refresh();
+  } catch (error) {
+    logger.logErrorUnknown(error);
   }
 }
 
@@ -493,17 +521,48 @@ export async function sectionRename(section?: EditorSectionBase) {
       placeHolder: 'Type a new name for this section...',
       value: item.label?.toString(),
       validateInput(value) {
-        return extensionScripts.validateName(value)
-          ? null
-          : 'Input contains invalid characters or words!';
+        let uri = extensionScripts.determineSectionUri(
+          item!.parent!.resourceUri,
+          item!.type,
+          value
+        );
+        return validateUserInput(item!.parent!, uri, value);
       },
     });
 
     // If input is valid, perform rename operation
     if (name) {
-      extensionScripts.renameSection(item, name);
-      refresh();
+      let uri = extensionScripts.determineSectionUri(
+        item.getDirectory(),
+        item.type,
+        name
+      );
+      extensionScripts.sectionRename(item, uri);
+      await refresh();
     }
+  } catch (error) {
+    logger.logErrorUnknown(error);
+  }
+}
+
+/**
+ * Processes a drag and drop move operation on the tree.
+ *
+ * All sections in ``source`` will be moved into the ``target`` section.
+ * @param source List of sections (drag)
+ * @param target Target section (drop)
+ */
+export async function sectionMove(
+  source?: EditorSectionBase[],
+  target?: EditorSectionBase
+) {
+  try {
+    // Checks validness
+    if (!source || !target) {
+      return;
+    }
+    extensionScripts.sectionMove(source, target);
+    await refresh();
   } catch (error) {
     logger.logErrorUnknown(error);
   }
@@ -523,28 +582,32 @@ export async function sectionRename(section?: EditorSectionBase) {
 export async function sectionAlternateLoad(
   section?: EditorSectionBase | AlternateLoadMatrix
 ) {
-  let items: AlternateLoadMatrix = [];
+  try {
+    let items: AlternateLoadMatrix = [];
 
-  // Handles arguments
-  if (section instanceof Array) {
-    // AlternateLoadMatrix
-    items = section;
-  } else {
-    // Can be a section or undefined if called using a keyboard shortcut
-    for (let item of extensionUI.getTreeSelection() || [section]) {
-      if (item) {
-        items.push([item, !item.isLoaded()]);
+    // Handles arguments
+    if (section instanceof Array) {
+      // AlternateLoadMatrix
+      items = section;
+    } else {
+      // Can be a section or undefined if called using a keyboard shortcut
+      for (let item of extensionUI.getTreeSelection() || [section]) {
+        if (item) {
+          items.push([item, !item.isLoaded()]);
+        }
       }
     }
-  }
 
-  // Alternate load status
-  for (let matrix of items) {
-    const item = matrix[0];
-    const load = matrix[1];
-    extensionScripts.alternateSectionLoad(item, load);
+    // Alternate load status
+    for (let matrix of items) {
+      const item = matrix[0];
+      const load = matrix[1];
+      extensionScripts.sectionAlternateLoad(item, load);
+    }
+    await refresh();
+  } catch (error) {
+    logger.logErrorUnknown(error);
   }
-  refresh();
 }
 
 /**
@@ -599,14 +662,78 @@ export async function chooseEditorMode() {
 }
 
 /**
- * Refreshes the extension editor.
+ * Updates the selected script section on the tree view to match the file opened in the given text editor.
+ *
+ * Extension auto-reveal functionality must be enabled.
+ * @param editor Text editor instance.
+ * @returns A promise.
+ */
+export async function updateTextEditor(editor?: vscode.TextEditor) {
+  if (editor && extensionConfig.configAutoReveal()) {
+    extensionUI.revealInTreeView(editor.document.uri, {
+      select: true,
+      expand: true,
+    });
+  }
+}
+
+/**
+ * Disposes the extension upon deactivation.
+ */
+export async function dispose() {
+  // Disposes the game controller
+  extensionGameplay.dispose();
+  // Disposes UI elements
+  extensionUI.dispose();
+  // Disposes file system watcher
+  extensionWatcher.dispose();
+}
+
+/**
+ * Processes a file system watcher creation event.
+ * @param uri Entry uri
+ */
+async function watcherOnDidCreate(uri: vscode.Uri) {
+  logger.logInfo(`Entry created: "${uri.fsPath}"`);
+  let type = extensionScripts.determineSectionType(uri);
+  if (type) {
+    extensionScripts.sectionCreate({
+      type: type,
+      uri: uri,
+      parent: extensionScripts.root,
+    });
+    await refresh();
+  }
+}
+
+/**
+ * Processes a file system watcher deletion event.
+ * @param uri Entry uri
+ */
+async function watcherOnDidDelete(uri: vscode.Uri) {
+  logger.logInfo(`Entry deleted: "${uri.fsPath}"`);
+  // Find child instance that matches the deleted path.
+  let child = extensionScripts.root.findChild((value) => {
+    return value.isPath(uri);
+  }, true);
+  // Delete child if found.
+  if (child) {
+    extensionScripts.sectionDelete(child);
+    await refresh();
+  }
+}
+
+/**
+ * Asynchronously refreshes the extension editor.
  *
  * Both the editor tree items and the load order file are updated.
+ *
+ * To ensure that the tree is refreshes this method should be awaited.
  *
  * If a specific tree item is given, it will refresh that tree item and all of its children.
  * @param treeItem Tree item to refresh.
  */
-export async function refresh(treeItem?: EditorSectionBase) {
+async function refresh(treeItem?: EditorSectionBase) {
   try {
     let item = treeItem ?? extensionScripts.root;
     if (item) {
@@ -634,31 +761,30 @@ export async function refresh(treeItem?: EditorSectionBase) {
 }
 
 /**
- * Updates the selected script section on the tree view to match the file opened in the given text editor.
+ * Checks the validness of the given user input.
  *
- * Extension auto-reveal functionality must be enabled.
- * @param editor Text editor instance.
- * @returns A promise.
+ * If the input is invalid, it returns a string with an invalid message, otherwise ``null``.
+ * @param parent Editor section parent
+ * @param uri Editor section uri
+ * @param name Editor section name
+ * @returns Input validness
  */
-export async function updateTextEditor(editor?: vscode.TextEditor) {
-  if (editor && extensionConfig.configAutoReveal()) {
-    extensionUI.revealInTreeView(editor.document.uri, {
-      select: true,
-      expand: true,
-    });
+function validateUserInput(
+  parent: EditorSectionBase,
+  uri: vscode.Uri,
+  name: string
+): string | null {
+  let nameValidness = extensionScripts.validateName(name);
+  let uriValidness = extensionScripts.validateUri(parent, uri);
+  // Checks name validness
+  if (!nameValidness) {
+    return 'Input contains invalid characters or words!';
   }
-}
-
-/**
- * Disposes the extension upon deactivation.
- */
-export function dispose() {
-  // Disposes script controller
-  extensionScripts.dispose();
-  // Disposes the game controller
-  extensionGameplay.dispose();
-  // Disposes UI elements
-  extensionUI.dispose();
+  // Checks uri validness
+  if (!uriValidness) {
+    return 'An editor section already exists with the given input!';
+  }
+  return null;
 }
 
 /**

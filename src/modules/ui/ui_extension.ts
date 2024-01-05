@@ -37,25 +37,27 @@ export type ExtensionUiReveal = {
  */
 export type ExtensionUiOptions<T> = {
   /**
+   * Status bar options.
+   */
+  statusBarOptions: StatusBarOptions;
+
+  /**
    * Root of the tree view provider.
    *
    * This will be used by the view provider to provide data to the tree view.
    *
    * If it is ``undefined`` the tree view will be empty.
    */
-  treeRoot?: T;
+  treeRoot: T;
 
   /**
    * Drag and drop controller for the tree view.
    *
    * This class instance is used by the tree view to handle drag and drop operations.
+   *
+   * If no instance is given, the default drag and drop controller will be the tree provider.
    */
-  dragAndDropController: vscode.TreeDragAndDropController<T>;
-
-  /**
-   * Status bar options.
-   */
-  statusBarOptions: StatusBarOptions;
+  dragAndDropController?: vscode.TreeDragAndDropController<T>;
 };
 
 /**
@@ -112,7 +114,8 @@ export class ExtensionUI {
       'rgss-script-editor.editorView',
       {
         treeDataProvider: this._editorViewProvider,
-        dragAndDropController: options.dragAndDropController,
+        dragAndDropController:
+          options.dragAndDropController || this._editorViewProvider,
         canSelectMany: true,
         manageCheckboxStateManually: true,
         showCollapseAll: true,

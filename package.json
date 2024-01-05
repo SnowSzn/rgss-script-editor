@@ -2,7 +2,7 @@
   "icon": "./icons/icon.png",
   "name": "rgss-script-editor",
   "displayName": "RGSS Script Editor",
-  "description": "A VSCode extension that allows to extract scripts files from RPG Maker bundle file and load them individually based on a load order",
+  "description": "An extension that allows to use Visual Studio Code as the code editor for RPG Maker game projects",
   "author": {
     "name": "SnowSzn",
     "url": "https://github.com/SnowSzn"
@@ -120,8 +120,14 @@
         "icon": "$(edit)"
       },
       {
+        "command": "rgss-script-editor.sectionMove",
+        "title": "Move Section...",
+        "category": "RGSS Script Editor",
+        "icon": "$(move)"
+      },
+      {
         "command": "rgss-script-editor.sectionAlternateLoad",
-        "title": "Alternate Load Status...",
+        "title": "Alternate Section Load Status...",
         "category": "RGSS Script Editor",
         "icon": "$(arrow-swap)"
       }
@@ -305,24 +311,29 @@
       ],
       "view/item/context": [
         {
-          "command": "rgss-script-editor.revealInVSCodeExplorer",
-          "when": "view == rgss-script-editor.editorView"
-        },
-        {
           "command": "rgss-script-editor.sectionCreate",
-          "when": "view == rgss-script-editor.editorView"
+          "when": "view == rgss-script-editor.editorView",
+          "group": "2"
         },
         {
           "command": "rgss-script-editor.sectionRename",
-          "when": "view == rgss-script-editor.editorView"
+          "when": "view == rgss-script-editor.editorView",
+          "group": "1"
         },
         {
           "command": "rgss-script-editor.sectionDelete",
-          "when": "view == rgss-script-editor.editorView"
+          "when": "view == rgss-script-editor.editorView",
+          "group": "2"
         },
         {
           "command": "rgss-script-editor.sectionAlternateLoad",
-          "when": "view == rgss-script-editor.editorView"
+          "when": "view == rgss-script-editor.editorView",
+          "group": "1"
+        },
+        {
+          "command": "rgss-script-editor.revealInVSCodeExplorer",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "5"
         }
       ]
     }

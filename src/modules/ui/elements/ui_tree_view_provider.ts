@@ -1,11 +1,19 @@
 import * as vscode from 'vscode';
+import { UUID } from 'crypto';
 import { EditorSectionBase } from '../../processes/scripts_controller';
+
+/**
+ * Drag and drop MIME type.
+ */
+const MIME_TYPE = 'application/rgss.script.editor';
 
 /**
  * A data provider that provides tree data.
  */
 export class EditorViewProvider
-  implements vscode.TreeDataProvider<EditorSectionBase>
+  implements
+    vscode.TreeDataProvider<EditorSectionBase>,
+    vscode.TreeDragAndDropController<EditorSectionBase>
 {
   /**
    * Scripts folder data.
@@ -27,10 +35,81 @@ export class EditorViewProvider
   > = this._onDidChangeTreeData.event;
 
   /**
+   * Drop accepted MIME types.
+   */
+  dropMimeTypes: readonly string[] = [MIME_TYPE];
+
+  /**
+   * Drag accepted MIME types.
+   */
+  dragMimeTypes: readonly string[] = [MIME_TYPE];
+
+  /**
    * Constructor.
    */
   constructor() {
     this._root = undefined;
+  }
+
+  /**
+   * Handles a drag operation in the tree.
+   * @param source List of tree items
+   * @param dataTransfer Data transfer
+   * @param token Token
+   */
+  handleDrag(
+    source: readonly EditorSectionBase[],
+    dataTransfer: vscode.DataTransfer,
+    token: vscode.CancellationToken
+  ): void | Thenable<void> {
+    // Prepares data (must be stringified)
+    let data: UUID[] = [];
+    source.forEach((section) => {
+      data.push(section.id);
+    });
+    // Sets data transfer package with the data
+    dataTransfer.set(MIME_TYPE, new vscode.DataTransferItem(data));
+  }
+
+  /**
+   * Handles a drop operation on the tree.
+   * @param target Target tree item
+   * @param dataTransfer Data transfer
+   * @param token Token
+   */
+  handleDrop(
+    target: EditorSectionBase | undefined,
+    dataTransfer: vscode.DataTransfer,
+    token: vscode.CancellationToken
+  ): void | Thenable<void> {
+    // Checks target validness
+    if (!target) {
+      return;
+    }
+
+    // Gets data from the transfer package
+    const ids = dataTransfer.get(MIME_TYPE)?.value as UUID[];
+    let sections: EditorSectionBase[] = [];
+    if (!ids) {
+      return;
+    }
+
+    // Fetchs the appropiate editor section instances by UUID.
+    ids.forEach((id) => {
+      const child = this._root?.findChild((value) => {
+        return value.id === id;
+      }, true);
+      if (child) {
+        sections.push(child);
+      }
+    });
+
+    // Calls drap and drop command
+    vscode.commands.executeCommand(
+      'rgss-script-editor.sectionMove',
+      sections,
+      target
+    );
   }
 
   /**
@@ -51,7 +130,7 @@ export class EditorViewProvider
    * This method triggers a refresh on the tree since data has been updated.
    * @param root Script section root
    */
-  update(root?: EditorSectionBase) {
+  update(root: EditorSectionBase) {
     this._root = root;
     this.refresh();
   }
@@ -69,11 +148,13 @@ export class EditorViewProvider
   }
 
   /**
-   * Reveals the appropiate script section on the tree view based on ``path``.
+   * Reveals the appropiate script section on the tree view based on the given ``uri``.
    * @param uri Script section uri path
    */
   findTreeItem(uri: vscode.Uri) {
-    return this._root?.findChild(uri, true);
+    return this._root?.findChild((value) => {
+      return value.isPath(uri);
+    }, true);
   }
 
   /**
