@@ -269,6 +269,10 @@ export class GameplayController {
     if (!workingDir || !gamePath || !gameArgs) {
       throw new Error('Cannot run the game due to invalid values!');
     }
+    // Checks if exeecutable path exists
+    if (!fs.existsSync(gamePath)) {
+      throw new Error(`Game executable path: "${gamePath}" does not exists!`);
+    }
     logger.logInfo(`Resolving game information based on platform...`);
     // Run executable OS-based
     switch (process.platform) {
@@ -310,6 +314,7 @@ export class GameplayController {
         );
       }
     }
+    // Launch process
     logger.logInfo(`Resolved process command: "${exePath}"`);
     logger.logInfo(`Resolved process arguments: "${exeArgs}"`);
     logger.logInfo('Spawning process...');

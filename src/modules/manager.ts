@@ -465,6 +465,7 @@ export async function sectionCreate(section?: EditorSectionBase) {
     // Create new section
     let info = extensionScripts.determineSectionInfo(type, name, target);
     if (info) {
+      logger.logInfo(`Creating section: "${info.uri.fsPath}"`);
       extensionScripts.sectionCreate(info);
       await refresh();
     }
@@ -491,6 +492,7 @@ export async function sectionDelete(section?: EditorSectionBase) {
     // Checks for user option
     if (option === 'Yes') {
       for (let item of items) {
+        logger.logInfo(`Deleting section: "${item.resourceUri.fsPath}"`);
         extensionScripts.sectionDelete(item);
       }
       await refresh();
@@ -537,6 +539,7 @@ export async function sectionRename(section?: EditorSectionBase) {
         item.type,
         name
       );
+      logger.logInfo(`Renaming section: ${item} to: "${uri.fsPath}"`);
       extensionScripts.sectionRename(item, uri);
       await refresh();
     }
@@ -561,6 +564,7 @@ export async function sectionMove(
     if (!source || !target) {
       return;
     }
+    logger.logInfo(`Moving: ${source} to: ${target}`);
     extensionScripts.sectionMove(source, target);
     await refresh();
   } catch (error) {
@@ -602,6 +606,7 @@ export async function sectionAlternateLoad(
     for (let matrix of items) {
       const item = matrix[0];
       const load = matrix[1];
+      logger.logInfo(`Section: ${item} load status set to: ${load}`);
       extensionScripts.sectionAlternateLoad(item, load);
     }
     await refresh();
@@ -694,6 +699,11 @@ export async function dispose() {
  * @param uri Entry uri
  */
 async function watcherOnDidCreate(uri: vscode.Uri) {
+  // Check if it is root path
+  if (extensionScripts.root.isPath(uri)) {
+    return;
+  }
+  // New entry created
   logger.logInfo(`Entry created: "${uri.fsPath}"`);
   let type = extensionScripts.determineSectionType(uri);
   if (type) {

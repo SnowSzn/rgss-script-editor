@@ -1339,7 +1339,6 @@ export class ScriptsController {
     let child = info.parent.createChild(info.type, info.uri, info.priority);
     // Process child instance is creation was successful
     if (child) {
-      logger.logInfo(`Creating section: "${child.resourceUri.fsPath}"`);
       child.setCheckboxState(true);
       // Creates file system entry
       if (options?.overwrite || !fs.existsSync(child.resourceUri.fsPath)) {
@@ -1380,7 +1379,6 @@ export class ScriptsController {
    * @throws An error when deletion fails.
    */
   sectionDelete(target: EditorSectionBase) {
-    logger.logInfo(`Deleting section: "${target.resourceUri.fsPath}"`);
     let child = target.parent?.deleteChild(target);
     if (child) {
       // Deletes file system entry if it exists
@@ -1411,9 +1409,6 @@ export class ScriptsController {
    * @throws An error when renaming is not possible.
    */
   sectionRename(target: EditorSectionBase, uri: vscode.Uri) {
-    logger.logInfo(
-      `Renaming: '${target.resourceUri.fsPath}' to: '${uri.fsPath}'`
-    );
     switch (target.type) {
       case EditorSectionType.Separator: {
         // Separators are not real files.
