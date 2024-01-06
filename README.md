@@ -185,6 +185,10 @@ The extension uses a regular expression to remove invalid characters from the sc
 
 ## Release Notes
 
+### 1.0.4
+
++ Added more invalid characters that crashes the game
+
 ### 1.0.3
 
 + Avoid unnecesary refresh calls when file system watcher creates an existing editor section
