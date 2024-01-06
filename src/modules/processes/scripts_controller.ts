@@ -125,7 +125,7 @@ type LoaderScriptConfig = {
  * Regexp of invalid characters for Windows, Linux-based systems and this extension.
  */
 const INVALID_CHARACTERS =
-  /[\\/:\*\?"<>\|#▼■]|(\bCON\b|\bPRN\b|\bAUX\b|\bNUL\b|\bCOM[1-9]\b|\bLPT[1-9]\b)/g;
+  /[\\/:\*\?"<>\|#▼■¬·ºª€¿¡¨´çñ☆“‘–ƒ„’…†‡ˆ‰Š‹ŒŽ•–—™š›œžŸ¢£¤¦§¨©®ª«¯°±²³µ¶¸¹»¼½¾ÆÅÄÃÐ×÷öøáéíóúÁÉÍÓÚ]|(\bCON\b|\bPRN\b|\bAUX\b|\bNUL\b|\bCOM[1-9]\b|\bLPT[1-9]\b)/g;
 
 /**
  * Load order file name within the scripts folder.
