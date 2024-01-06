@@ -185,6 +185,10 @@ The extension uses a regular expression to remove invalid characters from the sc
 
 ## Release Notes
 
+### 1.0.3
+
++ Avoid unnecesary refresh calls when file system watcher creates an existing editor section
+
 ### 1.0.2
 
 + Fixed RPG Maker XP not skipping ignored script files

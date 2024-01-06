@@ -2,6 +2,12 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.0.3] - 06/01/2024
+
+### Added
+
++ Avoid unnecesary refresh calls when file system watcher creates an existing editor section
+
 ## [1.0.2] - 05/01/2024
 
 ### Fixed
