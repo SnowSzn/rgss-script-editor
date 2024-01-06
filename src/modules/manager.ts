@@ -706,7 +706,13 @@ async function watcherOnDidCreate(uri: vscode.Uri) {
   // New entry created
   logger.logInfo(`Entry created: "${uri.fsPath}"`);
   let type = extensionScripts.determineSectionType(uri);
-  if (type) {
+  // Checks if the editor section exists already
+  let child = extensionScripts.root.findChild((value) => {
+    return value.isPath(uri);
+  }, true);
+  // Create section only if it does not exists
+  if (type && !child) {
+    logger.logInfo(`Creating section: "${uri.fsPath}"`);
     extensionScripts.sectionCreate({
       type: type,
       uri: uri,
@@ -728,6 +734,7 @@ async function watcherOnDidDelete(uri: vscode.Uri) {
   }, true);
   // Delete child if found.
   if (child) {
+    logger.logInfo(`Deleting section: "${child.resourceUri.fsPath}"`);
     extensionScripts.sectionDelete(child);
     await refresh();
   }

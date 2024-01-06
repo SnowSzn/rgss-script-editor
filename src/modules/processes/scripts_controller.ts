@@ -1922,12 +1922,13 @@ export class ScriptsController {
 # If for some reason, you want to move the scripts folder to another location
 # and you have already extracted the scripts to the default path, you should
 # follow these steps:
-#   1. Go to the VSCode extension settings and modify the scripts folder path
+#   1. Move the scripts folder to the desired location.
+#
+#   2. Go to the VSCode extension settings and modify the scripts folder path
 #     - This option ID is: 'rgss-script-editor.external.scriptsFolder'
 #   This is important, since if you don't do it properly, the extension will
 #   be working with the same path as before.
-#
-#   2. Move the folder to the desired location.
+#   The extension will automatically open the folder again with the new path.
 #
 #   3. Change this script's target folder location.
 #   You must change the location where this script will look for script files.
@@ -2040,7 +2041,7 @@ module ScriptLoader
   # VSCode extension can interpret a hash with the following information:
   #   - type: Exception type.
   #   - mesg: Exception message.
-  #   - back: Eception backtrace array.
+  #   - back: Exception backtrace array.
   #
   # @param exception [Exception] Exception instance.
   #
