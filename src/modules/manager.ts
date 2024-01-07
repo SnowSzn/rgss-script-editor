@@ -695,6 +695,18 @@ export async function dispose() {
 }
 
 /**
+ * Checks if the configuration change event affects this extension.
+ * @param event Config change event
+ */
+export function affectsConfiguration(event: vscode.ConfigurationChangeEvent) {
+  return (
+    event.affectsConfiguration('rgssScriptEditor.external.backUpsFolder') ||
+    event.affectsConfiguration('rgssScriptEditor.external.scriptsFolder') ||
+    event.affectsConfiguration('rgssScriptEditor.gameplay.gameExecutablePath')
+  );
+}
+
+/**
  * Processes a file system watcher creation event.
  * @param uri Entry uri
  */
