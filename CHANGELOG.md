@@ -2,6 +2,12 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.0.5] - 07/01/2024
+
+### Fixed
+
++ Avoids extension restarting when an unknown configuration changes
+
 ## [1.0.4] - 06/01/2024
 
 ### Added

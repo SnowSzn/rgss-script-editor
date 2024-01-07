@@ -15,9 +15,10 @@
     "RGSS1",
     "RGSS2",
     "RGSS3",
+    "RPGMaker",
     "RPG Maker Script Editor",
     "RPG Maker Script Extractor",
-    "RPGMaker",
+    "RPG Maker",
     "RPG Maker XP",
     "RPG Maker VX",
     "RPG Maker VX Ace"
@@ -28,7 +29,7 @@
   "bugs": {
     "url": "https://github.com/SnowSzn/rgss-script-editor/issues"
   },
-  "version": "1.0.4",
+  "version": "1.0.5",
   "engines": {
     "vscode": "^1.84.0"
   },
