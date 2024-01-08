@@ -34,15 +34,18 @@ As a security measure, the extension will not allow overwriting the script bundl
 - **Run Game:** You can run the game within VSCode using a key shortcut (F12 by default)
   - Both `test` (`debug`) and `console` (RPG Maker VX Ace) modes are supported.
   - Optionally, custom arguments can be used instead of the default ones.
+  - You can also specify a custom path to the game, in case you want to run a MKXP-Z executable.
 - **Backup Creation:** Backs up the scripts bundled file when extraction is done.
 - **Scripts Extraction:** You can extracts all scripts inside the data file to a custom directory within the project's folder.
 - **Script Loader:** The game will load all scripts files individually based on a load order
   - Any script can be ignored and not loaded when the game runs.
+  - Instead of commenting the whole script code or deleting it, you can disable it and it won't be loaded.
 - **Workspace Support**: You can change the active folder easily in a workspace.
 - **Script Editor**: This extension enables a view in VSCode where you can perform several operations on sections.
   - Create new sections.
     - You can create new sections: scripts, folders and separators.
   - Enable/Disable sections.
+    - If a section is enabled, it will be loaded when the game runs.
   - Delete sections.
     - Any section can be deleted along with all of its children.
   - Rename sections.
@@ -52,6 +55,9 @@ As a security measure, the extension will not allow overwriting the script bundl
 - **Game Exception Processing**: The extension can process the exception that killed the game in the last test game session.
   - The extension backtrace will be shown in a markdown file besides the active editor.
   - VSCode built-in peek menu will be used to show each backtrace location.
+- **Bundle File Creation**: You can create an RPG Maker bundle file (rxdata, rvdata, rvdata2) using the current enabled scripts.
+  - This is heavily recommended when sharing a copy of your game since this extension must be used for development purposes only.
+  - Make sure not to overwrite the scripts bundle file this extension creates, otherwise, you will lose the editor tree order when extracting it again, this is unavoidable since the RPG Maker bundle file does not save this kind of data.
 
 ## Screenshots
 
