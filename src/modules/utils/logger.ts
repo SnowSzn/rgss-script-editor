@@ -1,12 +1,6 @@
 import * as fs from 'fs';
+import * as vscode from 'vscode';
 import { Configuration } from './configuration';
-
-/**
- * Whether to force logging or not.
- *
- * Dev use.
- */
-const FORCE_CONSOLE_LOG = true;
 
 /**
  * Extension logger class.
@@ -18,10 +12,16 @@ class Logger {
   private _config?: Configuration;
 
   /**
+   * VSCode log output channel.
+   */
+  private _output: vscode.OutputChannel;
+
+  /**
    * Constructor.
    */
   constructor() {
     this._config = undefined;
+    this._output = vscode.window.createOutputChannel('RGSS Script Editor');
   }
 
   /**
@@ -32,6 +32,8 @@ class Logger {
    */
   update(config: Configuration) {
     this._config = config;
+    // Clears current output channel contents
+    this._output.clear();
     // Deletes old log file
     if (this._config.configLogFile()) {
       this.deleteLogFile();
@@ -58,12 +60,14 @@ class Logger {
   log(message: string, errorConsole: boolean = false): void {
     let msg = '[RGSS Script Editor] ' + message.concat('\n');
     // Logging to console enabled
-    if (this._config?.configLogConsole() || FORCE_CONSOLE_LOG) {
+    if (this._config?.configLogConsole()) {
+      // Write console message (dev console)
       if (errorConsole) {
         console.error(msg);
       } else {
         console.log(msg);
       }
+      this._output.append(msg);
     }
     // Logging to file enabled
     if (this._config?.configLogFile()) {

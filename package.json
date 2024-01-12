@@ -140,7 +140,7 @@
           "rgssScriptEditor.debug.logToConsole": {
             "type": "boolean",
             "default": true,
-            "description": "Enables this extension to log information to the Visual Studio Code debug console",
+            "description": "Enables this extension to log information into a VSCode output channel",
             "order": 0
           },
           "rgssScriptEditor.debug.logToFile": {
