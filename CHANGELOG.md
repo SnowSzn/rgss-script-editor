@@ -2,6 +2,17 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.0.6] - 12/01/2024
+
+### Added
+
++ Extension now provides a output channel to write log messages
+
+### Changed
+
++ Avoid the extension to restart when a configuration value changes.
+  + When changing the relative path to the extracted scripts folder, a restart will still trigger to refresh the tree view
+
 ## [1.0.5] - 07/01/2024
 
 ### Fixed

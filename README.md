@@ -189,31 +189,18 @@ For example:
 
 The extension uses a regular expression to remove invalid characters from the script's name, I tried to include as many invalid combinations as possible but I may have missed some.
 
-## Release Notes
+## Latest Release Notes
 
-### 1.0.5
+## [1.0.6] - 12/01/2024
 
-+ Avoids extension restarting when an unknown configuration changes
+### Added
 
-### 1.0.4
++ Extension now provides a output channel to write log messages
 
-+ Added more invalid characters that crashes the game
+### Changed
 
-### 1.0.3
-
-+ Avoid unnecesary refresh calls when file system watcher creates an existing editor section
-
-### 1.0.2
-
-+ Fixed RPG Maker XP not skipping ignored script files
-
-### 1.0.1
-
-+ Invalid characters shown on user input window
-
-### 1.0.0
-
-+ Initial release.
++ Avoid the extension to restart when a configuration value changes.
+  + When changing the relative path to the extracted scripts folder, a restart will still trigger to refresh the tree view
 
 ## Contributors
 - [marshal](https://github.com/hyrious/marshal)
