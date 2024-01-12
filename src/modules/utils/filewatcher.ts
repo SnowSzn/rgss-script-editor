@@ -58,7 +58,7 @@ export class FileSystemWatcher {
    */
   private _restart() {
     // Checks scripts folder validness
-    let scriptsFolder = this._config?.scriptsFolderPath;
+    let scriptsFolder = this._config?.determineScriptsPath();
     if (!scriptsFolder) {
       return;
     }

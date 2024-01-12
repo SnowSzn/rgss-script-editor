@@ -258,7 +258,7 @@ export class GameplayController {
     }
     // Preparation
     let workingDir = this._config.projectFolderPath?.fsPath;
-    let gamePath = this._config.gameExePath?.fsPath;
+    let gamePath = this._config.determineGamePath()?.fsPath;
     let gameArgs = this._config.determineGameArgs();
     let exePath = '';
     let exeArgs = [];
@@ -347,7 +347,7 @@ export class GameplayController {
         `Game execution finished with code: ${code}, signal: ${signal}`
       );
       // Checks output file for possible exceptions that killed the game
-      let output = this._config.gameOutputPath?.fsPath;
+      let output = this._config.determineGameOutputPath()?.fsPath;
       if (output && fs.existsSync(output)) {
         // If file exists, an exception ocurred in the last game session
         let contents = fs.readFileSync(output);

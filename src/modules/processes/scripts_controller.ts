@@ -1075,7 +1075,7 @@ export class ScriptsController {
    */
   async checkScripts(): Promise<number> {
     logger.logInfo(`Checking project's bundle scripts file status...`);
-    let bundleFilePath = this._config?.bundleFilePath;
+    let bundleFilePath = this._config?.determineBundleFilePath();
     logger.logInfo(`Bundle file path is: "${bundleFilePath?.fsPath}"`);
     if (!bundleFilePath) {
       throw new Error('Cannot check bundle scripts due to invalid values!');
@@ -1106,8 +1106,8 @@ export class ScriptsController {
    */
   async extractScripts(): Promise<number> {
     logger.logInfo('Extracting scripts from RPG Maker bundle file...');
-    let bundleFilePath = this._config?.bundleFilePath;
-    let scriptsFolderPath = this._config?.scriptsFolderPath;
+    let bundleFilePath = this._config?.determineBundleFilePath();
+    let scriptsFolderPath = this._config?.determineScriptsPath();
     logger.logInfo(`Bundle file path is: "${bundleFilePath?.fsPath}"`);
     logger.logInfo(`Scripts folder path is: "${scriptsFolderPath?.fsPath}"`);
     // Checks bundle file path validness
@@ -1185,8 +1185,8 @@ export class ScriptsController {
    */
   async createLoader(): Promise<number> {
     logger.logInfo('Creating script loader bundle file...');
-    let bundleFilePath = this._config?.bundleFilePath;
-    let backUpsFolderPath = this._config?.backUpsFolderPath;
+    let bundleFilePath = this._config?.determineBundleFilePath();
+    let backUpsFolderPath = this._config?.determineBackupsPath();
     let scriptsFolderPath = this._config?.configScriptsFolder();
     let gameOutputFile = Configuration.GAME_OUTPUT_FILE;
     logger.logInfo(`RPG Maker bundle file path: "${bundleFilePath?.fsPath}"`);
@@ -1194,10 +1194,10 @@ export class ScriptsController {
     logger.logInfo(`Scripts folder relative path: "${scriptsFolderPath}"`);
     logger.logInfo(`Game output file: "${gameOutputFile}"`);
     if (
-      !gameOutputFile ||
       !bundleFilePath ||
       !backUpsFolderPath ||
-      !scriptsFolderPath
+      !scriptsFolderPath ||
+      !gameOutputFile
     ) {
       throw new Error(
         'Cannot create script loader bundle due to invalid values!'
@@ -1663,7 +1663,7 @@ export class ScriptsController {
    * Restarts this instance based on the current attributes.
    */
   private _restart() {
-    let scriptsFolderPath = this._config?.scriptsFolderPath;
+    let scriptsFolderPath = this._config?.determineScriptsPath();
     // Checks scripts folder path validness
     if (!scriptsFolderPath) {
       return;

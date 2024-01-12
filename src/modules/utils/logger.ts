@@ -44,7 +44,7 @@ class Logger {
    * Deletes the log file of to this logger instance if it exists.
    */
   deleteLogFile(): void {
-    let logFilePath = this._config?.logFilePath;
+    let logFilePath = this._config?.determineLogFilePath();
     if (logFilePath && fs.existsSync(logFilePath.fsPath)) {
       fs.unlinkSync(logFilePath.fsPath);
     }
@@ -71,7 +71,7 @@ class Logger {
     }
     // Logging to file enabled
     if (this._config?.configLogFile()) {
-      let logFile = this._config?.logFilePath;
+      let logFile = this._config?.determineLogFilePath();
       // Process logging operation
       if (logFile) {
         fs.writeFileSync(logFile.fsPath, msg, { flag: 'a' });

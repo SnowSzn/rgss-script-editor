@@ -696,14 +696,13 @@ export async function dispose() {
 
 /**
  * Checks if the configuration change event affects this extension.
+ *
+ * This function must return ``true`` if a critical configuration value is changed
+ * so the manager can trigger an update on the current folder.
  * @param event Config change event
  */
 export function affectsConfiguration(event: vscode.ConfigurationChangeEvent) {
-  return (
-    event.affectsConfiguration('rgssScriptEditor.external.backUpsFolder') ||
-    event.affectsConfiguration('rgssScriptEditor.external.scriptsFolder') ||
-    event.affectsConfiguration('rgssScriptEditor.gameplay.gameExecutablePath')
-  );
+  return event.affectsConfiguration('rgssScriptEditor.external.scriptsFolder');
 }
 
 /**

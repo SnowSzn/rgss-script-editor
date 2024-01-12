@@ -20,36 +20,6 @@ export type FolderInfo = {
    * RGSS version.
    */
   rgssVersion: string;
-
-  /**
-   * Absolute path to the RPG Maker bundle file.
-   */
-  bundleFilePath: vscode.Uri;
-
-  /**
-   * Absolute path to the scripts folder.
-   */
-  scriptsFolderPath: vscode.Uri;
-
-  /**
-   * Absolute path to the back ups folder.
-   */
-  backUpsFolderPath: vscode.Uri;
-
-  /**
-   * Absolute path to the game executable.
-   */
-  gameExePath: vscode.Uri;
-
-  /**
-   * Log file URI path.
-   */
-  logFilePath: vscode.Uri;
-
-  /**
-   * Game output file URI path.
-   */
-  gameOutputPath: vscode.Uri;
 };
 
 /**
@@ -132,41 +102,12 @@ export class Configuration {
   private _projectFolderName?: string;
 
   /**
-   * RPG Maker bundle file URI path.
-   */
-  private _bundleFilePath?: vscode.Uri;
-
-  /**
-   * External scripts folder URI path.
-   */
-  private _scriptsFolderPath?: vscode.Uri;
-
-  /**
-   * Back ups folder URI path.
-   */
-  private _backUpsFolderPath?: vscode.Uri;
-
-  /**
-   * Game executable URI path.
-   */
-  private _gameExePath?: vscode.Uri;
-
-  /**
-   * Log file URI path.
-   */
-  private _logFilePath?: vscode.Uri;
-
-  /**
-   * Game output file URI path.
-   */
-  private _gameOutputPath?: vscode.Uri;
-
-  /**
    * Constructor.
    */
   constructor() {
-    this._projectFolderPath = undefined;
     this._rgssVersion = undefined;
+    this._projectFolderPath = undefined;
+    this._projectFolderName = undefined;
   }
 
   /**
@@ -191,109 +132,67 @@ export class Configuration {
   }
 
   /**
-   * RPG Maker bundle file URI path.
-   */
-  get bundleFilePath() {
-    return this._bundleFilePath;
-  }
-
-  /**
-   * External scripts folder URI path.
-   */
-  get scriptsFolderPath() {
-    return this._scriptsFolderPath;
-  }
-
-  /**
-   * Back ups folder URI path.
-   */
-  get backUpsFolderPath() {
-    return this._backUpsFolderPath;
-  }
-
-  /**
-   * Game executable URI path.
-   */
-  get gameExePath() {
-    return this._gameExePath;
-  }
-
-  /**
-   * Log file URI path.
-   */
-  get logFilePath() {
-    return this._logFilePath;
-  }
-
-  /**
-   * Game output file URI path.
-   */
-  get gameOutputPath() {
-    return this._gameOutputPath;
-  }
-
-  /**
    * Gets the extension quickstart status flag.
    * @returns Quickstart status flag.
    */
-  configQuickstart(): boolean | undefined {
-    return this._getVSCodeConfig<boolean>('extension.quickStart');
+  configQuickstart(): boolean {
+    return this._getVSCodeConfig<boolean>('extension.quickStart')!;
   }
 
   /**
    * Gets the extension auto reveal flag.
    * @returns Auto reveal flag.
    */
-  configAutoReveal(): boolean | undefined {
-    return this._getVSCodeConfig<boolean>('extension.autoReveal');
+  configAutoReveal(): boolean {
+    return this._getVSCodeConfig<boolean>('extension.autoReveal')!;
   }
 
   /**
    * Gets log to console flag status.
    * @returns Log to console flag.
    */
-  configLogConsole(): boolean | undefined {
-    return this._getVSCodeConfig<boolean>('debug.logToConsole');
+  configLogConsole(): boolean {
+    return this._getVSCodeConfig<boolean>('debug.logToConsole')!;
   }
 
   /**
    * Gets log to file flag status.
    * @returns Log to file flag.
    */
-  configLogFile(): boolean | undefined {
-    return this._getVSCodeConfig<boolean>('debug.logToFile');
+  configLogFile(): boolean {
+    return this._getVSCodeConfig<boolean>('debug.logToFile')!;
   }
 
   /**
    * Gets the project relative path to the back ups folder.
    * @returns Back ups folder path.
    */
-  configBackUpsFolder(): string | undefined {
-    return this._getVSCodeConfig<string>('external.backUpsFolder');
+  configBackUpsFolder(): string {
+    return this._getVSCodeConfig<string>('external.backUpsFolder')!;
   }
 
   /**
    * Gets the project relative path to the extracted scripts folder.
    * @returns Scripts folder path.
    */
-  configScriptsFolder(): string | undefined {
-    return this._getVSCodeConfig<string>('external.scriptsFolder');
+  configScriptsFolder(): string {
+    return this._getVSCodeConfig<string>('external.scriptsFolder')!;
   }
 
   /**
    * Gets the game executable relative path.
    * @returns Game executable relative path.
    */
-  configExeGamePath(): string | undefined {
-    return this._getVSCodeConfig<string>('gameplay.gameExecutablePath');
+  configExeGamePath(): string {
+    return this._getVSCodeConfig<string>('gameplay.gameExecutablePath')!;
   }
 
   /**
    * Gets use Wine flag status to run the executable in Linux.
    * @returns Whether to use Wine or not.
    */
-  configUseWine(): boolean | undefined {
-    return this._getVSCodeConfig<boolean>('gameplay.useWine');
+  configUseWine(): boolean {
+    return this._getVSCodeConfig<boolean>('gameplay.useWine')!;
   }
 
   /**
@@ -302,26 +201,26 @@ export class Configuration {
    * When this mode is enabled custom arguments are ignored.
    * @returns Auto. Argument detection
    */
-  configExeArgsDetection(): boolean | undefined {
+  configExeArgsDetection(): boolean {
     return this._getVSCodeConfig<boolean>(
       'gameplay.automaticArgumentsDetection'
-    );
+    )!;
   }
 
   /**
    * Gets whether the test mode is enabled or not.
    * @returns Test mode enable status.
    */
-  configExeTestMode(): boolean | undefined {
-    return this._getVSCodeConfig<boolean>('gameplay.editorTestMode');
+  configExeTestMode(): boolean {
+    return this._getVSCodeConfig<boolean>('gameplay.editorTestMode')!;
   }
 
   /**
    * Gets whether the RPG Maker native console is enabled or not
    * @returns Native console enable status
    */
-  configExeConsole(): boolean | undefined {
-    return this._getVSCodeConfig<boolean>('gameplay.nativeConsole');
+  configExeConsole(): boolean {
+    return this._getVSCodeConfig<boolean>('gameplay.nativeConsole')!;
   }
 
   /**
@@ -330,24 +229,26 @@ export class Configuration {
    * This must be used only when auto. arguments detection mode is turned off
    * @returns Custom arguments string
    */
-  configExeCustomArgs(): string | undefined {
-    return this._getVSCodeConfig<string>('gameplay.customArguments');
+  configExeCustomArgs(): string {
+    return this._getVSCodeConfig<string>('gameplay.customArguments')!;
   }
 
   /**
    * Gets the extension game exception auto process flag.
    * @returns Auto process extension flag.
    */
-  configGameErrorAutoProcess(): boolean | undefined {
-    return this._getVSCodeConfig<boolean>('gameplay.gameExceptionAutoProcess');
+  configGameErrorAutoProcess(): boolean {
+    return this._getVSCodeConfig<boolean>('gameplay.gameExceptionAutoProcess')!;
   }
 
   /**
    * Gets the extension game exception shows in the editor window flag.
    * @returns Show in the editor flag.
    */
-  configGameErrorShowEditor(): boolean | undefined {
-    return this._getVSCodeConfig<boolean>('gameplay.gameExceptionShowInEditor');
+  configGameErrorShowEditor(): boolean {
+    return this._getVSCodeConfig<boolean>(
+      'gameplay.gameExceptionShowInEditor'
+    )!;
   }
 
   /**
@@ -363,6 +264,23 @@ export class Configuration {
   }
 
   /**
+   * Gets information about the current opened project folder.
+   *
+   * If the current opened folder is not valid it returns ``undefined``.
+   * @returns Folder information
+   */
+  getInfo(): FolderInfo | undefined {
+    if (this.isValid()) {
+      return {
+        rgssVersion: this._rgssVersion!,
+        projectFolderPath: this._projectFolderPath!,
+        projectFolderName: this._projectFolderName!,
+      };
+    }
+    return undefined;
+  }
+
+  /**
    * This method checks if the given ``folder`` is a valid RPG Maker project folder.
    *
    * If the folder is valid, it returns information about the folder, otherwise returns ``null``.
@@ -370,23 +288,7 @@ export class Configuration {
    * @returns Folder information.
    */
   checkFolder(folder: vscode.Uri): FolderInfo | null {
-    let backups = this.configBackUpsFolder();
-    let scripts = this.configScriptsFolder();
-    let game = this.configExeGamePath();
-    // Checks for VSCode configuration validness
-    if (!backups || !scripts || !game) {
-      return null;
-    }
-    // Creates paths
     let projectName = path.basename(folder.fsPath);
-    let backUpsPath = vscode.Uri.joinPath(folder, backups);
-    let scriptsPath = vscode.Uri.joinPath(folder, scripts);
-    let gameExePath = vscode.Uri.joinPath(folder, game);
-    let logFilePath = vscode.Uri.joinPath(folder, Configuration.LOG_FILE_NAME);
-    let gameOutPath = vscode.Uri.joinPath(
-      folder,
-      Configuration.GAME_OUTPUT_FILE
-    );
     let rgss1 = vscode.Uri.joinPath(folder, RGSSBundlePath.RGSS1);
     let rgss2 = vscode.Uri.joinPath(folder, RGSSBundlePath.RGSS2);
     let rgss3 = vscode.Uri.joinPath(folder, RGSSBundlePath.RGSS3);
@@ -396,12 +298,6 @@ export class Configuration {
         projectFolderPath: folder,
         rgssVersion: RGSSVersion.RGSS1,
         projectFolderName: projectName,
-        backUpsFolderPath: backUpsPath,
-        scriptsFolderPath: scriptsPath,
-        gameOutputPath: gameOutPath,
-        gameExePath: gameExePath,
-        logFilePath: logFilePath,
-        bundleFilePath: rgss1,
       };
     }
     // Checks for RGSS2
@@ -410,12 +306,6 @@ export class Configuration {
         projectFolderPath: folder,
         rgssVersion: RGSSVersion.RGSS2,
         projectFolderName: projectName,
-        backUpsFolderPath: backUpsPath,
-        scriptsFolderPath: scriptsPath,
-        gameOutputPath: gameOutPath,
-        gameExePath: gameExePath,
-        logFilePath: logFilePath,
-        bundleFilePath: rgss2,
       };
     }
     // Checks for RGSS3
@@ -424,12 +314,6 @@ export class Configuration {
         projectFolderPath: folder,
         rgssVersion: RGSSVersion.RGSS3,
         projectFolderName: projectName,
-        backUpsFolderPath: backUpsPath,
-        scriptsFolderPath: scriptsPath,
-        gameOutputPath: gameOutPath,
-        gameExePath: gameExePath,
-        logFilePath: logFilePath,
-        bundleFilePath: rgss3,
       };
     }
     return null;
@@ -453,24 +337,12 @@ export class Configuration {
       this._rgssVersion = info.rgssVersion;
       this._projectFolderPath = info.projectFolderPath;
       this._projectFolderName = info.projectFolderName;
-      this._backUpsFolderPath = info.backUpsFolderPath;
-      this._scriptsFolderPath = info.scriptsFolderPath;
-      this._bundleFilePath = info.bundleFilePath;
-      this._gameExePath = info.gameExePath;
-      this._gameOutputPath = info.gameOutputPath;
-      this._logFilePath = info.logFilePath;
       return { oldProjectFolder: oldProjectFolder, curProjectFolder: info };
     } else {
       // RGSS version was not found, probably an invalid folder.
       this._rgssVersion = undefined;
       this._projectFolderPath = undefined;
       this._projectFolderName = undefined;
-      this._backUpsFolderPath = undefined;
-      this._scriptsFolderPath = undefined;
-      this._bundleFilePath = undefined;
-      this._gameExePath = undefined;
-      this._gameOutputPath = undefined;
-      this._logFilePath = undefined;
       throw new Error(
         `Cannot update to folder: ${folder.fsPath}. A valid RGSS version was not detected!`
       );
@@ -478,30 +350,94 @@ export class Configuration {
   }
 
   /**
-   * Gets information about the current opened project folder.
+   * Determines the path to the log file.
    *
-   * If the current opened folder is not valid it returns ``undefined``.
-   * @returns Folder information
+   * The path is based on the current active folder.
+   *
+   * If the folder is not valid, it returns ``undefined``
+   * @returns Log file uri path
    */
-  getInfo(): FolderInfo | undefined {
-    if (this.isValid()) {
-      return {
-        rgssVersion: this._rgssVersion!,
-        projectFolderPath: this._projectFolderPath!,
-        projectFolderName: this._projectFolderName!,
-        bundleFilePath: this._bundleFilePath!,
-        scriptsFolderPath: this._scriptsFolderPath!,
-        backUpsFolderPath: this._backUpsFolderPath!,
-        gameExePath: this._gameExePath!,
-        gameOutputPath: this._gameOutputPath!,
-        logFilePath: this._logFilePath!,
-      };
-    }
-    return undefined;
+  determineLogFilePath() {
+    return this.joinProject(Configuration.LOG_FILE_NAME);
   }
 
   /**
-   * Gets the appropiate game executable arguments.
+   * Determines the path to the game's output file.
+   *
+   * This file is used by the extension to process possible game exceptions.
+   *
+   * The path is based on the current active folder.
+   *
+   * If the folder is not valid, it returns ``undefined``
+   * @returns Game output file uri path
+   */
+  determineGameOutputPath() {
+    return this.joinProject(Configuration.GAME_OUTPUT_FILE);
+  }
+
+  /**
+   * Determines the path to the game scripts bundle file.
+   *
+   * The path is based on the current active folder and RGSS version.
+   *
+   * If the folder is not valid, it returns ``undefined``
+   * @returns Bundle file uri path
+   */
+  determineBundleFilePath() {
+    // Determines appropiate bundle based on the RGSS version
+    let bundle = undefined;
+    switch (this._rgssVersion) {
+      case RGSSVersion.RGSS1:
+        bundle = RGSSBundlePath.RGSS1;
+        break;
+      case RGSSVersion.RGSS2:
+        bundle = RGSSBundlePath.RGSS2;
+        break;
+      case RGSSVersion.RGSS3:
+        bundle = RGSSBundlePath.RGSS3;
+        break;
+      default:
+        bundle = undefined;
+        break;
+    }
+    // Join path with the appropiate bundle file
+    return bundle ? this.joinProject(bundle) : undefined;
+  }
+
+  /**
+   * Determines the path to the scripts folder from the current project's folder.
+   * @returns Scripts folder uri path
+   */
+  determineScriptsPath() {
+    return this.joinProject(this.configScriptsFolder());
+  }
+
+  /**
+   * Determines the path to the backups folder.
+   *
+   * The path is based on the current active folder.
+   *
+   * If the folder is not valid, it returns ``undefined``
+   * @returns Backups folder uri path
+   */
+  determineBackupsPath() {
+    return this.joinProject(this.configBackUpsFolder());
+  }
+
+  /**
+   * Determines the path to the game executable.
+   *
+   * The path is based on the current active folder.
+   *
+   * If the folder is not valid, it returns ``undefined``
+   * @returns Game executable uri path
+   */
+  determineGamePath() {
+    return this.joinProject(this.configExeGamePath());
+  }
+
+  /**
+   * Determines the appropiate game executable arguments.
    *
    * If automatic argument detection is enabled it will ignore custom arguments.
    *
