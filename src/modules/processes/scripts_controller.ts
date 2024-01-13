@@ -1522,23 +1522,31 @@ export class ScriptsController {
     let sectionParent: EditorSectionBase | undefined = undefined;
     let sectionPriority: number | undefined = undefined;
 
-    // Determines the parent reference based on the editor mode
-    if (this._editorMode === ControllerEditorMode.MERGE) {
-      if (target.isType(EditorSectionType.Folder)) {
-        // Merge inside folder
-        sectionParent = target;
-      } else {
-        // Merge is not available for types that are not folders
+    // Determines parent section
+    if (target === this._root) {
+      // In case target is root, always treat it as a merge operation
+      // to avoid files being created outside the tracked root folder
+      sectionParent = target;
+    } else {
+      // Target is inside the root folder.
+      // Determines the parent reference based on the editor mode
+      if (this._editorMode === ControllerEditorMode.MERGE) {
+        if (target.isType(EditorSectionType.Folder)) {
+          // Merge inside folder
+          sectionParent = target;
+        } else {
+          // Merge is not available for types that are not folders
+          sectionParent = target.parent;
+          sectionPriority = target.priority + 1;
+        }
+      } else if (this._editorMode === ControllerEditorMode.MOVE) {
+        // Always avoid merge operations
         sectionParent = target.parent;
         sectionPriority = target.priority + 1;
+      } else {
+        // Unsupported editor mode
+        sectionParent = undefined;
       }
-    } else if (this._editorMode === ControllerEditorMode.MOVE) {
-      // Always avoid merge operations
-      sectionParent = target.parent;
-      sectionPriority = target.priority + 1;
-    } else {
-      // Unsupported editor mode
-      sectionParent = undefined;
     }
 
     // Checks parent validness
