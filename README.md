@@ -194,16 +194,20 @@ The extension uses a regular expression to remove invalid characters from the sc
 
 ## Latest Release Notes
 
-## [1.0.6] - 12/01/2024
+## [1.0.7] - 13/01/2024
 
 ### Added
 
-+ Extension now provides an output channel to write log messages
++ Added a submenu in the script editor view with some useful commands
+  + You can create sections now with an empty script editor tree
 
 ### Changed
 
-+ Avoid the extension to restart when a configuration value changes.
-  + When changing the relative path to the extracted scripts folder, a restart will still trigger to refresh the tree view
++ Logger output channel language id was changed to 'log' to support highlighting
+
+### Fixed
+
++ Logger is now properly disposed when extension is deactivated
 
 ## Contributors
 - [marshal](https://github.com/hyrious/marshal)

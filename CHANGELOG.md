@@ -2,6 +2,21 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.0.7] - 13/01/2024
+
+### Added
+
++ Added a submenu in the script editor view with some useful commands
+  + You can create sections now with an empty script editor tree
+
+### Changed
+
++ Logger output channel language id was changed to 'log' to support highlighting
+
+### Fixed
+
++ Logger is now properly disposed when extension is deactivated
+
 ## [1.0.6] - 12/01/2024
 
 ### Added
