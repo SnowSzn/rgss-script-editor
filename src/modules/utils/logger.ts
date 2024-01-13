@@ -21,7 +21,10 @@ class Logger {
    */
   constructor() {
     this._config = undefined;
-    this._output = vscode.window.createOutputChannel('RGSS Script Editor');
+    this._output = vscode.window.createOutputChannel(
+      'RGSS Script Editor',
+      'log'
+    );
   }
 
   /**
