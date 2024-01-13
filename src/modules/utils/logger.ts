@@ -54,6 +54,13 @@ class Logger {
   }
 
   /**
+   * Disposes this logger instance.
+   */
+  dispose() {
+    this._output.dispose();
+  }
+
+  /**
    * Logs the given message.
    *
    * A new line character is automatically concatenated.

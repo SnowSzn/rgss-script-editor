@@ -692,6 +692,8 @@ export async function dispose() {
   extensionUI.dispose();
   // Disposes file system watcher
   extensionWatcher.dispose();
+  // Disposes logger
+  logger.dispose();
 }
 
 /**
