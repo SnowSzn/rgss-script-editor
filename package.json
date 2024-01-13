@@ -308,6 +308,26 @@
           "command": "rgss-script-editor.openLoadOrder",
           "when": "view == rgss-script-editor.editorView",
           "group": "navigation"
+        },
+        {
+          "command": "rgss-script-editor.sectionCreate",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "1"
+        },
+        {
+          "command": "rgss-script-editor.processGameException",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "2"
+        },
+        {
+          "command": "rgss-script-editor.createScriptLoader",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "3"
+        },
+        {
+          "command": "rgss-script-editor.createBundleFile",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "3"
         }
       ],
       "view/item/context": [

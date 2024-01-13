@@ -397,8 +397,16 @@ export async function processGameException() {
  */
 export async function sectionCreate(section?: EditorSectionBase) {
   try {
+    // Checks if user is creating a section from the view more actions submenu
+    // if creating from the submenu, section is like '{ preserveFocus: false }'
+    let sectionTemp = section
+      ? 'preserveFocus' in section
+        ? extensionScripts.root
+        : section
+      : section;
+    // Determines the appropiate target
     let selected = extensionUI.getTreeSelection();
-    let target = section ? section : selected ? selected[0] : undefined;
+    let target = sectionTemp ? sectionTemp : selected ? selected[0] : undefined;
 
     // Check target validness
     if (!target) {
