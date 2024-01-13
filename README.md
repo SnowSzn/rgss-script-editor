@@ -52,6 +52,9 @@ As a security measure, the extension will not allow overwriting the script bundl
     - You can rename a section with a key shortcut.
   - Move sections.
     - The tree can be arranged in any order desired.
+  - Editor Mode: There are two editor modes available, you can switch freely between them.
+    - Merge Mode: Merges any supported section with the section where they are dropped.
+    - Move Mode: Moves the selected sections to the next position of the section where they are dropped inside the same parent section.
 - **Game Exception Processing**: The extension can process the exception that killed the game in the last test game session.
   - The extension backtrace will be shown in a markdown file besides the active editor.
   - VSCode built-in peek menu will be used to show each backtrace location.
@@ -195,7 +198,7 @@ The extension uses a regular expression to remove invalid characters from the sc
 
 ### Added
 
-+ Extension now provides a output channel to write log messages
++ Extension now provides an output channel to write log messages
 
 ### Changed
 
