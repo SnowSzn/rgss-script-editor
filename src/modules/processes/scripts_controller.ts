@@ -1208,7 +1208,7 @@ export class ScriptsController {
       backUpsFolderPath,
       `${path.basename(bundleFilePath.fsPath)} - ${this._currentDate()}.bak`
     );
-    logger.logInfo(`Resolved back up file: ${backUpFilePath.fsPath}`);
+    logger.logInfo(`Resolved back up file: "${backUpFilePath.fsPath}"`);
     logger.logInfo('Backing up original RPG Maker bundle file...');
     // Create backup of the bundle file
     fileutils.copyFile(bundleFilePath.fsPath, backUpFilePath.fsPath, {
@@ -1912,7 +1912,7 @@ export class ScriptsController {
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
-# Version: 1.2.3
+# Version: 1.2.4
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
@@ -2002,7 +2002,7 @@ module ScriptLoader
       end
     rescue => e
       # Notifies VSCode extension of the error
-      File.open('${config.errorFileName}', 'w') do |file|
+      File.open('${config.errorFileName}', 'wb') do |file|
         file.write(process_exception(e))
       end
       # Raises again the exception to kill the process
@@ -2057,8 +2057,8 @@ module ScriptLoader
   #
   def self.process_exception(exception)
     return Marshal.dump({
-      :type => "'#{exception.class.name}'",
-      :mesg => "'#{exception.message}'",
+      :type => "#{exception.class.name}",
+      :mesg => "#{exception.message}",
       :back => exception.backtrace
     })
   end
