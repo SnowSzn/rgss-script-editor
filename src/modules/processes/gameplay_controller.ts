@@ -38,13 +38,6 @@ type RubyExceptionInfo = {
 const GAME_EXCEPTION_REGEXP = /(.*):(\d+)(?::(.*))?/;
 
 /**
- * Game exception message regular expression.
- *
- * This regexp matches all types of quotes inside a string.
- */
-const GAME_EXCEPTION_MSG_REGEXP = /['"‘’“”`´]/g;
-
-/**
  * Exception backtrace information class.
  */
 class GameExceptionBacktrace {
@@ -105,6 +98,11 @@ export class GameException {
   readonly message: string;
 
   /**
+   * Exception creation timestamp.
+   */
+  readonly timestamp: Date;
+
+  /**
    * Backtrace list.
    */
   readonly backtrace: GameExceptionBacktrace[];
@@ -117,6 +115,7 @@ export class GameException {
   constructor(name: string, message: string) {
     this.name = name;
     this.message = message;
+    this.timestamp = new Date();
     this.backtrace = [];
   }
 
@@ -150,7 +149,9 @@ export class GameException {
     // Document exception display
     mark = mark.concat(`# ${this.name}\n\n`);
     mark = mark.concat(`${this.message}\n\n`);
-    mark = mark.concat('##### Backtrace\n');
+    mark = mark.concat('#### Timestamp\n\n');
+    mark = mark.concat(`${this.timestamp}\n\n`);
+    mark = mark.concat('#### Backtrace\n\n');
     this.backtrace.forEach((item) => {
       mark = mark.concat('```\n');
       mark = mark.concat(item.toString() + '\n');
@@ -356,12 +357,8 @@ export class GameplayController {
           hashSymbolKeysToString: true,
         }) as RubyExceptionInfo;
         // Process exception binary data
-        let type = this._textDecoder
-          .decode(rubyError.type)
-          .replaceAll(GAME_EXCEPTION_MSG_REGEXP, '');
-        let mesg = this._textDecoder
-          .decode(rubyError.mesg)
-          .replaceAll(GAME_EXCEPTION_MSG_REGEXP, '');
+        let type = this._textDecoder.decode(rubyError.type);
+        let mesg = this._textDecoder.decode(rubyError.mesg);
         let back = rubyError.back.map((item) => this._textDecoder.decode(item));
         // Build the extension error instance
         let exception = new GameException(type, mesg);
