@@ -90,6 +90,9 @@ export async function quickStart() {
     logger.logInfo(
       'Several valid RPG Maker folders were detected in the current workspace!'
     );
+    vscode.window.showInformationMessage(
+      'Several RPG Maker folders were detected in the current workspace, choose one to set it as active'
+    );
     extensionUI.control({ changeProjectFolder: true });
   } else {
     logger.logInfo(
@@ -547,7 +550,7 @@ export async function sectionRename(section?: EditorSectionBase) {
         item.type,
         name
       );
-      logger.logInfo(`Renaming section: ${item} to: "${uri.fsPath}"`);
+      logger.logInfo(`Renaming section: "${item}" to: "${uri.fsPath}"`);
       extensionScripts.sectionRename(item, uri);
       await refresh();
     }
@@ -572,7 +575,7 @@ export async function sectionMove(
     if (!source || !target) {
       return;
     }
-    logger.logInfo(`Moving: ${source} to: ${target}`);
+    logger.logInfo(`Moving: "${source}" to: "${target}"`);
     extensionScripts.sectionMove(source, target);
     await refresh();
   } catch (error) {
@@ -614,7 +617,7 @@ export async function sectionAlternateLoad(
     for (let matrix of items) {
       const item = matrix[0];
       const load = matrix[1];
-      logger.logInfo(`Section: ${item} load status set to: ${load}`);
+      logger.logInfo(`Section: "${item}" load status set to: ${load}`);
       extensionScripts.sectionAlternateLoad(item, load);
     }
     await refresh();
