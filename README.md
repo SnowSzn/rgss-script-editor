@@ -194,20 +194,17 @@ The extension uses a regular expression to remove invalid characters from the sc
 
 ## Latest Release Notes
 
-## [1.0.7] - 13/01/2024
+## [1.0.8] - 17/01/2024
 
 ### Added
 
-+ Added a submenu in the script editor view with some useful commands
-  + You can create sections now with an empty script editor tree
-
-### Changed
-
-+ Logger output channel language id was changed to 'log' to support highlighting
++ Added an information window when a workspace with more than one valid folder is opened.
++ Game exceptions are now displayed with a timestamp of when they occurred.
 
 ### Fixed
 
-+ Logger is now properly disposed when extension is deactivated
++ Game exceptions are now correctly written to the output file.
+  + Script loader was writing serialized data in non-binary mode
 
 ## Contributors
 - [marshal](https://github.com/hyrious/marshal)

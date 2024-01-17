@@ -2,6 +2,18 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.0.8] - 17/01/2024
+
+### Added
+
++ Added an information window when a workspace with more than one valid folder is opened.
++ Game exceptions are now displayed with a timestamp of when they occurred.
+
+### Fixed
+
++ Game exceptions are now correctly written to the output file.
+  + Script loader was writing serialized data in non-binary mode
+
 ## [1.0.7] - 13/01/2024
 
 ### Added
