@@ -270,7 +270,7 @@ export class GameplayController {
     if (!workingDir || !gamePath || !gameArgs) {
       throw new Error('Cannot run the game due to invalid values!');
     }
-    // Checks if exeecutable path exists
+    // Checks if executable path exists
     if (!fs.existsSync(gamePath)) {
       throw new Error(`Game executable path: "${gamePath}" does not exists!`);
     }
@@ -284,27 +284,21 @@ export class GameplayController {
       }
       case 'darwin':
       case 'linux': {
-        // Checks for Wine usage
-        if (this._config.configUseWine()) {
-          if (!this._isWineInstalled()) {
-            // Wine is not installed!
-            throw new Error(
-              `It is impossible to run the executable on Linux using Wine if Wine is not installed, you must install Wine first on your system.`
-            );
-          }
-          // Use Wine to run executable
-          exePath = 'wine';
-          exeArgs = [`"${gamePath}"`, ...gameArgs];
+        // Checks game executable
+        if (this._isLinuxExecutable(gamePath)) {
+          // It is a Linux executable, try to run it
+          exePath = `"${gamePath}"`;
+          exeArgs = gameArgs;
         } else {
-          // Wine won't be used, check if executable is valid first
-          if (gamePath.toLowerCase().endsWith('.exe')) {
-            throw new Error(
-              'Cannot launch the game because the game executable seems like a Windows EXE file and Wine usage is disabled!'
-            );
+          // It is likely that the game is a Windows executable, use Wine
+          const wineCommand = this._config.configUseWine();
+          if (wineCommand.length > 0) {
+            exePath = wineCommand;
+            exeArgs = [`"${gamePath}"`, ...gameArgs];
           } else {
-            // Just assume it is a Linux executable.
-            exePath = `"${gamePath}"`;
-            exeArgs = gameArgs;
+            throw new Error(
+              'Cannot run the game because it seems like a Windows executable and the command to run Wine is empty!'
+            );
           }
         }
         break;
@@ -390,17 +384,16 @@ export class GameplayController {
   }
 
   /**
-   * Checks for Wine availability specific for Linux-based systems.
-   * @returns Whether wine is installed or not.
+   * Checks If the given file is an executable for Linux
+   * @param file File path
+   * @returns Whether it is an executable or not.
    */
-  private _isWineInstalled(): boolean {
-    let isInstalled = false;
+  private _isLinuxExecutable(file: string): boolean {
     try {
-      const stdout = cp.execSync('wine --version').toString() ?? '';
-      isInstalled = stdout.startsWith('wine') ? true : false;
+      fs.accessSync(file, fs.constants.X_OK);
+      return true;
     } catch (error: any) {
-      isInstalled = false;
+      return false;
     }
-    return isInstalled;
   }
 }

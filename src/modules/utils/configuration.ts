@@ -188,11 +188,11 @@ export class Configuration {
   }
 
   /**
-   * Gets use Wine flag status to run the executable in Linux.
-   * @returns Whether to use Wine or not.
+   * Gets the Wine command to run the executable in Linux.
+   * @returns Wine command.
    */
-  configUseWine(): boolean {
-    return this._getVSCodeConfig<boolean>('gameplay.useWine')!;
+  configUseWine(): string {
+    return this._getVSCodeConfig<string>('gameplay.useWine')!;
   }
 
   /**

@@ -180,9 +180,9 @@
             "order": 50
           },
           "rgssScriptEditor.gameplay.useWine": {
-            "type": "boolean",
-            "default": true,
-            "description": "Whether to use Wine to execute the game executable in Linux or not (Windows users should ignore this flag)",
+            "type": "string",
+            "default": "wine",
+            "description": "Sets the command to invoke Wine to run the game executable (This value is ignored in Windows)",
             "order": 51
           },
           "rgssScriptEditor.gameplay.automaticArgumentsDetection": {
