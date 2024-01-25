@@ -86,9 +86,9 @@ As a security measure, the extension will not allow overwriting the script bundl
 - [Wine](https://www.winehq.org/) (preferably the latest version)
   - To take full advantage of the extension you should have wine available on your system, which will be used to run the Windows game executable.
   - You can check if Wine is installed in your system with: ``wine --version``
-  - **IMPORTANT: If you use MKXP-Z for Linux and you have created a Linux executable for your game, you won't need to install Wine.** 
-    - Wine is only required for RPG Maker base executables.
-- **Not tested in Linux**
+  - **IMPORTANT: If you use MKXP-Z for Linux you won't need to install Wine.** 
+    - Wine is only required for RPG Maker Windows executables.
+
 ### macOS
 - [Visual Studio Code](https://code.visualstudio.com/)
 - **Not tested in macOS**
@@ -109,8 +109,8 @@ This extension contributes the following settings:
 * `rgssScriptEditor.external.scriptsFolder`: The relative path within the project's folder where all scripts will be extracted.
 * `rgssScriptEditor.gameplay.gameExecutablePath`: The relative path to the game executable inside the project folder.
   * You can change this option to allow MKXP-Z executable to be launched.
-* `rgssScriptEditor.gameplay.useWine`: Whether to use Wine to execute the game executable in Linux or not. (**Linux Only**)
-  * Since you can also build MKXP-Z for Linux, you should uncheck this box when running MKXP-Z in Linux if you have built a Linux-specific executable.
+* `rgssScriptEditor.gameplay.useWine`: Sets the command to invoke Wine to run the game executable. (**Linux Only**)
+  * If a Linux-specific executable is used to run the game, you won't need to use this setting.
 * `rgssScriptEditor.gameplay.automaticArgumentsDetection`: Enable/disable automatic arguments detection.
   * If enabled, the extension will automatically choose the appropiate arguments based on the RPG Maker version.
   * **IMPORTANT: This mode must be disabled to use custom arguments.**
