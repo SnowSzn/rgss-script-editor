@@ -2,6 +2,12 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.0.10] - 25/01/2024
+
+### Changed
+
++ Changed save dialog default uri to the project's folder when creating a bundle file for convenience
+
 ## [1.0.9] - 25/01/2024
 
 ### Added

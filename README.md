@@ -194,16 +194,11 @@ The extension uses a regular expression to remove invalid characters from the sc
 
 ## Latest Release Notes
 
-## [1.0.9] - 25/01/2024
+## [1.0.10] - 25/01/2024
 
-### Added
+### Changed
 
-+ Added the possibility of modifying the Wine command for Linux users
-  + Turned Wine setting from a checkbox into an inputbox
-
-### Fixed
-
-+ Cleaned the extension's output folder to ensure compatibility with case sensitive file systems
++ Changed save dialog default uri to the project's folder when creating a bundle file for convenience
 
 ## Contributors
 - [marshal](https://github.com/hyrious/marshal)
