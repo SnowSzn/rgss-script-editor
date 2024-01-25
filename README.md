@@ -194,17 +194,16 @@ The extension uses a regular expression to remove invalid characters from the sc
 
 ## Latest Release Notes
 
-## [1.0.8] - 17/01/2024
+## [1.0.9] - 25/01/2024
 
 ### Added
 
-+ Added an information window when a workspace with more than one valid folder is opened.
-+ Game exceptions are now displayed with a timestamp of when they occurred.
++ Added the possibility of modifying the Wine command for Linux users
+  + Turned Wine setting from a checkbox into an inputbox
 
 ### Fixed
 
-+ Game exceptions are now correctly written to the output file.
-  + Script loader was writing serialized data in non-binary mode
++ Cleaned the extension's output folder to ensure compatibility with case sensitive file systems
 
 ## Contributors
 - [marshal](https://github.com/hyrious/marshal)

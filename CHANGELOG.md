@@ -2,6 +2,17 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.0.9] - 25/01/2024
+
+### Added
+
++ Added the possibility of modifying the Wine command for Linux users
+  + Turned Wine setting from a checkbox into an inputbox
+
+### Fixed
+
++ Cleaned the extension's output folder to ensure compatibility with case sensitive file systems
+
 ## [1.0.8] - 17/01/2024
 
 ### Added
