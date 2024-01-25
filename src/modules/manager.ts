@@ -298,8 +298,11 @@ export async function createScriptLoader() {
  */
 export async function createBundleFile() {
   try {
+    // Gets the project folder
+    const projectFolder = extensionConfig.projectFolderPath;
     // Gets destination folder
     let destination = await vscode.window.showSaveDialog({
+      defaultUri: projectFolder,
       filters: {
         'RPG Maker VX Ace': ['rvdata2'],
         'RPG Maker VX': ['rvdata'],
