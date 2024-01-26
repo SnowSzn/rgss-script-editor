@@ -222,13 +222,10 @@ export async function extractScripts() {
       // Overwrites the bundle file with the loader script
       let loaderResponse = await extensionScripts.createLoader();
 
-      // Updates the load order file.
-      let loadResponse = await extensionScripts.updateLoadOrderFile();
-
       // Updates extension context.
       context.setExtractedScripts(true);
 
-      // Refresh UI
+      // Refresh editor view
       await refresh();
     } else if (extractionResponse === ScriptsController.SCRIPTS_NOT_EXTRACTED) {
       logger.logInfo(
@@ -332,9 +329,7 @@ export async function createBundleFile() {
 export async function runGame() {
   try {
     let pid = await extensionGameplay.runGame();
-    if (pid) {
-      logger.logInfo(`Game executable launched successfully with PID: ${pid}`);
-    }
+    logger.logInfo(`Game executable launched successfully with PID: ${pid}`);
   } catch (error) {
     logger.logErrorUnknown(error);
   }
@@ -496,13 +491,17 @@ export async function sectionCreate(section?: EditorSectionBase) {
 export async function sectionDelete(section?: EditorSectionBase) {
   try {
     let items = extensionUI.getTreeSelection() || (section ? [section] : []);
-    let option = await vscode.window.showQuickPick(['Yes', 'No'], {
-      title: `Deleting: ${items}`,
-      placeHolder: 'Are you sure you want to delete the selected items?',
-      canPickMany: false,
-    });
+    let option = await vscode.window.showQuickPick(
+      ['Yes (This is irreversible)', 'No'],
+      {
+        title: `Deleting: ${items}`,
+        placeHolder:
+          'Are you sure you want to delete the selected items? (This is irreversible)',
+        canPickMany: false,
+      }
+    );
     // Checks for user option
-    if (option === 'Yes') {
+    if (option === 'Yes (This is irreversible)') {
       for (let item of items) {
         logger.logInfo(`Deleting section: "${item.resourceUri.fsPath}"`);
         extensionScripts.sectionDelete(item);
