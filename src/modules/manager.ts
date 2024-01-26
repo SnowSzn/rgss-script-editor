@@ -303,21 +303,19 @@ export async function createBundleFile() {
     // Gets destination folder
     let destination = await vscode.window.showSaveDialog({
       defaultUri: projectFolder,
-      filters: {
-        'RPG Maker VX Ace': ['rvdata2'],
-        'RPG Maker VX': ['rvdata'],
-        'RPG Maker XP': ['rxdata'],
-      },
     });
+    // Checks destination validness
     if (!destination) {
       logger.logError(`You must select a valid path to save the bundle file!`);
       return;
     }
+    // Processes the path to append the proper extension
+    const bundleFilePath = extensionConfig.processPathExtension(destination);
     // Create bundle file
-    let response = await extensionScripts.createBundle(destination);
+    let response = await extensionScripts.createBundle(bundleFilePath);
     if (response === ScriptsController.BUNDLE_CREATED) {
       logger.logInfo(
-        `Bundle file created successfully at: "${destination.fsPath}"`
+        `Bundle file created successfully at: "${bundleFilePath.fsPath}"`
       );
     } else {
       logger.logError(`Bundle file creation reported an unknown code!`);

@@ -512,6 +512,40 @@ export class Configuration {
   }
 
   /**
+   * Processes the given uri path to append the proper extension based on the RGSS version detected.
+   *
+   * This method won't remove the extension if the uri path has one already.
+   * @param uri File uri
+   * @returns Processed file uri
+   */
+  processPathExtension(uri: vscode.Uri) {
+    // Determine the proper extension based on the RGSS version detected
+    let extension = '';
+    switch (this.rgss) {
+      case RGSSVersion.RGSS1: {
+        extension = '.rxdata';
+        break;
+      }
+      case RGSSVersion.RGSS2: {
+        extension = '.rvdata';
+        break;
+      }
+      case RGSSVersion.RGSS3: {
+        extension = '.rvdata2';
+        break;
+      }
+    }
+    // Checks if proper extension is present already
+    if (uri.fsPath.toLowerCase().endsWith(extension)) {
+      return uri;
+    }
+    // Concatenates the proper extension
+    const dirname = path.dirname(uri.fsPath);
+    const basename = path.basename(uri.fsPath).concat(extension);
+    return vscode.Uri.file(path.join(dirname, basename));
+  }
+
+  /**
    * Gets the configuration value from the VS Code settings.
    *
    * If the key is not found it returns ``undefined``.
