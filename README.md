@@ -4,7 +4,6 @@
 </p>
 
 <h1 align="center">RGSS Script Editor</h1>
-<a href="https://marketplace.visualstudio.com/items?itemName=SnowSzn.rgss-script-editor"><h3 align="center">Download Link</h3></a>
 <h3 align="center">This extension should be used for development purposes only!</h3>
 
 This is an extension for Visual Studio Code that makes VSCode usable as the script editor for any RPG Maker editor based on the RGSS framework:
@@ -117,6 +116,9 @@ As a security measure, the extension will not allow overwriting the script bundl
 ### macOS
 - [Visual Studio Code](https://code.visualstudio.com/)
 - **Not tested in macOS**
+
+## Download
+- [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=SnowSzn.rgss-script-editor)
 
 ## Extension Settings
 
@@ -235,11 +237,14 @@ The extension uses a regular expression to remove invalid characters from the sc
 
 ## Latest Release Notes
 
-## [1.0.10] - 25/01/2024
+## [1.0.11] - 27/01/2024
 
 ### Changed
 
-+ Changed save dialog default uri to the project's folder when creating a bundle file for convenience
++ Reworded the description of the extension settings
++ Removed an unnecessary load order refresh call
++ Added a warning when deleting sections
++ Bundle file created file extension is now automatically appended based on the RGSS version
 
 ## Contributors
 - [marshal](https://github.com/hyrious/marshal)

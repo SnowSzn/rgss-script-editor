@@ -2,6 +2,15 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.0.11] - 27/01/2024
+
+### Changed
+
++ Reworded the description of the extension settings
++ Removed an unnecessary load order refresh call
++ Added a warning when deleting sections
++ Bundle file created file extension is now automatically appended based on the RGSS version
+
 ## [1.0.10] - 25/01/2024
 
 ### Changed

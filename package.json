@@ -29,7 +29,7 @@
   "bugs": {
     "url": "https://github.com/SnowSzn/rgss-script-editor/issues"
   },
-  "version": "1.0.10",
+  "version": "1.0.11",
   "engines": {
     "vscode": "^1.84.0"
   },
@@ -140,85 +140,85 @@
           "rgssScriptEditor.debug.logToConsole": {
             "type": "boolean",
             "default": true,
-            "description": "Enables this extension to log information into a VSCode output channel",
+            "description": "Enables this extension to log information to a VSCode output channel.",
             "order": 0
           },
           "rgssScriptEditor.debug.logToFile": {
             "type": "boolean",
             "default": true,
-            "description": "Enables this extension to log information to a file",
+            "description": "Enables this extension to log information to a file inside the project's folder.",
             "order": 1
           },
           "rgssScriptEditor.extension.quickStart": {
             "type": "boolean",
             "default": true,
-            "description": "Allows the extension to activate itself by checking whether the opened folder is a valid RPG Maker project or not",
+            "description": "Enables the extension's quick start mode.",
             "order": 10
           },
           "rgssScriptEditor.extension.autoReveal": {
             "type": "boolean",
             "default": true,
-            "description": "Allows the extension to reveal the active file on the script editor view",
+            "description": "Allows the extension to reveal the active script file on the extension's script editor view.",
             "order": 11
           },
           "rgssScriptEditor.external.backUpsFolder": {
             "type": "string",
             "default": "./.rgss-script-editor-backups",
-            "description": "The relative path within the project's folder where all back ups will be saved",
+            "description": "The relative path within the project's folder where all back ups will be saved.",
             "order": 30
           },
           "rgssScriptEditor.external.scriptsFolder": {
             "type": "string",
             "default": "./Scripts",
-            "description": "The relative path within the project's folder where all scripts will be extracted",
+            "description": "The relative path within the project's folder where all scripts will be extracted.",
             "order": 31
           },
           "rgssScriptEditor.gameplay.gameExecutablePath": {
             "type": "string",
             "default": "./Game.exe",
-            "description": "The relative path to the game executable inside the project folder",
+            "description": "The relative path to the game executable inside the project folder.",
             "order": 50
           },
           "rgssScriptEditor.gameplay.useWine": {
             "type": "string",
             "default": "wine",
-            "description": "Sets the command to invoke Wine to run the game executable (This value is ignored in Windows)",
+            "description": "Sets the command to invoke Wine to run the game executable. (Linux Only!)",
             "order": 51
           },
           "rgssScriptEditor.gameplay.automaticArgumentsDetection": {
             "type": "boolean",
             "default": true,
-            "description": "Allows the extension to determine the appropiate game executable arguments based on the RGSS version (When this mode is enabled custom arguments are ignored)",
+            "description": "Enables automatic arguments detection mode. If enabled, the extension will automatically choose the appropiate arguments based on the RPG Maker version detected.",
             "order": 60
           },
           "rgssScriptEditor.gameplay.editorTestMode": {
             "type": "boolean",
             "default": true,
-            "description": "Whether to run the game on test mode or not (This flag is ignored when using custom arguments)",
+            "description": "Enables test (debug) mode.",
             "order": 61
           },
           "rgssScriptEditor.gameplay.nativeConsole": {
             "type": "boolean",
             "default": true,
-            "description": "(RPG Maker VX Ace Only) Whether to allow a console window to appear on game execution or not (This flag is ignored when using custom arguments)",
+            "description": "Enables RPG Maker native console. (RPG Maker VX Ace only!)",
             "order": 62
           },
           "rgssScriptEditor.gameplay.customArguments": {
             "type": "string",
             "default": "",
-            "description": "Set your own custom arguments here separated by a whitespace (You must disable 'auto. arguments detection' behavior to use this)",
+            "description": "Set your own custom arguments here separated by a whitespace (You must disable 'auto. arguments detection' behavior to use this!)",
             "order": 63
           },
           "rgssScriptEditor.gameplay.gameExceptionAutoProcess": {
             "type": "boolean",
             "default": true,
-            "description": "Allows the extension to display a message box reporting the exception that may have occurred during the last game execution.",
+            "description": "Allows the extension to show you an information window about the last detected exception.",
             "order": 70
           },
           "rgssScriptEditor.gameplay.gameExceptionShowInEditor": {
             "type": "boolean",
             "default": true,
-            "description": "Allows the extension to show a new text document besides the active editor with the last exception information.",
+            "description": "Allows the extension to show a markdown file besides the active editor with the exception backtrace information.",
             "order": 71
           }
         }
