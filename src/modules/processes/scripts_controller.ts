@@ -140,6 +140,13 @@ const LOAD_ORDER_FILE_NAME = 'load_order.txt';
 const EDITOR_SECTION_SEPARATOR_NAME = '*separator*';
 
 /**
+ * Contents to identify an RPG Maker script entry as a folder
+ *
+ * This will be used when extracting scripts to detect whether the entry is a folder or not.
+ */
+const EDITOR_SECTION_FOLDER_CONTENTS = '# RGSS Script Editor Folder';
+
+/**
  * Character used to mark a editor section as skipped.
  *
  * To avoid issues, this character should be included inside the {@link INVALID_CHARACTERS} invalid character list.
@@ -776,6 +783,10 @@ class EditorSectionSeparator extends EditorSectionBase {
     super.setCheckboxState(undefined);
   }
 
+  isLoaded(): boolean {
+    return true;
+  }
+
   addChild(section: EditorSectionBase): void {
     this._children = [];
   }
@@ -1107,69 +1118,109 @@ export class ScriptsController {
   async extractScripts(): Promise<number> {
     logger.logInfo('Extracting scripts from RPG Maker bundle file...');
     let bundleFilePath = this._config?.determineBundleFilePath();
-    let scriptsFolderPath = this._config?.determineScriptsPath();
     logger.logInfo(`Bundle file path is: "${bundleFilePath?.fsPath}"`);
-    logger.logInfo(`Scripts folder path is: "${scriptsFolderPath?.fsPath}"`);
+    logger.logInfo(`Scripts root path is: "${this._root.resourceUri}"`);
+
     // Checks bundle file path validness
-    if (!bundleFilePath || !scriptsFolderPath) {
+    if (!bundleFilePath) {
       throw new Error(`Cannot extract scripts due to invalid values!`);
     }
+
     // Reads bundle file (may throw an error if it does not exists)
     let bundle = this._readBundleFile(bundleFilePath.fsPath);
-    if (this._checkValidExtraction(bundle)) {
-      // Creates scripts folder if it does not exists.
-      fileutils.createFolder(scriptsFolderPath.fsPath, { recursive: true });
+    // Checks whether extraction is valid or not
+    if (!this._checkValidExtraction(bundle)) {
+      // Extraction is not needed.
+      return ScriptsController.SCRIPTS_NOT_EXTRACTED;
+    }
 
-      // Perform extraction loop.
-      for (let i = 0; i < bundle.length; i++) {
-        // Ignores the loader script
-        if (this._isExtensionLoader(bundle[i][0])) {
-          continue;
-        }
-        let baseName = bundle[i][1] as string;
-        let baseCode = bundle[i][2] as string;
-        let sectionType = undefined;
-        let sectionPath = undefined;
-        let sectionCode = undefined;
-        // Determine the editor section to create
-        if (baseName.trim().length === 0 && baseCode.trim().length === 0) {
-          // Untitled script with an empty code block: Separator
+    // Proceed with extraction creating the scripts folder if it does not exists.
+    fileutils.createFolder(this._root.resourceUri.fsPath, {
+      recursive: true,
+      overwrite: false,
+    });
+
+    // Iterate through the bundle file extracting each script section
+    for (let i = 0; i < bundle.length; i++) {
+      // Ignores this extension loader script
+      if (this._isExtensionLoader(bundle[i][0])) {
+        continue;
+      }
+      // Determines the editor section info
+      let sectionType = undefined;
+      let sectionPath = undefined;
+      let sectionCode = undefined;
+      let baseScriptPath = path
+        .dirname(bundle[i][1] as string)
+        .split(path.sep)
+        .map((token) => {
+          return this._removeInvalidCharacters(token);
+        })
+        .join(path.sep);
+      let baseScriptName = path.basename(bundle[i][1] as string);
+      let baseScriptCode = bundle[i][2] as string;
+      if (baseScriptCode.trim().length === 0) {
+        // Entry does not have code, could be either an untitled script or a separator
+        if (
+          baseScriptName.trim().length === 0 ||
+          baseScriptName.endsWith(this.getSeparatorName())
+        ) {
+          // Entry is a separator
           sectionType = EditorSectionType.Separator;
           sectionPath = vscode.Uri.joinPath(
-            scriptsFolderPath,
+            this._root.resourceUri,
+            baseScriptPath,
             this.getSeparatorName()
           );
           sectionCode = undefined;
-        } else if (baseName.trim().length === 0) {
-          // Untitled script with code: Script
-          sectionType = EditorSectionType.Script;
-          sectionPath = vscode.Uri.joinPath(
-            scriptsFolderPath,
-            `Untitled Script ${i}.rb`
-          );
-          sectionCode = baseCode;
         } else {
-          // Titled script: Script
+          // Entry is an script with no code inside
           sectionType = EditorSectionType.Script;
           sectionPath = vscode.Uri.joinPath(
-            scriptsFolderPath,
-            this._formatScriptName(baseName)
+            this._root.resourceUri,
+            baseScriptPath,
+            baseScriptName.length > 0
+              ? this._formatScriptName(baseScriptName)
+              : `Untitled script at ${i}.rb`
           );
-          sectionCode = baseCode;
+          sectionCode = undefined;
         }
-        this.sectionCreate(
-          {
-            type: sectionType,
-            uri: sectionPath,
-            parent: this._root,
-          },
-          { contents: sectionCode, overwrite: true }
-        );
+      } else {
+        if (baseScriptCode.trim() === EDITOR_SECTION_FOLDER_CONTENTS) {
+          // Entry is a folder that was bundled previously
+          sectionType = EditorSectionType.Folder;
+          sectionPath = vscode.Uri.joinPath(
+            this._root.resourceUri,
+            baseScriptPath,
+            baseScriptName.length > 0
+              ? this._removeInvalidCharacters(baseScriptName)
+              : `Untitled folder at ${i}`
+          );
+          sectionCode = undefined;
+        } else {
+          // Entry has code, it is an script
+          sectionType = EditorSectionType.Script;
+          sectionPath = vscode.Uri.joinPath(
+            this._root.resourceUri,
+            baseScriptPath,
+            baseScriptName.length > 0
+              ? this._formatScriptName(baseScriptName)
+              : `Untitled script at ${i}.rb`
+          );
+          sectionCode = baseScriptCode;
+        }
       }
-      return ScriptsController.SCRIPTS_EXTRACTED;
-    } else {
-      return ScriptsController.SCRIPTS_NOT_EXTRACTED;
+      // Create the new section
+      this.sectionCreate(
+        {
+          type: sectionType,
+          uri: sectionPath,
+          parent: this._root,
+        },
+        { contents: sectionCode, overwrite: true }
+      );
     }
+    return ScriptsController.SCRIPTS_EXTRACTED;
   }
 
   /**
@@ -1287,19 +1338,23 @@ export class ScriptsController {
     logger.logInfo('Creating bundle file...');
     logger.logInfo(`Destination path: "${destination.fsPath}"`);
     // Gets all script section files enabled
-    let checked = this._root.filterChildren((section) => {
-      return section.isLoaded() && section.isType(EditorSectionType.Script);
-    }, true);
+    let checked = this._root.filterChildren(
+      (section) => section.isLoaded(),
+      true
+    );
     // Formats RPG Maker bundle
     let usedIds: number[] = [];
     let bundle: any[][] = [];
     checked.forEach((section, index) => {
+      // Initializes the new section info
       let id = this._generateScriptId(usedIds);
-      let name = this._deformatScriptName(section.resourceUri.fsPath);
-      let code = fs.readFileSync(section.resourceUri.fsPath, {
-        encoding: 'utf8',
-      });
-      // Create new bundle section
+      let name = this._root.relative(section.resourceUri);
+      let code = section.isType(EditorSectionType.Script)
+        ? fs.readFileSync(section.resourceUri.fsPath, { encoding: 'utf8' })
+        : section.isType(EditorSectionType.Folder)
+        ? EDITOR_SECTION_FOLDER_CONTENTS
+        : '';
+      // Creates a new bundle section
       bundle[index] = [];
       bundle[index][0] = id;
       bundle[index][1] = name;
@@ -1307,6 +1362,7 @@ export class ScriptsController {
         level: zlib.constants.Z_BEST_COMPRESSION,
         finishFlush: zlib.constants.Z_FINISH,
       });
+      // Remembers the recently-used unique ID
       usedIds.push(id);
     });
     // Marshalizes the bundle file contents
@@ -1348,6 +1404,12 @@ export class ScriptsController {
             break;
           }
           case EditorSectionType.Script: {
+            // Make sure folder exists if nested
+            fileutils.createFolder(child.getDirectory().fsPath, {
+              recursive: true,
+              overwrite: false,
+            });
+            // Create file
             fs.writeFileSync(
               child.resourceUri.fsPath,
               this._formatScriptCode(options?.contents || ''),
@@ -1570,7 +1632,7 @@ export class ScriptsController {
   }
 
   /**
-   * Determines the uri path based on th parent instance and the given type and name.
+   * Determines the uri path based on the parent instance and the given type and name.
    * @param parent Parent uri path
    * @param type Editor section type
    * @param name Editor section name
