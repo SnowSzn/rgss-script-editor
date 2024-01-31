@@ -1254,19 +1254,23 @@ export class ScriptsController {
         'Cannot create script loader bundle due to invalid values!'
       );
     }
-    // Formats backup destination path.
-    let backUpFilePath = vscode.Uri.joinPath(
-      backUpsFolderPath,
-      `${path.basename(bundleFilePath.fsPath)} - ${this._currentDate()}.bak`
-    );
-    logger.logInfo(`Resolved back up file: "${backUpFilePath.fsPath}"`);
-    logger.logInfo('Backing up original RPG Maker bundle file...');
-    // Create backup of the bundle file
-    fileutils.copyFile(bundleFilePath.fsPath, backUpFilePath.fsPath, {
-      recursive: true,
-      overwrite: true,
-    });
-    logger.logInfo('Back up completed!');
+    // Checks if the backup is needed
+    let oldBundle = this._readBundleFile(bundleFilePath.fsPath);
+    if (this._checkValidExtraction(oldBundle)) {
+      // Formats backup destination path.
+      let backUpFilePath = vscode.Uri.joinPath(
+        backUpsFolderPath,
+        `${path.basename(bundleFilePath.fsPath)} - ${this._currentDate()}.bak`
+      );
+      logger.logInfo(`Resolved back up file: "${backUpFilePath.fsPath}"`);
+      logger.logInfo('Backing up original RPG Maker bundle file...');
+      // Create backup of the bundle file
+      fileutils.copyFile(bundleFilePath.fsPath, backUpFilePath.fsPath, {
+        recursive: true,
+        overwrite: true,
+      });
+      logger.logInfo('Back up completed!');
+    }
     logger.logInfo('Creating script loader bundle file...');
     // Create script loader bundle file
     let bundle: any[][] = [[]];

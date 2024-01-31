@@ -275,7 +275,7 @@ export async function createScriptLoader() {
       );
       return;
     }
-    // Overwrite bundle file
+    // Overwrite bundle file with the script loader
     let loaderResponse = await extensionScripts.createLoader();
     if (loaderResponse === ScriptsController.LOADER_BUNDLE_CREATED) {
       logger.logInfo('Script loader bundle file created successfully!');
