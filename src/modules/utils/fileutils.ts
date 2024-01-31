@@ -83,8 +83,9 @@ export function isRubyFile(file: string): boolean {
  * @returns Whether path is a directory.
  */
 export function isFolderLike(folder: string): boolean {
-  // Checks if file is a directory.
-  return path.extname(folder) === '';
+  // Checks whether the given argument is a folder or not
+  const baseName = path.basename(folder);
+  return baseName.length > 0 && path.extname(baseName) === '';
 }
 
 /**
