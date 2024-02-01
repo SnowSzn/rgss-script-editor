@@ -1386,9 +1386,9 @@ export class ScriptsController {
       recursive: true,
       overwrite: false,
     });
-    // Creates bundle file (throws error if it exists)
+    // Creates bundle file
     fs.writeFileSync(destination.fsPath, bundleMarshalized, {
-      flag: 'wx',
+      flag: 'w',
     });
     return ScriptsController.BUNDLE_CREATED;
   }
