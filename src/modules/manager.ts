@@ -268,7 +268,7 @@ export async function createScriptLoader() {
     let extractedResponse = await extensionScripts.checkScripts();
     if (extractedResponse === ScriptsController.SCRIPTS_NOT_EXTRACTED) {
       logger.logError(
-        'Cannot create script loader bundle file because RPG Maker bundle file still has valid scripts inside of it!'
+        'Cannot create script loader because RPG Maker bundle file still has valid scripts inside of it!'
       );
       logger.logWarning(
         'You should make sure to extract the scripts to avoid data loss before doing this'

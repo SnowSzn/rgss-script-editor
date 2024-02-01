@@ -1270,6 +1270,8 @@ export class ScriptsController {
         overwrite: true,
       });
       logger.logInfo('Back up completed!');
+    } else {
+      logger.logInfo(`A backup of the RPG Maker bundle file is not necessary!`);
     }
     logger.logInfo('Creating script loader bundle file...');
     // Create script loader bundle file
