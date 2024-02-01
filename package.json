@@ -73,6 +73,12 @@
         "icon": "$(package)"
       },
       {
+        "command": "rgss-script-editor.createBackup",
+        "title": "Create Back Up From Extracted Scripts",
+        "category": "RGSS Script Editor",
+        "icon": "$(archive)"
+      },
+      {
         "command": "rgss-script-editor.runGame",
         "title": "Run Game",
         "category": "RGSS Script Editor",
@@ -327,7 +333,12 @@
         {
           "command": "rgss-script-editor.createBundleFile",
           "when": "view == rgss-script-editor.editorView",
-          "group": "3"
+          "group": "4"
+        },
+        {
+          "command": "rgss-script-editor.createBackup",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "4"
         }
       ],
       "view/item/context": [

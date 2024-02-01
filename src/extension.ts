@@ -82,6 +82,12 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+  // Create a back up file from extracted scripts
+  context.subscriptions.push(
+    vscode.commands.registerCommand('rgss-script-editor.createBackup', () => {
+      manager.createBackUpFile();
+    })
+  );
   // Run game command
   context.subscriptions.push(
     vscode.commands.registerCommand('rgss-script-editor.runGame', () => {

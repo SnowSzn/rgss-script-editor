@@ -91,7 +91,7 @@ export async function quickStart() {
       'Several valid RPG Maker folders were detected in the current workspace!'
     );
     vscode.window.showInformationMessage(
-      'Several RPG Maker folders were detected in the current workspace, choose one to set it as active'
+      'Several RPG Maker folders were detected in the current workspace, choose one to set it as active.'
     );
     extensionUI.control({ changeProjectFolder: true });
   } else {
@@ -150,12 +150,20 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
       );
     } else if (scriptsResponse === ScriptsController.SCRIPTS_NOT_EXTRACTED) {
       context.setExtractedScripts(false);
-      logger.logWarning('Scripts were detected inside the bundle scripts file');
-      logger.logInfo(
-        'If this is the first time opening the project you should now extract script files!'
+      logger.logWarning(
+        'Some valid scripts were detected inside the bundle scripts file!'
       );
-      logger.logInfo(
-        'In case you have previously extracted the scripts, make sure not to add new scripts to the bundle file'
+      logger.logWarning(
+        'If this is the first time opening this project you should now extract script files!'
+      );
+      logger.logWarning(
+        'If you have extracted all scripts previously, make sure not to add new scripts to the bundle file, otherwise this extension will refuse to fully work to avoid data loss'
+      );
+      logger.logWarning(
+        'If the script loader was overwritten, you will not be able to load external scripts until you extract all scripts again!'
+      );
+      vscode.window.showInformationMessage(
+        'Some scripts were detected inside the bundle scripts file, you should be able to extract them now.'
       );
     } else {
       context.setExtractedScripts(false);
@@ -237,10 +245,12 @@ export async function extractScripts() {
         `Extraction returned an unknown code: ${extractionResponse}`
       );
       logger.logWarning(`Stopping to avoid possible data loss.`);
+      showBasicErrorMessage();
     }
   } catch (error: unknown) {
     context.setExtractedScripts(false);
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -270,7 +280,7 @@ export async function createScriptLoader() {
       logger.logError(
         'Cannot create script loader because RPG Maker bundle file still has valid scripts inside of it!'
       );
-      logger.logWarning(
+      logger.logError(
         'You should make sure to extract the scripts to avoid data loss before doing this'
       );
       return;
@@ -279,13 +289,17 @@ export async function createScriptLoader() {
     let loaderResponse = await extensionScripts.createLoader();
     if (loaderResponse === ScriptsController.LOADER_BUNDLE_CREATED) {
       logger.logInfo('Script loader bundle file created successfully!');
+      vscode.window.showInformationMessage(
+        'The script loader was created successfully!'
+      );
     } else {
-      logger.logError(
+      logger.logWarning(
         `Script loader bundle file creation reported an unknown code!`
       );
     }
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -307,18 +321,61 @@ export async function createBundleFile() {
       return;
     }
     // Processes the path to append the proper extension
-    const bundleFilePath = extensionConfig.processPathExtension(destination);
+    const bundleFilePath = extensionConfig.processExtension(destination);
     // Create bundle file
     let response = await extensionScripts.createBundle(bundleFilePath);
     if (response === ScriptsController.BUNDLE_CREATED) {
       logger.logInfo(
         `Bundle file created successfully at: "${bundleFilePath.fsPath}"`
       );
+      vscode.window.showInformationMessage(
+        'The bundle file was created successfully!'
+      );
     } else {
       logger.logError(`Bundle file creation reported an unknown code!`);
     }
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
+  }
+}
+
+/**
+ * Creates a back up file from all extracted scripts available that are enabled.
+ *
+ * The back up file order will be the same as the current tree order.
+ * @returns A promise
+ */
+export async function createBackUpFile() {
+  try {
+    // Gets the file name
+    const fileName = extensionConfig.processExtension(
+      Configuration.EXTRACTED_SCRIPTS_BACK_UP_FILE_NAME
+    );
+    // Formats the back up file path
+    const backUpFilePath = extensionScripts.formatBackUpPath(fileName.fsPath);
+    // Checks whether the path was determined or not
+    if (backUpFilePath) {
+      const response = await extensionScripts.createBundle(backUpFilePath);
+      if (response === ScriptsController.BUNDLE_CREATED) {
+        logger.logInfo(
+          `Back up from extracted scripts file created successfully at: "${backUpFilePath.fsPath}"`
+        );
+        vscode.window.showInformationMessage(
+          'The back up file was created successfully!'
+        );
+      } else {
+        logger.logError(`Back up file creation reported an unknown code!`);
+      }
+    } else {
+      logger.logError(
+        `The back up could not be created because it was impossible to determine the back up path!`
+      );
+      showBasicErrorMessage();
+    }
+  } catch (error) {
+    logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -332,6 +389,7 @@ export async function runGame() {
     logger.logInfo(`Game executable launched successfully with PID: ${pid}`);
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -847,4 +905,13 @@ function fetchWorkspaceFolders() {
     }
   }
   return validFolders;
+}
+
+/**
+ * Shows an error message to inform the user to check the extension's output channel
+ */
+function showBasicErrorMessage() {
+  vscode.window.showErrorMessage(
+    'Something went wrong! Please check RGSS Script Editor output channel for more information'
+  );
 }

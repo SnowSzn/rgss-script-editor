@@ -87,6 +87,15 @@ export class Configuration {
   public static GAME_OUTPUT_FILE = '.rgss-script-editor-game.log';
 
   /**
+   * File name of the back up file that the user creates from the extracted scripts.
+   *
+   * The name should avoid extensions since it will get automatically determined
+   * based on the RGSS version on runtime.
+   */
+  public static EXTRACTED_SCRIPTS_BACK_UP_FILE_NAME =
+    'Manual Backup of Extracted Scripts';
+
+  /**
    * RGSS Version.
    */
   private _rgssVersion?: string;
@@ -515,10 +524,10 @@ export class Configuration {
    * Processes the given uri path to append the proper extension based on the RGSS version detected.
    *
    * This method won't remove the extension if the uri path has one already.
-   * @param uri File uri
+   * @param filepath File path
    * @returns Processed file uri
    */
-  processPathExtension(uri: vscode.Uri) {
+  processExtension(filepath: vscode.Uri | string) {
     // Determine the proper extension based on the RGSS version detected
     let extension = '';
     switch (this.rgss) {
@@ -535,6 +544,9 @@ export class Configuration {
         break;
       }
     }
+    // Determines Uri based on the given argument type
+    const uri =
+      filepath instanceof vscode.Uri ? filepath : vscode.Uri.file(filepath);
     // Checks if proper extension is present already
     if (uri.fsPath.toLowerCase().endsWith(extension)) {
       return uri;

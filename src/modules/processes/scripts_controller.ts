@@ -144,7 +144,8 @@ const EDITOR_SECTION_SEPARATOR_NAME = '*separator*';
  *
  * This will be used when extracting scripts to detect whether the entry is a folder or not.
  */
-const EDITOR_SECTION_FOLDER_CONTENTS = '# RGSS Script Editor Folder';
+const EDITOR_SECTION_FOLDER_CONTENTS =
+  '# RGSS Script Editor folder (PLEASE DO NOT MODIFY THIS SCRIPT AT ALL)';
 
 /**
  * Character used to mark a editor section as skipped.
@@ -1152,7 +1153,7 @@ export class ScriptsController {
       let sectionCode = undefined;
       let baseScriptPath = path
         .dirname(bundle[i][1] as string)
-        .split(path.sep)
+        .split('/')
         .map((token) => {
           return this._removeInvalidCharacters(token);
         })
@@ -1160,7 +1161,7 @@ export class ScriptsController {
       let baseScriptName = path.basename(bundle[i][1] as string);
       let baseScriptCode = bundle[i][2] as string;
       if (baseScriptCode.trim().length === 0) {
-        // Entry does not have code, could be either an untitled script or a separator
+        // Entry does not have code, could be either an script or a separator
         if (
           baseScriptName.trim().length === 0 ||
           baseScriptName.endsWith(this.getSeparatorName())
@@ -1237,19 +1238,12 @@ export class ScriptsController {
   async createLoader(): Promise<number> {
     logger.logInfo('Creating script loader bundle file...');
     let bundleFilePath = this._config?.determineBundleFilePath();
-    let backUpsFolderPath = this._config?.determineBackupsPath();
     let scriptsFolderPath = this._config?.configScriptsFolder();
     let gameOutputFile = Configuration.GAME_OUTPUT_FILE;
     logger.logInfo(`RPG Maker bundle file path: "${bundleFilePath?.fsPath}"`);
-    logger.logInfo(`Back ups folder path: "${backUpsFolderPath?.fsPath}"`);
     logger.logInfo(`Scripts folder relative path: "${scriptsFolderPath}"`);
     logger.logInfo(`Game output file: "${gameOutputFile}"`);
-    if (
-      !bundleFilePath ||
-      !backUpsFolderPath ||
-      !scriptsFolderPath ||
-      !gameOutputFile
-    ) {
+    if (!bundleFilePath || !scriptsFolderPath || !gameOutputFile) {
       throw new Error(
         'Cannot create script loader bundle due to invalid values!'
       );
@@ -1257,12 +1251,15 @@ export class ScriptsController {
     // Checks if the backup is needed
     let oldBundle = this._readBundleFile(bundleFilePath.fsPath);
     if (this._checkValidExtraction(oldBundle)) {
-      // Formats backup destination path.
-      let backUpFilePath = vscode.Uri.joinPath(
-        backUpsFolderPath,
-        `${path.basename(bundleFilePath.fsPath)} - ${this._currentDate()}.bak`
+      const backUpFilePath = this.formatBackUpPath(
+        path.basename(bundleFilePath.fsPath)
       );
-      logger.logInfo(`Resolved back up file: "${backUpFilePath.fsPath}"`);
+      logger.logInfo(`Resolved back up file: "${backUpFilePath?.fsPath}"`);
+      if (!backUpFilePath) {
+        throw new Error(
+          `It was not possible to create a back up because the path: "${backUpFilePath}" is invalid!`
+        );
+      }
       logger.logInfo('Backing up original RPG Maker bundle file...');
       // Create backup of the bundle file
       fileutils.copyFile(bundleFilePath.fsPath, backUpFilePath.fsPath, {
@@ -1333,6 +1330,10 @@ export class ScriptsController {
    *
    * If ``destination`` already exists it throws an error to avoid overwriting the RPG Maker bundle file.
    *
+   * This method creates all nested folders needed to create the bundle file.
+   *
+   * As a general rule, all script names will be standarized to use the ``/`` separator for compatibility.
+   *
    * **The promise is resolved when the creation is done with a code number.**
    *
    * **If the creation was impossible it rejects the promise with an error.**
@@ -1352,9 +1353,14 @@ export class ScriptsController {
     let usedIds: number[] = [];
     let bundle: any[][] = [];
     checked.forEach((section, index) => {
-      // Initializes the new section info
+      // Initializes the ID for a new section
       let id = this._generateScriptId(usedIds);
-      let name = this._root.relative(section.resourceUri);
+      // Standardises the name to use the same path separator for both Linux and Windows
+      let name = this._root
+        .relative(section.resourceUri)
+        .split(path.sep)
+        .join('/');
+      // Formats the code based on the editor section
       let code = section.isType(EditorSectionType.Script)
         ? fs.readFileSync(section.resourceUri.fsPath, { encoding: 'utf8' })
         : section.isType(EditorSectionType.Folder)
@@ -1374,6 +1380,11 @@ export class ScriptsController {
     // Marshalizes the bundle file contents
     let bundleMarshalized = marshal.dump(bundle, {
       hashStringKeysToSymbol: true,
+    });
+    // Creates the folder if it does not exists already
+    fileutils.createFolder(path.dirname(destination.fsPath), {
+      recursive: true,
+      overwrite: false,
     });
     // Creates bundle file (throws error if it exists)
     fs.writeFileSync(destination.fsPath, bundleMarshalized, {
@@ -1733,6 +1744,26 @@ export class ScriptsController {
    */
   matchInvalidCharacters(str: string) {
     return str.match(INVALID_CHARACTERS);
+  }
+
+  /**
+   * Creates a back up uri path with the given filename.
+   *
+   * If the back up path cannot be determined, it returns ``undefined``.
+   * @param filename File name
+   * @returns The formatted back up uri path
+   */
+  formatBackUpPath(filename: string) {
+    const backUpsFolderPath = this._config?.determineBackupsPath();
+    // Checks back up path validness
+    if (!backUpsFolderPath) {
+      return undefined;
+    }
+    // Formats and returns the back up URI path
+    return vscode.Uri.joinPath(
+      backUpsFolderPath,
+      `${filename} - ${this._currentDate()}.bak`
+    );
   }
 
   /**
@@ -2312,6 +2343,6 @@ ScriptLoader.run
     const hour = date.getHours().toString().padStart(2, '0');
     const minutes = date.getMinutes().toString().padStart(2, '0');
     const seconds = date.getSeconds().toString().padStart(2, '0');
-    return `${year}-${month}-${day}_${hour}.${minutes}.${seconds}`;
+    return `${year}.${month}.${day} - ${hour}.${minutes}.${seconds}`;
   }
 }
