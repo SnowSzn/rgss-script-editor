@@ -34,30 +34,36 @@ As a security measure, the extension will not allow overwriting the script bundl
 
 - **Workspace Support**
   - You can change the active folder easily in a workspace.
+  - If a key setting is modified, it will reopen the workspace folder that was open automatically.
 - **Run Game**
   - You can run the game within VSCode using a customizable key shortcut (F12 by default)
   - Both `test` (`debug`) and `console` (RPG Maker VX Ace) modes are supported.
   - Optionally, custom arguments can be used instead of the default ones.
   - You can also specify a custom path to the game, in case you want to run an MKXP-Z executable.
 - **Backup Creation**
-  - Everytime the scripts bundled file is overwritten by the extension, it created a security backup.
+  - A back up of the original scripts bundle file will be created upon script extraction
+    - Thus, the script loader will be created
+  - You can freely create a bundle file of all activated scripts as a back up at any time.
+    - All back ups are named with a timestamp of when they were created.
   - All back ups are saved into the specified folder in the extension's settings.
 - **Scripts Extraction**
-  - You can extract all scripts to a custom folder within the project's folder.
+  - You can extract all scripts inside the bundle file to a custom folder within the project's folder.
   - Each RPG Maker script entry will be converted into the appropiate equivalent for the extension's script editor in the process.
     - Every nameless entry with no code will be treated as a separator.
     - Any other entry, will be treated as a script file.
+    - An entry with no code besides an specific comment this extension creates will be treated as a folder.
+  - If you are extracting a bundle file created by this extension, the tree structure will be recreated.
 - **Bundle File Creation**
   - You can create an RPG Maker bundle file (``Scripts.rxdata``, ``Scripts.rvdata`` or ``Scripts.rvdata2``) using the current enabled scripts.
   - This process is **heavily recommended** when sharing a copy of your game.
-  - Make sure **not to overwrite** the scripts bundle file this extension creates, a good way to distribute your game while you use this extension is having two separate folders, one folder to develop the game and the other one to distribute it, you can later use this function to create a bundle file and move it into the game folder you share publicly.
-    - If you do overwrite it, you will lose all of the tree arranging (order and subfolders...) when extracting the scripts again. This is unavoidable since the RPG Maker bundle file does not save this kind of data.
+  - The bundle file is created maintaining the order and tree structure the user creates (subfolders, separators...)
+    - You can later rebuild the tree from any bundle file created by this extension (as well as the loading order) if it is not improperly modified by the user.
 - **Script Loader**
   - The game will load all scripts files individually based on a load order.
   - Any script can be ignored and not loaded when the game runs.
     - Instead of the old way of commenting the whole script code or deleting it, you can disable it and it won't be loaded.
 - **Script Editor**
-  - This extension enables a view in VSCode where you can perform several operations on sections:
+  - This extension enables a view in VSCode where you can create a tree of script sections and perform several operations on them:
     - Create new sections.
       - You can create new sections of an specific type, the current types available are:
         - Script: Self-explanatory.
@@ -173,13 +179,15 @@ This extension contributes the following settings:
 
 ## Known Issues
 
-I have listed here all errors I have encountered while testing the extension along with their respective solution. If you find an issue not listed here, feel free to report it back.
+I have listed here all errors I have encountered while testing the extension along with their respective solution.
+
+If you find an issue not listed here, feel free to report it back.
 
 ---
 
 > [SyntaxError] Invalid Multibyte char (US-ASCII) Exception
 
-RPG Maker VX Ace is the only RPG Maker editor running RGSS3 which it is based on Ruby 1.9+.
+There is a high chance that this will happen using RPG Maker VX Ace since that's the only RPG Maker editor running RGSS3 which it is based on Ruby 1.9+.
 
 The other versions of the engine (XP and VX) runs with older versions of Ruby in which ``$KCODE`` is supported, this global variable is used to determine the encoding of a script file when Ruby is trying to load it.
 
@@ -191,7 +199,7 @@ This error is easily fixed by adding ``# encoding: utf-8`` in the first line of 
 # encoding: utf-8
 
 module MyModule
-  ...
+  # ...
 end
 ```
 
@@ -237,14 +245,28 @@ The extension uses a regular expression to remove invalid characters from the sc
 
 ## Latest Release Notes
 
-## [1.0.11] - 27/01/2024
+## [1.1.0] - 01/02/2024
+
+### Added
+
++ Extension is now able to create a script tree and load order from a bundled scripts data file
+  + Only bundled scripts data files created by this extension are supported
+  + You will be able to restore the tree easily in case it was overwritten
++ Allows the user to quickly create a back up file of the current enabled scripts in the tree
+  + This process is the same as creating a bundle file but it is done automatically
+  + All backups are stored with a time stamp
 
 ### Changed
 
-+ Reworded the description of the extension settings
-+ Removed an unnecessary load order refresh call
-+ Added a warning when deleting sections
-+ Bundle file created file extension is now automatically appended based on the RGSS version
++ Avoid creating empty backup files of the bundled scripts data if invalid
+  + 'Invalid' means that only the script loader was inside of the bundled data file
++ Bundle creation now allows to overwrite an existing file
++ Modified some logging information to make it clearer
+
+### Fixed
+
++ Fixed folder recognition to avoid empty filesystem entries to be recognized as valid folders
++ Fixed script creation failure if the directory did not exist
 
 ## Contributors
 - [marshal](https://github.com/hyrious/marshal)

@@ -2,6 +2,28 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.1.0] - 01/02/2024
+
+### Added
+
++ Extension is now able to create a script tree and load order from a bundled scripts data file
+  + Only bundled scripts data files created by this extension are supported
+  + You will be able to restore the tree easily in case it was overwritten
++ Allows the user to quickly create a back up file of the current enabled scripts in the tree
+  + This process is the same as creating a bundle file but does it automatically
+  + All backups are stored with a time stamp
+
+### Changed
+
++ Avoid creating empty backup files of the bundled scripts data if invalid
+  + 'Invalid' means that only the script loader was inside of the bundled data file
++ Bundle creation now allows to overwrite an existing file
++ Modified some logging information to make it clearer
+
+### Fixed
+
++ Fixed folder recognition to avoid empty filesystem entries to be recognized as valid folders
+
 ## [1.0.11] - 27/01/2024
 
 ### Changed
