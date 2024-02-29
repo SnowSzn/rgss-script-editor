@@ -82,11 +82,23 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
-  // Create a back up file from extracted scripts
+  // Create a back up bundle file from extracted scripts
   context.subscriptions.push(
-    vscode.commands.registerCommand('rgss-script-editor.createBackup', () => {
-      manager.createBackUpFile();
-    })
+    vscode.commands.registerCommand(
+      'rgss-script-editor.createBackupBundleFile',
+      () => {
+        manager.createBackUpBundleFile();
+      }
+    )
+  );
+  // Create bundle file from selected scripts
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.createSelectedBundleFile',
+      () => {
+        manager.createSelectedBundleFile();
+      }
+    )
   );
   // Run game command
   context.subscriptions.push(

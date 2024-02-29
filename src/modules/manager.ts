@@ -304,7 +304,11 @@ export async function createScriptLoader() {
 }
 
 /**
- * Creates a bundle file based on the load order file.
+ * Creates a RPG Maker bundle file including only the current enabled editor sections.
+ *
+ * This function should be used to create the bundle file for distribution.
+ *
+ * The bundle file entries are created with the same order as the tree order.
  * @returns A promise
  */
 export async function createBundleFile() {
@@ -315,7 +319,7 @@ export async function createBundleFile() {
     let destination = await vscode.window.showSaveDialog({
       defaultUri: projectFolder,
     });
-    // Checks destination validness
+    // Checks destination validness (user may have cancelled operation no need for an Error)
     if (!destination) {
       logger.logError(`You must select a valid path to save the bundle file!`);
       return;
@@ -323,7 +327,14 @@ export async function createBundleFile() {
     // Processes the path to append the proper extension
     const bundleFilePath = extensionConfig.processExtension(destination);
     // Create bundle file
-    let response = await extensionScripts.createBundle(bundleFilePath);
+    const loadedSections = extensionScripts.root.filterChildren(
+      (section) => section.isLoaded(),
+      true
+    );
+    let response = await extensionScripts.createBundle(
+      loadedSections,
+      bundleFilePath
+    );
     if (response === ScriptsController.BUNDLE_CREATED) {
       logger.logInfo(
         `Bundle file created successfully at: "${bundleFilePath.fsPath}"`
@@ -341,12 +352,14 @@ export async function createBundleFile() {
 }
 
 /**
- * Creates a back up file from all extracted scripts available that are enabled.
+ * Creates a back up bundle file from all extracted scripts available.
+ *
+ * This function includes all editor sections, whether they are enabled or not.
  *
  * The back up file order will be the same as the current tree order.
  * @returns A promise
  */
-export async function createBackUpFile() {
+export async function createBackUpBundleFile() {
   try {
     // Gets the file name
     const fileName = extensionConfig.processExtension(
@@ -356,13 +369,17 @@ export async function createBackUpFile() {
     const backUpFilePath = extensionScripts.formatBackUpPath(fileName.fsPath);
     // Checks whether the path was determined or not
     if (backUpFilePath) {
-      const response = await extensionScripts.createBundle(backUpFilePath);
+      const sections = extensionScripts.root.nestedChildren();
+      const response = await extensionScripts.createBundle(
+        sections,
+        backUpFilePath
+      );
       if (response === ScriptsController.BUNDLE_CREATED) {
         logger.logInfo(
-          `Back up from extracted scripts file created successfully at: "${backUpFilePath.fsPath}"`
+          `The back up bundle file was created successfully at: "${backUpFilePath.fsPath}"`
         );
         vscode.window.showInformationMessage(
-          'The back up file was created successfully!'
+          'The back up bundle file was created successfully!'
         );
       } else {
         logger.logError(`Back up file creation reported an unknown code!`);
@@ -372,6 +389,55 @@ export async function createBackUpFile() {
         `The back up could not be created because it was impossible to determine the back up path!`
       );
       showBasicErrorMessage();
+    }
+  } catch (error) {
+    logger.logErrorUnknown(error);
+    showBasicErrorMessage();
+  }
+}
+
+/**
+ * Creates a bundle file with only the active selected tree items.
+ *
+ * The bundle file entries are created with the same order as the tree order.
+ * @returns A promise
+ */
+export async function createSelectedBundleFile() {
+  try {
+    // Gets the project folder
+    const projectFolder = extensionConfig.projectFolderPath;
+    // Gets destination folder
+    let destination = await vscode.window.showSaveDialog({
+      defaultUri: projectFolder,
+    });
+    // Checks destination validness (user may have cancelled operation no need for an Error)
+    if (!destination) {
+      logger.logError(`You must select a valid path to save the bundle file!`);
+      return;
+    }
+    // Processes the path to append the proper extension
+    const bundleFilePath = extensionConfig.processExtension(destination);
+    // Gets the selected tree items from the tree view
+    const selectedSections = extensionUI.getTreeSelection();
+    if (!selectedSections) {
+      throw new Error(
+        `You must select at least one section on the tree view to create the bundle file!`
+      );
+    }
+    // Create bundle file
+    let response = await extensionScripts.createBundle(
+      selectedSections,
+      bundleFilePath
+    );
+    if (response === ScriptsController.BUNDLE_CREATED) {
+      logger.logInfo(
+        `Bundle file created successfully at: "${bundleFilePath.fsPath}"`
+      );
+      vscode.window.showInformationMessage(
+        'The bundle file was created successfully!'
+      );
+    } else {
+      logger.logError(`Bundle file creation reported an unknown code!`);
     }
   } catch (error) {
     logger.logErrorUnknown(error);

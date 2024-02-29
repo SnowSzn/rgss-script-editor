@@ -297,7 +297,7 @@ export class GameplayController {
             exeArgs = [`"${gamePath}"`, ...gameArgs];
           } else {
             throw new Error(
-              'Cannot run the game because it seems like a Windows executable and the command to run Wine is empty!'
+              'Cannot run the game because it seems like a Windows executable and the command to run Wine is empty, check the extension settings to fix this'
             );
           }
         }

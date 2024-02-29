@@ -1326,9 +1326,7 @@ export class ScriptsController {
   /**
    * Asynchronously creates a RPG Maker bundle file.
    *
-   * This method will create a packaged bundle file with all active scripts on the tree view.
-   *
-   * If ``destination`` already exists it throws an error to avoid overwriting the RPG Maker bundle file.
+   * This method will create a packaged RPG Maker bundle file with all of the given editor sections
    *
    * This method creates all nested folders needed to create the bundle file.
    *
@@ -1337,22 +1335,21 @@ export class ScriptsController {
    * **The promise is resolved when the creation is done with a code number.**
    *
    * **If the creation was impossible it rejects the promise with an error.**
+   * @param sections List of editor sections
    * @param destination Destination path
    * @returns A promise
    * @throws An error if creation fails.
    */
-  async createBundle(destination: vscode.Uri): Promise<number> {
+  async createBundle(
+    sections: readonly EditorSectionBase[],
+    destination: vscode.Uri
+  ): Promise<number> {
     logger.logInfo('Creating bundle file...');
     logger.logInfo(`Destination path: "${destination.fsPath}"`);
-    // Gets all script section files enabled
-    let checked = this._root.filterChildren(
-      (section) => section.isLoaded(),
-      true
-    );
     // Formats RPG Maker bundle
     let usedIds: number[] = [];
     let bundle: any[][] = [];
-    checked.forEach((section, index) => {
+    sections.forEach((section, index) => {
       // Initializes the ID for a new section
       let id = this._generateScriptId(usedIds);
       // Standardises the name to use the same path separator for both Linux and Windows
