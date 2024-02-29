@@ -29,7 +29,7 @@
   "bugs": {
     "url": "https://github.com/SnowSzn/rgss-script-editor/issues"
   },
-  "version": "1.1.0",
+  "version": "1.2.0",
   "engines": {
     "vscode": "^1.84.0"
   },
@@ -62,7 +62,7 @@
       },
       {
         "command": "rgss-script-editor.createScriptLoader",
-        "title": "Create Script Loader Bundle File",
+        "title": "Create Script Loader",
         "category": "RGSS Script Editor",
         "icon": "$(note)"
       },
@@ -372,6 +372,11 @@
           "command": "rgss-script-editor.sectionAlternateLoad",
           "when": "view == rgss-script-editor.editorView",
           "group": "1"
+        },
+        {
+          "command": "rgss-script-editor.createSelectedBundleFile",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "4"
         },
         {
           "command": "rgss-script-editor.revealInVSCodeExplorer",

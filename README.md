@@ -34,17 +34,18 @@ As a security measure, the extension will not allow overwriting the script bundl
 
 - **Workspace Support**
   - You can change the active folder easily in a workspace.
-  - If a key setting is modified, it will reopen the workspace folder that was open automatically.
+  - If an important setting is modified, it will reopen the workspace folder that was open automatically.
 - **Run Game**
   - You can run the game within VSCode using a customizable key shortcut (F12 by default)
   - Both `test` (`debug`) and `console` (RPG Maker VX Ace) modes are supported.
   - Optionally, custom arguments can be used instead of the default ones.
   - You can also specify a custom path to the game, in case you want to run an MKXP-Z executable.
 - **Backup Creation**
-  - A back up of the original scripts bundle file will be created upon script extraction
+  - A back up of the original scripts bundle file will always be created upon script extraction
     - Thus, the script loader will be created
-  - You can freely create a bundle file of all activated scripts as a back up at any time.
+  - You can freely create a bundle file of all scripts as a back up at any time.
     - All back ups are named with a timestamp of when they were created.
+    - The back up bundle file will include **all editor sections** (whether they are enabled or disabled)
   - All back ups are saved into the specified folder in the extension's settings.
 - **Scripts Extraction**
   - You can extract all scripts inside the bundle file to a custom folder within the project's folder.
@@ -52,11 +53,14 @@ As a security measure, the extension will not allow overwriting the script bundl
     - Every nameless entry with no code will be treated as a separator.
     - Any other entry, will be treated as a script file.
     - An entry with no code besides an specific comment this extension creates will be treated as a folder.
-  - If you are extracting a bundle file created by this extension, the tree structure will be recreated.
+  - If you are extracting a bundle file previously created by this extension, the tree structure will be recreated.
 - **Bundle File Creation**
-  - You can create an RPG Maker bundle file (``Scripts.rxdata``, ``Scripts.rvdata`` or ``Scripts.rvdata2``) using the current enabled scripts.
   - This process is **heavily recommended** when sharing a copy of your game.
-  - The bundle file is created maintaining the order and tree structure the user creates (subfolders, separators...)
+  - You can create an RPG Maker bundle file (``Scripts.rxdata``, ``Scripts.rvdata`` or ``Scripts.rvdata2``) using the current enabled scripts.
+    - If you do not want to include a folder or a certain script in the final bundle file, you can just uncheck them and it will be ignored when creating the bundle file
+  - You can create a new bundle file from the selected scripts on the extension's tree view
+    - You must select manually all editor sections in the tree view you want to include in the package file
+  - The bundle file is always created keeping the order and tree structure the user creates (subfolders, separators...)
     - You can later rebuild the tree from any bundle file created by this extension (as well as the loading order) if it is not improperly modified by the user.
 - **Script Loader**
   - The game will load all scripts files individually based on a load order.
@@ -90,6 +94,7 @@ As a security measure, the extension will not allow overwriting the script bundl
   - This extension can process the exception that killed the game in the last test game session.
   - The extension backtrace will be shown in a markdown file besides the active editor.
   - VSCode built-in peek menu will be used to show each backtrace location.
+    - Known problem: VSCode built-in menu does not support [ordering the file locations](https://github.com/microsoft/vscode/issues/202664)
 
 ## Screenshots
 
@@ -123,8 +128,9 @@ As a security measure, the extension will not allow overwriting the script bundl
 - [Visual Studio Code](https://code.visualstudio.com/)
 - **Not tested in macOS**
 
-## Download
+## Download Links
 - [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=SnowSzn.rgss-script-editor)
+- [Open VSX Marketplace](https://open-vsx.org/extension/SnowSzn/rgss-script-editor)
 
 ## Extension Settings
 
@@ -245,28 +251,18 @@ The extension uses a regular expression to remove invalid characters from the sc
 
 ## Latest Release Notes
 
-## [1.1.0] - 01/02/2024
+## [1.2.0] - 29/02/2024
 
 ### Added
 
-+ Extension is now able to create a script tree and load order from a bundled scripts data file
-  + Only bundled scripts data files created by this extension are supported
-  + You will be able to restore the tree easily in case it was overwritten
-+ Allows the user to quickly create a back up file of the current enabled scripts in the tree
-  + This process is the same as creating a bundle file but it is done automatically
-  + All backups are stored with a time stamp
++ A new command to create a bundle file from the current selected editor sections on the tree view
+  + You can select any group of sections on the tree view and create a bundle including only those sections
+  + Sections will be included whether they are enabled or disabled
 
 ### Changed
 
-+ Avoid creating empty backup files of the bundled scripts data if invalid
-  + 'Invalid' means that only the script loader was inside of the bundled data file
-+ Bundle creation now allows to overwrite an existing file
-+ Modified some logging information to make it clearer
-
-### Fixed
-
-+ Fixed folder recognition to avoid empty filesystem entries to be recognized as valid folders
-+ Fixed script creation failure if the directory did not exist
++ Modified create bundle file and create backup bundle file commands to adapt it to the new feature
++ Renamed Create Script Loader command
 
 ## Contributors
 - [marshal](https://github.com/hyrious/marshal)

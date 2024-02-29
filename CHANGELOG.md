@@ -2,6 +2,19 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.2.0] - 29/02/2024
+
+### Added
+
++ A new command to create a bundle file from the current selected editor sections on the tree view
+  + You can select any group of sections on the tree view and create a bundle including only those sections
+  + Sections will be included whether they are enabled or disabled
+
+### Changed
+
++ Modified create bundle file and create backup bundle file commands to adapt it to the new feature
++ Renamed Create Script Loader command
+
 ## [1.1.0] - 01/02/2024
 
 ### Added
