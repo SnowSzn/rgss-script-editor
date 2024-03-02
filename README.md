@@ -6,6 +6,30 @@
 <h1 align="center">RGSS Script Editor</h1>
 <h3 align="center">This extension should be used for development purposes only!</h3>
 
+## Table of Contents
+- [Table of Contents](#table-of-contents)
+- [Introduction](#introduction)
+- [Features](#features)
+- [Screenshots](#screenshots)
+  - [Extension Editor View](#extension-editor-view)
+  - [Run Game Process](#run-game-process)
+  - [Game Exception Processing](#game-exception-processing)
+- [Requirements](#requirements)
+  - [Windows](#windows)
+  - [Linux](#linux)
+  - [macOS](#macos)
+- [Download Links](#download-links)
+- [Extension Commands](#extension-commands)
+- [Extension Settings](#extension-settings)
+- [Known Issues](#known-issues)
+- [Latest Release Notes](#latest-release-notes)
+  - [\[1.2.0\] - 29/02/2024](#120---29022024)
+    - [Added](#added)
+    - [Changed](#changed)
+- [Contributors](#contributors)
+
+## Introduction
+
 This is an extension for Visual Studio Code that makes VSCode usable as the script editor for any RPG Maker editor based on the RGSS framework:
 - RPG Maker XP
 - RPG Maker VX
@@ -132,6 +156,64 @@ As a security measure, the extension will not allow overwriting the script bundl
 - [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=SnowSzn.rgss-script-editor)
 - [Open VSX Marketplace](https://open-vsx.org/extension/SnowSzn/rgss-script-editor)
 
+## Extension Commands
+The commands in this list that has the "Usable only in the tree view editor" are commands that do not work if called from the command palette.
+
+These commands are identified with ellipses (such as the command "Create Section...").
+
+* `rgss-script-editor.setProjectFolder`
+  * Sets the extension's working folder to the selected project folder
+* `rgss-script-editor.openProjectFolder`
+  * Opens the current project folder in the OS file explorer
+* `rgss-script-editor.extractScripts`
+  * Extracts all valid script files from the RPG Maker Scripts bundle file
+  * You can extract the script files as many times as you want if you have included new scripts in it
+  * Beware that the script files inside the bundle file will **overwrite existing files** on the extracted scripts folder
+  
+* `rgss-script-editor.createScriptLoader`
+  * Creates the script loader bundle file
+  * The command will fail if there are valid script files inside the bundle file
+  * You can use this command to recreate the script loader in case it was modified or updated in a future version of the extension
+* `rgss-script-editor.createBundleFile`
+  * Creates a bundle file with the current enabled sections (scripts/folders...) in the tree view
+  * The bundle file created keeps the same load order and tree structure as the tree view
+* `rgss-script-editor.createBackupBundleFile`
+  * Creates a backup bundle file with all sections (scripts/folders...) in the tree view
+  * **All sections are included**, whether they are enabled or disabled
+  * The bundle file is automatically saved on the extension's back up folder
+  * The bundle file created keeps the same load order and tree structure as the tree view
+* `rgss-script-editor.createSelectedBundleFile`
+  * Creates a bundle file with the selected scripts in the tree view
+  * **All selected sections are included**, whether they are enabled or disabled
+  * The bundle file created keeps the same load order and tree structure as the tree view
+* `rgss-script-editor.runGame`
+  * Runs the game
+* `rgss-script-editor.processGameException`
+  * Process the last game exception that was captured by the extension
+* `rgss-script-editor.chooseEditorMode`
+  * Chooses the current tree view editor mode
+  * Each mode makes the tree view editor behave differently
+* `rgss-script-editor.openLoadOrder`
+  * Opens the load order file in the VSCode editor
+* `rgss-script-editor.revealInVSCodeExplorer`
+  * Reveals the selected section (script/folder) in the VSCode explorer tab
+  * Usable only in the tree view editor
+* `rgss-script-editor.sectionCreate`
+  * Creates a new section on the tree view
+  * Usable only in the tree view editor
+* `rgss-script-editor.sectionDelete`
+  * Deletes an existing section on the tree view
+  * Usable only in the tree view editor
+* `rgss-script-editor.sectionRename`
+  * Renames an existing section on the tree view
+  * Usable only in the tree view editor
+* `rgss-script-editor.sectionMove`
+  * Move section/s on the tree view
+  * Usable only in the tree view editor
+* `rgss-script-editor.sectionToggleLoad`
+  * Toggles the load status (enabled/disabled) of the section/s on the tree view
+  * Usable only in the tree view editor
+
 ## Extension Settings
 
 This extension contributes the following settings:
@@ -251,15 +333,15 @@ The extension uses a regular expression to remove invalid characters from the sc
 
 ## Latest Release Notes
 
-## [1.2.0] - 29/02/2024
+### [1.2.0] - 29/02/2024
 
-### Added
+#### Added
 
 + A new command to create a bundle file from the current selected editor sections on the tree view
   + You can select any group of sections on the tree view and create a bundle including only those sections
   + Sections will be included whether they are enabled or disabled
 
-### Changed
+#### Changed
 
 + Modified create bundle file and create backup bundle file commands to adapt it to the new feature
 + Renamed Create Script Loader command
