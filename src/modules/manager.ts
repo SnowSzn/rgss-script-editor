@@ -722,29 +722,43 @@ export async function sectionToggleLoad(
   section?: EditorSectionBase | ToggleLoadMatrix
 ) {
   try {
-    let items: ToggleLoadMatrix = [];
+    let toggleMatrix: ToggleLoadMatrix = [];
 
     // Handles arguments
     if (section instanceof Array) {
       // AlternateLoadMatrix
-      items = section;
+      toggleMatrix = section;
     } else {
-      // Can be a section or undefined if called using a keyboard shortcut
-      for (let item of extensionUI.getTreeSelection() || [section]) {
+      let selected = extensionUI.getTreeSelection();
+      // This is used to determine how this function is called
+      // If there are more than one element selected in the tree, it is always for a batch of elements
+      // otherwise, toggle is probably done using the context menu with right click or a keybind
+      // in that case, section is undefined if using a keybind and selected only contains one element
+      // section is only valid when right clicking on a tree item on the tree view.
+      let items =
+        selected && !section
+          ? selected
+          : selected && selected.length > 1
+          ? selected
+          : [section];
+      for (let item of items) {
+        // for (let item of extensionUI.getTreeSelection() || [section]) {
         if (item) {
-          items.push([item, !item.isLoaded()]);
+          toggleMatrix.push([item, !item.isLoaded()]);
         }
       }
     }
 
-    // Alternate load status
-    for (let matrix of items) {
-      const item = matrix[0];
-      const load = matrix[1];
-      logger.logInfo(`Section: "${item}" load status set to: ${load}`);
-      extensionScripts.sectionAlternateLoad(item, load);
+    // Toggle load status and refresh if valid matrix
+    if (toggleMatrix.length > 0) {
+      for (let matrix of toggleMatrix) {
+        const item = matrix[0];
+        const load = matrix[1];
+        logger.logInfo(`Section: "${item}" load status set to: ${load}`);
+        extensionScripts.sectionAlternateLoad(item, load);
+      }
+      await refresh();
     }
-    await refresh();
   } catch (error) {
     logger.logErrorUnknown(error);
   }
