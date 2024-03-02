@@ -23,9 +23,9 @@
 - [Extension Settings](#extension-settings)
 - [Known Issues](#known-issues)
 - [Latest Release Notes](#latest-release-notes)
-  - [\[1.2.0\] - 29/02/2024](#120---29022024)
-    - [Added](#added)
+  - [\[1.2.1\] - 02/03/2024](#121---02032024)
     - [Changed](#changed)
+    - [Fixed](#fixed)
 - [Contributors](#contributors)
 
 ## Introduction
@@ -333,18 +333,17 @@ The extension uses a regular expression to remove invalid characters from the sc
 
 ## Latest Release Notes
 
-### [1.2.0] - 29/02/2024
-
-#### Added
-
-+ A new command to create a bundle file from the current selected editor sections on the tree view
-  + You can select any group of sections on the tree view and create a bundle including only those sections
-  + Sections will be included whether they are enabled or disabled
+### [1.2.1] - 02/03/2024
 
 #### Changed
 
-+ Modified create bundle file and create backup bundle file commands to adapt it to the new feature
-+ Renamed Create Script Loader command
++ Renamed some commands to make them clearer
++ Improved the README file
+
+#### Fixed
+
++ Fixed toggle section command not toggling the tree item with right click
+  + Toggling a section with the context menu (right click) did not work if a section was selected on the tree
 
 ## Contributors
 - [marshal](https://github.com/hyrious/marshal)

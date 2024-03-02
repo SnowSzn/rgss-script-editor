@@ -2,6 +2,18 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.2.1] - 02/03/2024
+
+### Changed
+
++ Renamed some commands to make them clearer
++ Improved the README file
+
+### Fixed
+
++ Fixed toggle section command not toggling the tree item with right click
+  + Toggling a section with the context menu (right click) did not work if a section was selected on the tree
+
 ## [1.2.0] - 29/02/2024
 
 ### Added
