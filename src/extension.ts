@@ -178,12 +178,12 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
-  // Alternate load status script command
+  // Toggle load status script command
   context.subscriptions.push(
     vscode.commands.registerCommand(
-      'rgss-script-editor.sectionAlternateLoad',
+      'rgss-script-editor.sectionToggleLoad',
       (what) => {
-        manager.sectionAlternateLoad(what);
+        manager.sectionToggleLoad(what);
       }
     )
   );

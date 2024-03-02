@@ -68,19 +68,19 @@
       },
       {
         "command": "rgss-script-editor.createBundleFile",
-        "title": "Create Bundle File From Extracted Scripts",
+        "title": "Create a Bundle File From Enabled Scripts",
         "category": "RGSS Script Editor",
         "icon": "$(package)"
       },
       {
         "command": "rgss-script-editor.createBackupBundleFile",
-        "title": "Create Back Up From Extracted Scripts",
+        "title": "Create a Back Up With All Scripts",
         "category": "RGSS Script Editor",
         "icon": "$(archive)"
       },
       {
         "command": "rgss-script-editor.createSelectedBundleFile",
-        "title": "Create Bundle File From Selected Scripts",
+        "title": "Create a Bundle File From Selected Scripts",
         "category": "RGSS Script Editor",
         "icon": "$(package)"
       },
@@ -122,7 +122,7 @@
       },
       {
         "command": "rgss-script-editor.sectionDelete",
-        "title": "Delete Section...",
+        "title": "Delete Section/s...",
         "category": "RGSS Script Editor",
         "icon": "$(trash)"
       },
@@ -139,8 +139,8 @@
         "icon": "$(move)"
       },
       {
-        "command": "rgss-script-editor.sectionAlternateLoad",
-        "title": "Alternate Section Load Status...",
+        "command": "rgss-script-editor.sectionToggleLoad",
+        "title": "Toggle Section/s Load Status On/Off...",
         "category": "RGSS Script Editor",
         "icon": "$(arrow-swap)"
       }
@@ -263,7 +263,7 @@
         "when": "focusedView == 'rgss-script-editor.editorView'"
       },
       {
-        "command": "rgss-script-editor.sectionAlternateLoad",
+        "command": "rgss-script-editor.sectionToggleLoad",
         "key": "F4",
         "when": "focusedView == 'rgss-script-editor.editorView'"
       }
@@ -356,7 +356,7 @@
         {
           "command": "rgss-script-editor.sectionCreate",
           "when": "view == rgss-script-editor.editorView",
-          "group": "2"
+          "group": "3"
         },
         {
           "command": "rgss-script-editor.sectionRename",
@@ -366,12 +366,12 @@
         {
           "command": "rgss-script-editor.sectionDelete",
           "when": "view == rgss-script-editor.editorView",
-          "group": "2"
+          "group": "3"
         },
         {
-          "command": "rgss-script-editor.sectionAlternateLoad",
+          "command": "rgss-script-editor.sectionToggleLoad",
           "when": "view == rgss-script-editor.editorView",
-          "group": "1"
+          "group": "2"
         },
         {
           "command": "rgss-script-editor.createSelectedBundleFile",

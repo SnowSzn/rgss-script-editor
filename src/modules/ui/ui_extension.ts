@@ -125,7 +125,7 @@ export class ExtensionUI {
     // Checkbox click callback.
     this._editorView.onDidChangeCheckboxState((e) => {
       vscode.commands.executeCommand(
-        'rgss-script-editor.sectionAlternateLoad',
+        'rgss-script-editor.sectionToggleLoad',
         e.items
       );
     });

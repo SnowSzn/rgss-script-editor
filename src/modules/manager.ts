@@ -14,9 +14,9 @@ import {
 import { ExtensionUI } from './ui/ui_extension';
 
 /**
- * Editor section alternate load type.
+ * Editor section toggle load type.
  */
-type AlternateLoadMatrix = Array<
+type ToggleLoadMatrix = Array<
   [EditorSectionBase, vscode.TreeItemCheckboxState | boolean]
 >;
 
@@ -708,21 +708,21 @@ export async function sectionMove(
 }
 
 /**
- * Alternates the load status (checkbox) of the given element or elements.
+ * Toggles the load status (checkbox) of the given element or elements.
  *
- * If a {@link AlternateLoadMatrix} is given, it must be an array with the section
+ * If a {@link ToggleLoadMatrix} is given, it must be an array with the section
  * instance along with the checkbox status.
  *
- * If a single element is given, it will check the current tree selection and alternate
+ * If a single element is given, it will check the current tree selection and toggle
  * the checkbox of the given element or the list of selected elements accordingly.
  * @param section Editor section
  * @returns A promise
  */
-export async function sectionAlternateLoad(
-  section?: EditorSectionBase | AlternateLoadMatrix
+export async function sectionToggleLoad(
+  section?: EditorSectionBase | ToggleLoadMatrix
 ) {
   try {
-    let items: AlternateLoadMatrix = [];
+    let items: ToggleLoadMatrix = [];
 
     // Handles arguments
     if (section instanceof Array) {
