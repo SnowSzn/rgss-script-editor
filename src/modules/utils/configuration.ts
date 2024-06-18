@@ -67,6 +67,15 @@ const enum RGSSBundlePath {
 }
 
 /**
+ * Enum of file's end of line types
+ */
+const enum FilesEOL {
+  AUTO = 'auto',
+  CRLF = '\r\n',
+  LF = '\n',
+}
+
+/**
  * Configuration class
  */
 export class Configuration {
@@ -154,6 +163,14 @@ export class Configuration {
    */
   configAutoReveal(): boolean {
     return this._getVSCodeConfig<boolean>('extension.autoReveal')!;
+  }
+
+  /**
+   * Gets the extension file EOL type.
+   * @returns File EOL sequence.
+   */
+  configFileEOL(): string {
+    return this._getVSCodeConfig<string>('extension.filesEndOfLine')!;
   }
 
   /**
@@ -503,6 +520,30 @@ export class Configuration {
           args.push(arg);
         });
       return args;
+    }
+  }
+
+  /**
+   * Determines the file EOL that the extension should use
+   * @returns File EOL
+   */
+  determineFileEOL(): string {
+    let eol = this.configFileEOL();
+
+    // Checks if user is forcing a specific EOL
+    if (eol !== FilesEOL.AUTO) {
+      return eol;
+    }
+
+    // Determine the EOL based on the current platform
+    switch (process.platform) {
+      case 'win32':
+        return FilesEOL.CRLF;
+      case 'linux':
+      case 'darwin':
+        return FilesEOL.LF;
+      default:
+        return FilesEOL.LF;
     }
   }
 

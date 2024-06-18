@@ -173,6 +173,22 @@
             "description": "Allows the extension to reveal the active script file on the extension's script editor view.",
             "order": 11
           },
+          "rgssScriptEditor.extension.filesEndOfLine": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "\r\n",
+              "\n"
+            ],
+            "enumDescriptions": [
+              "Auto mode uses the appropiate EOL type based on the operating system",
+              "CRLF",
+              "LF"
+            ],
+            "default": "auto",
+            "description": "Choose the type of end of line that the extension will use for files.",
+            "order": 12
+          },
           "rgssScriptEditor.external.backUpsFolder": {
             "type": "string",
             "default": "./.rgss-script-editor-backups",

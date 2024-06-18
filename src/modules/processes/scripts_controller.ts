@@ -2303,7 +2303,8 @@ ScriptLoader.run
     let script = '';
     if (!scriptCode.startsWith('# encoding: utf-8')) {
       // Ruby 1.9 (RGSS3) does not detect file encoding so it must be added inside to avoid crashes.
-      script = `# encoding: utf-8\n${scriptCode}`;
+      let eol = this._config?.determineFileEOL() || '\n';
+      script = `# encoding: utf-8${eol}${scriptCode}`;
     } else {
       // Code already contains encoding comment
       script = scriptCode;
