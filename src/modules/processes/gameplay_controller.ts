@@ -1,3 +1,4 @@
+import * as path from 'path';
 import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as vscode from 'vscode';
@@ -278,7 +279,7 @@ export class GameplayController {
     // Run executable OS-based
     switch (process.platform) {
       case 'win32': {
-        exePath = `"${gamePath}"`;
+        exePath = gamePath;
         exeArgs = gameArgs;
         break;
       }
@@ -287,7 +288,7 @@ export class GameplayController {
         // Checks game executable
         if (this._isLinuxExecutable(gamePath)) {
           // It is a Linux executable, try to run it
-          exePath = `"${gamePath}"`;
+          exePath = gamePath;
           exeArgs = gameArgs;
         } else {
           // It is likely that the game is a Windows executable, use Wine
@@ -314,13 +315,12 @@ export class GameplayController {
     logger.logInfo(`Resolved process arguments: "${exeArgs}"`);
     logger.logInfo('Spawning process...');
     // Process should not be piped because if 'console' is passed as an argument to a RGSS3
-    // executable, when the process spawns, it redirects $stderr to the console window.
-    // Making it impossible for the extension to listen to $stderr.
-    this._executable = cp.spawn(exePath, exeArgs, {
+    // executable, when the process spawns, it redirects $stdout and $stderr to the console window.
+    // Making it impossible for the extension to listen to $stdout or $stderr.
+    this._executable = cp.execFile(exePath, exeArgs, {
       cwd: workingDir,
-      stdio: ['ignore', 'ignore', 'ignore'],
-      shell: true,
     });
+
     // Prepares callbacks
     this._executable.on('exit', (code, signal) =>
       this._onProcessExit(code, signal)
@@ -389,7 +389,7 @@ export class GameplayController {
   private _isLinuxExecutable(file: string): boolean {
     try {
       fs.accessSync(file, fs.constants.X_OK);
-      return true;
+      return !(path.extname(file).toLowerCase() === '.exe');
     } catch (error: any) {
       return false;
     }
