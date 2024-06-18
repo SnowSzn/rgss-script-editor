@@ -373,12 +373,10 @@ export class GameplayController {
         this._lastException = exception;
         // Deletes output for next game run
         fs.unlinkSync(output);
-        // Executes command to process the exception if auto-process config is enabled.
-        if (this._config.configGameErrorAutoProcess()) {
-          vscode.commands.executeCommand(
-            'rgss-script-editor.processGameException'
-          );
-        }
+        // Executes command to process the exception.
+        vscode.commands.executeCommand(
+          'rgss-script-editor.processGameException'
+        );
       }
     }
   }

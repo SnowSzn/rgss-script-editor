@@ -239,8 +239,8 @@
           },
           "rgssScriptEditor.gameplay.gameExceptionAutoProcess": {
             "type": "boolean",
-            "default": true,
-            "description": "Allows the extension to show you an information window about the last detected exception.",
+            "default": false,
+            "description": "Allows the extension to auto-process the last detected exception.",
             "order": 70
           },
           "rgssScriptEditor.gameplay.gameExceptionShowInEditor": {

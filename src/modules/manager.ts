@@ -467,6 +467,7 @@ export async function processGameException() {
   try {
     logger.logInfo('Processing game exception...');
     let exception = extensionGameplay.lastException;
+
     // Check exception existence
     if (!exception) {
       logger.logInfo('No exception was reported in the last game session!');
@@ -475,12 +476,19 @@ export async function processGameException() {
       );
       return;
     }
-    // Process exception
-    let option = await vscode.window.showWarningMessage(
-      'An exception was reported in the last game session.',
-      'Peek Backtrace',
-      'Close'
-    );
+
+    // Ask the user to whether process the exception or not
+    let option: string | undefined = '';
+    if (extensionConfig.configGameErrorAutoProcess()) {
+      option = 'Peek Backtrace';
+    } else {
+      option = await vscode.window.showWarningMessage(
+        'An exception was reported in the last game session.',
+        'Peek Backtrace',
+        'Close'
+      );
+    }
+
     if (option === 'Peek Backtrace') {
       // Shows the exception in a new text document besides the main editor if allowed.
       if (extensionConfig.configGameErrorShowEditor()) {
