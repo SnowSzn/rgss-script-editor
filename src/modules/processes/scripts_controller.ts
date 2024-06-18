@@ -2008,7 +2008,7 @@ export class ScriptsController {
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
-# Version: 1.2.4
+# Version: 1.2.5
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
@@ -2086,6 +2086,7 @@ module ScriptLoader
   def self.run
     begin
       @scripts = 0
+      ensure_file_descriptor_validness
       load_order_path = File.join(SCRIPTS_PATH, '${config.loadOrderFileName}')
       log("Running script loader...")
       log("Scripts folder path is: '#{SCRIPTS_PATH}'")
@@ -2228,6 +2229,24 @@ module ScriptLoader
   #
   def self.starts_with?(str, substr)
     return !(str =~ /^#{Regexp.escape(substr)}/).nil?
+  end
+
+  #
+  # Ensures file descriptor validness to avoid Errno::EBADF errors
+  #
+  # Sometimes when the process is spawned it raises the following error:
+  # Errno::EBADF - Bad file descriptor - <STDOUT> error.
+  # This error happens when trying to write to the standard output
+  # when running a game made in RPG Maker VX Ace (RGSS3) based on my tests.
+  #
+  # The only solution that I have found is to reopen
+  # the IO object to the console output
+  #
+  # I have not found a way to detect whether the game has allocated
+  # a console or not, so the reopening is always executed.
+  #
+  def self.ensure_file_descriptor_validness
+    $stdout.reopen("CONOUT$") if rgss3?
   end
 
   #
