@@ -2008,7 +2008,7 @@ export class ScriptsController {
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
-# Version: 1.2.5
+# Version: 1.3.0
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
@@ -2081,6 +2081,11 @@ module ScriptLoader
   "there exists!"
   
   #
+  # Reset script loader
+  #
+  class ResetLoader < StandardError; end
+
+  #
   # Loader run logic
   #
   def self.run
@@ -2097,6 +2102,9 @@ module ScriptLoader
       load_order.each do |script|
         load_script(script)
       end
+    rescue ResetLoader
+      log("Restarting script loader...")
+      retry
     rescue => e
       # Notifies VSCode extension of the error
       File.open('${config.errorFileName}', 'wb') do |file|
@@ -2247,6 +2255,7 @@ module ScriptLoader
   #
   def self.ensure_file_descriptor_validness
     $stdout.reopen("CONOUT$") if rgss3?
+    $stderr.reopen("CONOUT$") if rgss3?
   end
 
   #
