@@ -2008,7 +2008,7 @@ export class ScriptsController {
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
-# Version: 1.3.0
+# Version: 1.3.1
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
@@ -2080,6 +2080,12 @@ module ScriptLoader
   "instantly.\\n\\nCheck the load order TXT file to make sure scripts written "\\
   "there exists!"
   
+  # Standard null output on Unix-like systems
+  NULL_OUTPUT_UNIX = "/dev/null"
+
+  # Standard null output on Windows system
+  NULL_OUTPUT_WIN = "NUL"
+
   #
   # Reset script loader
   #
@@ -2247,15 +2253,31 @@ module ScriptLoader
   # This error happens when trying to write to the standard output
   # when running a game made in RPG Maker VX Ace (RGSS3) based on my tests.
   #
-  # The only solution that I have found is to reopen
-  # the IO object to the console output
+  # The only solution that I have found is to force reopening
+  # the IO object to the windows console output
   #
   # I have not found a way to detect whether the game has allocated
   # a console or not, so the reopening is always executed.
   #
+  # In case reopening fails, it is redirected to the null output
+  # so it avoids crashes when using $stdout or $stderr.
+  #
   def self.ensure_file_descriptor_validness
-    $stdout.reopen("CONOUT$") if rgss3?
-    $stderr.reopen("CONOUT$") if rgss3?
+    begin
+      # This only happens on RPG Maker VX Ace (RGSS3)
+      if rgss3?
+        $stdout.reopen("CONOUT$")
+        $stderr.reopen("CONOUT$")
+      end
+    rescue Errno::EBADF
+      if File.exist?(NULL_OUTPUT_UNIX)
+        $stdout.reopen(NULL_OUTPUT_UNIX, 'a')
+        $stderr.reopen(NULL_OUTPUT_UNIX, 'a')
+      elsif File.exist?(NULL_OUTPUT_WIN)
+        $stdout.reopen(NULL_OUTPUT_WIN, 'a')
+        $stderr.reopen(NULL_OUTPUT_WIN, 'a')
+      end
+    end
   end
 
   #
