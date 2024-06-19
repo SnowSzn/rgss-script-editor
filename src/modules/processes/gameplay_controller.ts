@@ -4,7 +4,7 @@ import * as fs from 'fs';
 import * as vscode from 'vscode';
 import * as marshal from '@hyrious/marshal';
 import { TextDecoder } from 'util';
-import { Configuration } from '../utils/configuration';
+import { Configuration, RunGameBehavior } from '../utils/configuration';
 import { logger } from '../utils/logger';
 
 /**
@@ -180,14 +180,14 @@ export class GameplayController {
   private _config?: Configuration;
 
   /**
-   * Executable process.
-   */
-  private _executable?: cp.ChildProcess;
-
-  /**
    * Executable last exception.
    */
   private _lastException?: GameException;
+
+  /**
+   * Executable processes.
+   */
+  private _executables: Map<number, cp.ChildProcess>;
 
   /**
    * Text decoder instance.
@@ -199,8 +199,8 @@ export class GameplayController {
    */
   constructor() {
     this._config = undefined;
-    this._executable = undefined;
     this._lastException = undefined;
+    this._executables = new Map();
     this._textDecoder = new TextDecoder('utf8');
   }
 
@@ -212,6 +212,14 @@ export class GameplayController {
    */
   get lastException() {
     return this._lastException;
+  }
+
+  /**
+   * Gets if the game executable is currently running
+   * @returns Whether it is running or not
+   */
+  isRunning(): boolean {
+    return this._executables.size > 0;
   }
 
   /**
@@ -232,11 +240,26 @@ export class GameplayController {
    * This method kills the executable if it is running (not undefined).
    *
    * To avoid invalid exception processing it sets the last exception to ``undefined``.
+   *
+   * The promise is resolved with the termination code
    */
-  dispose() {
-    this._executable?.kill();
-    this._executable = undefined;
-    this._lastException = undefined;
+  async dispose() {
+    return new Promise<void>((resolve, reject) => {
+      // Checks if there is any game process currently running
+      if (!this.isRunning()) {
+        resolve();
+      }
+
+      // Kill all game processes and clear the hash tracker
+      this._executables.forEach((gameProcess) => {
+        gameProcess.kill();
+      });
+
+      // Clears attributes and resolve
+      this._executables.clear();
+      this._lastException = undefined;
+      resolve();
+    });
   }
 
   /**
@@ -254,20 +277,35 @@ export class GameplayController {
     if (!this._config) {
       throw new Error('Cannot run the game because configuration is invalid!');
     }
-    // Checks if executable is already running.
-    if (this._executable !== undefined) {
-      throw new Error('Cannot run the game because it is already running!');
+    // Checks if already running.
+    if (this.isRunning()) {
+      let gameBehavior = this._config.determineGameBehavior();
+      logger.logInfo(`Current game behavior: ${gameBehavior}`);
+
+      // Process game behavior
+      switch (gameBehavior) {
+        case RunGameBehavior.NOTHING:
+          throw new Error('Cannot run the game because it is already running!');
+        case RunGameBehavior.KILL_AND_RUN:
+          await this.dispose();
+          break;
+        case RunGameBehavior.ALLOW_MULTIPLE:
+          break;
+        default:
+          throw new Error('Unknown run game behavior!');
+      }
     }
+
     // Preparation
     let workingDir = this._config.projectFolderPath?.fsPath;
     let gamePath = this._config.determineGamePath()?.fsPath;
     let gameArgs = this._config.determineGameArgs();
     let exePath = '';
     let exeArgs = [];
-    let useWine = false;
     logger.logInfo(`Game working directory: "${workingDir}"`);
     logger.logInfo(`Game executable path: "${gamePath}"`);
     logger.logInfo(`Game executable arguments: "${gameArgs}"`);
+
     // Safe-check for variables validness
     if (!workingDir || !gamePath || !gameArgs) {
       throw new Error('Cannot run the game due to invalid values!');
@@ -276,8 +314,9 @@ export class GameplayController {
     if (!fs.existsSync(gamePath)) {
       throw new Error(`Game executable path: "${gamePath}" does not exists!`);
     }
+
+    // Determine info based on the OS
     logger.logInfo(`Resolving game information based on platform...`);
-    // Run executable OS-based
     switch (process.platform) {
       case 'win32': {
         exePath = gamePath;
@@ -297,7 +336,6 @@ export class GameplayController {
           if (wineCommand.length > 0) {
             exePath = wineCommand;
             exeArgs = [`"${gamePath}"`, ...gameArgs];
-            useWine = true;
           } else {
             throw new Error(
               'Cannot run the game because it seems like a Windows executable and the command to run Wine is empty, check the extension settings to fix this'
@@ -312,45 +350,55 @@ export class GameplayController {
         );
       }
     }
-    // Launch process
+
+    // Launch game process
     logger.logInfo(`Resolved process command: "${exePath}"`);
     logger.logInfo(`Resolved process arguments: "${exeArgs}"`);
     logger.logInfo('Spawning process...');
     // Process should not be piped because if 'console' is passed as an argument to a RGSS3
     // executable, when the process spawns, it redirects $stdout and $stderr to the console window.
-    // Making it impossible for the extension to listen to $stdout or $stderr.
-    if (useWine) {
-      this._executable = cp.spawn(exePath, exeArgs, {
-        cwd: workingDir,
-        stdio: ['ignore', 'ignore', 'ignore'],
-        shell: true,
-      });
-    } else {
-      this._executable = cp.execFile(exePath, exeArgs, {
-        cwd: workingDir,
-      });
-    }
+    // Making it impossible for the extension to listen to either $stdout or $stderr.
+    const gameProcess = cp.spawn(exePath, exeArgs, {
+      cwd: workingDir,
+      stdio: ['ignore', 'ignore', 'ignore'],
+    });
 
-    // Prepares callbacks
-    this._executable.on('exit', (code, signal) =>
-      this._onProcessExit(code, signal)
-    );
-    return this._executable.pid;
+    // Checks if the process spawned correctly
+    if (gameProcess && gameProcess.pid) {
+      // Prepares callbacks
+      gameProcess.on('exit', (code, signal) =>
+        this._onProcessExit(gameProcess.pid!, code, signal)
+      );
+
+      // Tracks the game process
+      this._executables.set(gameProcess.pid, gameProcess);
+
+      return gameProcess.pid;
+    } else {
+      return undefined;
+    }
   }
 
   /**
    * Method called when the current game process finishes its execution.
+   * @param pid Game process PID.
    * @param code Exit code.
    * @param signal Exit signal.
    */
-  private _onProcessExit(code: number | null, signal: NodeJS.Signals | null) {
+  private _onProcessExit(
+    pid: number,
+    code: number | null,
+    signal: NodeJS.Signals | null
+  ) {
+    logger.logInfo(
+      `Game execution (PID: ${pid}) finished with code: ${code}, signal: ${signal}`
+    );
+
     // Resets for next game run
-    this._executable = undefined;
+    this._executables.delete(pid);
+
     // Checks exception
     if (this._config) {
-      logger.logInfo(
-        `Game execution finished with code: ${code}, signal: ${signal}`
-      );
       // Checks output file for possible exceptions that killed the game
       let output = this._config.determineGameOutputPath()?.fsPath;
       if (output && fs.existsSync(output)) {

@@ -844,7 +844,7 @@ export async function updateTextEditor(editor?: vscode.TextEditor) {
  */
 export async function dispose() {
   // Disposes the game controller
-  extensionGameplay.dispose();
+  await extensionGameplay.dispose();
   // Disposes UI elements
   extensionUI.dispose();
   // Disposes file system watcher

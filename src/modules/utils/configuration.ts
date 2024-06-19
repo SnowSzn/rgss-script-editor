@@ -31,6 +31,15 @@ export type ConfigChangeFolder = {
 };
 
 /**
+ * Enum of types of run game behaviors
+ */
+export const enum RunGameBehavior {
+  NOTHING = 'nothing',
+  KILL_AND_RUN = 'kill and run',
+  ALLOW_MULTIPLE = 'allow multiple',
+}
+
+/**
  * Enum of valid RGSS versions.
  */
 const enum RGSSVersion {
@@ -219,6 +228,14 @@ export class Configuration {
    */
   configUseWine(): string {
     return this._getVSCodeConfig<string>('gameplay.useWine')!;
+  }
+
+  /**
+   * Gets the run game behavior
+   * @returns Run game behavior
+   */
+  configRunGameBehavior(): string {
+    return this._getVSCodeConfig<string>('gameplay.runGameBehavior')!;
   }
 
   /**
@@ -544,6 +561,24 @@ export class Configuration {
         return FilesEOL.LF;
       default:
         return FilesEOL.LF;
+    }
+  }
+
+  /**
+   * Determines the game behavior
+   * @returns Game behavior
+   */
+  determineGameBehavior(): string {
+    let gameBehavior = this.configRunGameBehavior();
+
+    // Checks behavior validness and returns the appropiate value
+    switch (gameBehavior) {
+      case RunGameBehavior.NOTHING:
+      case RunGameBehavior.KILL_AND_RUN:
+      case RunGameBehavior.ALLOW_MULTIPLE:
+        return gameBehavior;
+      default:
+        return RunGameBehavior.NOTHING;
     }
   }
 

@@ -213,6 +213,22 @@
             "description": "Sets the command to invoke Wine to run the game executable. (Linux Only!)",
             "order": 51
           },
+          "rgssScriptEditor.gameplay.runGameBehavior": {
+            "type": "string",
+            "enum": [
+              "nothing",
+              "kill and run",
+              "allow multiple"
+            ],
+            "enumDescriptions": [
+              "This is the default RPG Maker behavior (You need to close the game before running it again)",
+              "Kills the game executable and runs it again automatically",
+              "Allows multiple game processes running at the same time"
+            ],
+            "default": "nothing",
+            "description": "Choose how the game executable is handled when it is already running.",
+            "order": 55
+          },
           "rgssScriptEditor.gameplay.automaticArgumentsDetection": {
             "type": "boolean",
             "default": true,
