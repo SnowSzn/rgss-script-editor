@@ -2234,7 +2234,7 @@ module ScriptLoader
   end
 
   #
-  # Checks if the given string (str) starts with the specified substring (substr)
+  # Checks if the given string (str) starts with the specified substring
   #
   # @param str [String] String.
   # @param substr [String] Substring.

@@ -166,6 +166,15 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
       logger.logInfo(
         'Scripts extraction has already been done previously for this project!'
       );
+
+      // Re-creates the script loader in case it is old
+      logger.logInfo('Re-creating script loader...');
+      let loaderResponse = await extensionScripts.createLoader();
+      if (loaderResponse === ScriptsController.LOADER_BUNDLE_CREATED) {
+        logger.logInfo('Script loader bundle file re-created!');
+      } else {
+        logger.logWarning('Failed to re-create the script loader bundle file!');
+      }
     } else if (scriptsResponse === ScriptsController.SCRIPTS_NOT_EXTRACTED) {
       context.setExtractedScripts(false);
       logger.logWarning(
