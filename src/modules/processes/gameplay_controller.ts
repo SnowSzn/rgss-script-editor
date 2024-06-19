@@ -264,6 +264,7 @@ export class GameplayController {
     let gameArgs = this._config.determineGameArgs();
     let exePath = '';
     let exeArgs = [];
+    let useWine = false;
     logger.logInfo(`Game working directory: "${workingDir}"`);
     logger.logInfo(`Game executable path: "${gamePath}"`);
     logger.logInfo(`Game executable arguments: "${gameArgs}"`);
@@ -296,6 +297,7 @@ export class GameplayController {
           if (wineCommand.length > 0) {
             exePath = wineCommand;
             exeArgs = [`"${gamePath}"`, ...gameArgs];
+            useWine = true;
           } else {
             throw new Error(
               'Cannot run the game because it seems like a Windows executable and the command to run Wine is empty, check the extension settings to fix this'
@@ -317,9 +319,17 @@ export class GameplayController {
     // Process should not be piped because if 'console' is passed as an argument to a RGSS3
     // executable, when the process spawns, it redirects $stdout and $stderr to the console window.
     // Making it impossible for the extension to listen to $stdout or $stderr.
-    this._executable = cp.execFile(exePath, exeArgs, {
-      cwd: workingDir,
-    });
+    if (useWine) {
+      this._executable = cp.spawn(exePath, exeArgs, {
+        cwd: workingDir,
+        stdio: ['ignore', 'ignore', 'ignore'],
+        shell: true,
+      });
+    } else {
+      this._executable = cp.execFile(exePath, exeArgs, {
+        cwd: workingDir,
+      });
+    }
 
     // Prepares callbacks
     this._executable.on('exit', (code, signal) =>
