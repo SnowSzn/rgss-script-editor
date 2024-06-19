@@ -530,12 +530,12 @@ export class Configuration {
   determineFileEOL(): string {
     let eol = this.configFileEOL();
 
-    // Checks if user is forcing a specific EOL
-    if (eol !== FilesEOL.AUTO) {
+    // Checks if user is forcing a specific EOL (only valid EOLs)
+    if (eol === FilesEOL.CRLF || eol === FilesEOL.LF) {
       return eol;
     }
 
-    // Determine the EOL based on the current platform
+    // Determine the EOL based on the current platform (auto)
     switch (process.platform) {
       case 'win32':
         return FilesEOL.CRLF;
