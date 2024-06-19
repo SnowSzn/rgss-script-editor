@@ -972,6 +972,11 @@ export class ScriptsController {
   public static readonly SCRIPTS_EXTRACTED = 150;
 
   /**
+   * Determines that all scripts were imported successfully.
+   */
+  public static readonly SCRIPTS_IMPORTED = 180;
+
+  /**
    * Determines if the script loader bundle was created.
    */
   public static readonly LOADER_BUNDLE_CREATED = 200;
@@ -1222,6 +1227,120 @@ export class ScriptsController {
       );
     }
     return ScriptsController.SCRIPTS_EXTRACTED;
+  }
+
+  /**
+   * Asynchronously imports all scripts inside the given RPG Maker bundle file.
+   *
+   * This method will read all scripts inside the bundle file and export it to the scripts directory.
+   *
+   * This method can overwrite existing scripts.
+   * @param targetBundle Target bundle file
+   * @returns A promise
+   * @throws An error if import is not possible
+   */
+  async importScripts(targetBundle: vscode.Uri): Promise<number> {
+    logger.logInfo(
+      `Importing scripts from the bundle file: "${targetBundle.fsPath}"`
+    );
+
+    // Reads bundle file (may throw an error if it is not valid)
+    let bundle = this._readBundleFile(targetBundle.fsPath);
+    let basePath = this._root.resourceUri;
+    if (!this._config?.configImportOverwrite()) {
+      basePath = vscode.Uri.joinPath(
+        this._root.resourceUri,
+        `Import from ${path.parse(targetBundle.fsPath).name} bundle file`
+      );
+    }
+
+    // Create the base path if it does not exists
+    fileutils.createFolder(basePath.fsPath, {
+      recursive: true,
+      overwrite: false,
+    });
+
+    // Iterate through the bundle file extracting each script section
+    for (let i = 0; i < bundle.length; i++) {
+      // Ignores this extension loader script
+      if (this._isExtensionLoader(bundle[i][0])) {
+        continue;
+      }
+      // Determines the editor section info
+      let sectionType = undefined;
+      let sectionPath = undefined;
+      let sectionCode = undefined;
+      let baseScriptPath = path
+        .dirname(bundle[i][1] as string)
+        .split('/')
+        .map((token) => {
+          return this._removeInvalidCharacters(token);
+        })
+        .join(path.sep);
+      let baseScriptName = path.basename(bundle[i][1] as string);
+      let baseScriptCode = bundle[i][2] as string;
+      if (baseScriptCode.trim().length === 0) {
+        // Entry does not have code, could be either an script or a separator
+        if (
+          baseScriptName.trim().length === 0 ||
+          baseScriptName.endsWith(this.getSeparatorName())
+        ) {
+          // Entry is a separator
+          sectionType = EditorSectionType.Separator;
+          sectionPath = vscode.Uri.joinPath(
+            basePath,
+            baseScriptPath,
+            this.getSeparatorName()
+          );
+          sectionCode = undefined;
+        } else {
+          // Entry is an script with no code inside
+          sectionType = EditorSectionType.Script;
+          sectionPath = vscode.Uri.joinPath(
+            basePath,
+            baseScriptPath,
+            baseScriptName.length > 0
+              ? this._formatScriptName(baseScriptName)
+              : `Untitled script at ${i}.rb`
+          );
+          sectionCode = undefined;
+        }
+      } else {
+        if (baseScriptCode.trim() === EDITOR_SECTION_FOLDER_CONTENTS) {
+          // Entry is a folder that was bundled previously
+          sectionType = EditorSectionType.Folder;
+          sectionPath = vscode.Uri.joinPath(
+            basePath,
+            baseScriptPath,
+            baseScriptName.length > 0
+              ? this._removeInvalidCharacters(baseScriptName)
+              : `Untitled folder at ${i}`
+          );
+          sectionCode = undefined;
+        } else {
+          // Entry has code, it is an script
+          sectionType = EditorSectionType.Script;
+          sectionPath = vscode.Uri.joinPath(
+            basePath,
+            baseScriptPath,
+            baseScriptName.length > 0
+              ? this._formatScriptName(baseScriptName)
+              : `Untitled script at ${i}.rb`
+          );
+          sectionCode = baseScriptCode;
+        }
+      }
+      // Create the new section
+      this.sectionCreate(
+        {
+          type: sectionType,
+          uri: sectionPath,
+          parent: this._root,
+        },
+        { contents: sectionCode, overwrite: true }
+      );
+    }
+    return ScriptsController.SCRIPTS_IMPORTED;
   }
 
   /**

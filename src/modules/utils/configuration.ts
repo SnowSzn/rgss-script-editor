@@ -85,6 +85,16 @@ const enum FilesEOL {
 }
 
 /**
+ * Determine extension options
+ */
+type DetermineExtensionOptions = {
+  /**
+   * Whether to remove the extension dot or not
+   */
+  removeDot?: boolean;
+};
+
+/**
  * Configuration class
  */
 export class Configuration {
@@ -180,6 +190,14 @@ export class Configuration {
    */
   configFileEOL(): string {
     return this._getVSCodeConfig<string>('extension.filesEndOfLine')!;
+  }
+
+  /**
+   * Gets the import operation overwrite flag.
+   * @returns Import overwrite flag.
+   */
+  configImportOverwrite(): boolean {
+    return this._getVSCodeConfig<boolean>('extension.importScriptsOverwrite')!;
   }
 
   /**
@@ -597,14 +615,22 @@ export class Configuration {
   }
 
   /**
-   * Processes the given uri path to append the proper extension based on the RGSS version detected.
-   *
-   * This method won't remove the extension if the uri path has one already.
-   * @param filepath File path
-   * @returns Processed file uri
+   * Gets the relative path from the project's folder to the given uri
+   * @param uri Target Uri path
+   * @returns Relative path to ``uri``
    */
-  processExtension(filepath: vscode.Uri | string) {
-    // Determine the proper extension based on the RGSS version detected
+  fromProject(uri: vscode.Uri): string | undefined {
+    if (this.isValid()) {
+      path.relative(this._projectFolderPath!.fsPath, uri.fsPath);
+    }
+    return undefined;
+  }
+
+  /**
+   * Determines the appropiate bundle file extension based on the RGSS version detected.
+   * @returns Bundle file extension
+   */
+  determineExtension(options?: DetermineExtensionOptions): string {
     let extension = '';
     switch (this.rgss) {
       case RGSSVersion.RGSS1: {
@@ -620,6 +646,25 @@ export class Configuration {
         break;
       }
     }
+
+    // Whether to remove the dot or not
+    if (options?.removeDot) {
+      extension = extension.substring(1);
+    }
+
+    return extension;
+  }
+
+  /**
+   * Processes the given uri path to append the proper extension.
+   *
+   * This method won't remove the extension if the uri path has one already.
+   * @param filepath File path
+   * @returns Processed file uri
+   */
+  processExtension(filepath: vscode.Uri | string) {
+    // Determine the proper extension based on the RGSS version detected
+    let extension = this.determineExtension();
     // Determines Uri based on the given argument type
     const uri =
       filepath instanceof vscode.Uri ? filepath : vscode.Uri.file(filepath);

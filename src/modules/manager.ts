@@ -282,6 +282,55 @@ export async function extractScripts() {
 }
 
 /**
+ * Imports all scripts from a bundle file
+ */
+export async function importScripts() {
+  try {
+    if (!extensionConfig.isValid()) {
+      return;
+    }
+
+    // Gets the project folder
+    const projectFolder = extensionConfig.projectFolderPath;
+    // Gets the target bundle file
+    const target = await vscode.window.showOpenDialog({
+      defaultUri: projectFolder,
+      canSelectFiles: true,
+      canSelectFolders: false,
+      canSelectMany: false,
+      filters: {
+        'RPG Maker Bundle File': [
+          extensionConfig.determineExtension({ removeDot: true }),
+        ],
+      },
+    });
+
+    // Checks bundle file validness
+    if (!target) {
+      logger.logError(
+        `You must select a valid bundle file to import the scripts!`
+      );
+      return;
+    }
+
+    // Prepare operation
+    let bundleFile = target[0];
+
+    // Import scripts
+    let importResponse = await extensionScripts.importScripts(bundleFile);
+    if (importResponse === ScriptsController.SCRIPTS_IMPORTED) {
+      logger.logInfo('All scripts were imported successfully!');
+      // Refresh editor view
+      await refresh();
+    } else {
+      logger.logError('Import operation reported an unknown code!');
+    }
+  } catch (error) {
+    logger.logErrorUnknown(error);
+  }
+}
+
+/**
  * Opens the load order file within the current scripts folder path.
  * @returns A promise
  */

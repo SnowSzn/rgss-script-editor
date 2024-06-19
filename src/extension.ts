@@ -64,6 +64,12 @@ export function activate(context: vscode.ExtensionContext) {
       manager.extractScripts();
     })
   );
+  // Import scripts
+  context.subscriptions.push(
+    vscode.commands.registerCommand('rgss-script-editor.importScripts', () => {
+      manager.importScripts();
+    })
+  );
   // Create script loader
   context.subscriptions.push(
     vscode.commands.registerCommand(
