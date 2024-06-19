@@ -1,19 +1,18 @@
 import * as vscode from 'vscode';
-import { Configuration } from './configuration';
 
 /**
  * File system watcher class.
  */
 export class FileSystemWatcher {
   /**
-   * Extension configuration instance.
-   */
-  private _config?: Configuration;
-
-  /**
    * File system watcher instance.
    */
   private _watcher?: vscode.FileSystemWatcher;
+
+  /**
+   * File system watcher pattern.
+   */
+  private _pattern?: vscode.RelativePattern;
 
   /**
    * Event fired when a file system entry is created.
@@ -40,8 +39,8 @@ export class FileSystemWatcher {
    * Updates the scripts controller instance attributes.
    * @param config Configuration.
    */
-  update(config: Configuration) {
-    this._config = config;
+  update(pattern: vscode.RelativePattern) {
+    this._pattern = pattern;
     this._restart();
   }
 
@@ -57,9 +56,8 @@ export class FileSystemWatcher {
    * Restarts this instance based on the current attributes.
    */
   private _restart() {
-    // Checks scripts folder validness
-    let scriptsFolder = this._config?.determineScriptsPath();
-    if (!scriptsFolder) {
+    // Check pattern validness
+    if (!this._pattern) {
       return;
     }
 
@@ -67,9 +65,7 @@ export class FileSystemWatcher {
     this.dispose();
 
     // Recreates the watcher with the current configuration
-    this._watcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(scriptsFolder, '**')
-    );
+    this._watcher = vscode.workspace.createFileSystemWatcher(this._pattern);
 
     // Sets the watcher callbacks
     this._watcher.onDidCreate((uri: vscode.Uri) => {

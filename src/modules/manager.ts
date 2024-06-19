@@ -41,16 +41,26 @@ const extensionGameplay: GameplayController = new GameplayController();
 const extensionUI: ExtensionUI = new ExtensionUI();
 
 /**
- * Extension file system watcher
+ * Extension scripts file system watcher
  */
-const extensionWatcher: FileSystemWatcher = new FileSystemWatcher();
+const extensionScriptsWatcher: FileSystemWatcher = new FileSystemWatcher();
 
-// Sets extension file system watcher callbacks
-extensionWatcher.onDidCreate((uri) => {
-  watcherOnDidCreate(uri);
+// Sets extension scripts file system watcher callbacks
+extensionScriptsWatcher.onDidCreate((uri) => {
+  watcherScriptOnDidCreate(uri);
 });
-extensionWatcher.onDidDelete((uri) => {
-  watcherOnDidDelete(uri);
+extensionScriptsWatcher.onDidDelete((uri) => {
+  watcherScriptOnDidDelete(uri);
+});
+
+/**
+ * Extension game output file system watcher
+ */
+const extensionGameWatcher: FileSystemWatcher = new FileSystemWatcher();
+
+// Sets extension game output file system watcher callbacks
+extensionGameWatcher.onDidCreate((uri) => {
+  watcherGameOutputOnDidCreate(uri);
 });
 
 /**
@@ -121,7 +131,15 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
     logger.update(extensionConfig);
     extensionGameplay.update(extensionConfig);
     extensionScripts.update(extensionConfig);
-    extensionWatcher.update(extensionConfig);
+    extensionScriptsWatcher.update(
+      new vscode.RelativePattern(extensionConfig.determineScriptsPath()!, '**')
+    );
+    extensionGameWatcher.update(
+      new vscode.RelativePattern(
+        extensionConfig.projectFolderPath!,
+        Configuration.GAME_OUTPUT_FILE
+      )
+    );
     extensionUI.update({
       treeRoot: extensionScripts.root,
       statusBarOptions: {
@@ -847,8 +865,10 @@ export async function dispose() {
   await extensionGameplay.dispose();
   // Disposes UI elements
   extensionUI.dispose();
-  // Disposes file system watcher
-  extensionWatcher.dispose();
+  // Disposes script file system watcher
+  extensionScriptsWatcher.dispose();
+  // Disposes game output file system watcher
+  extensionGameWatcher.dispose();
   // Disposes logger
   logger.dispose();
 }
@@ -865,48 +885,68 @@ export function affectsConfiguration(event: vscode.ConfigurationChangeEvent) {
 }
 
 /**
- * Processes a file system watcher creation event.
+ * Processes a script file system watcher creation event.
  * @param uri Entry uri
  */
-async function watcherOnDidCreate(uri: vscode.Uri) {
-  // Check if it is root path
-  if (extensionScripts.root.isPath(uri)) {
-    return;
-  }
-  // New entry created
-  logger.logInfo(`Entry created: "${uri.fsPath}"`);
-  let type = extensionScripts.determineSectionType(uri);
-  // Checks if the editor section exists already
-  let child = extensionScripts.root.findChild((value) => {
-    return value.isPath(uri);
-  }, true);
-  // Create section only if it does not exists
-  if (type && !child) {
-    logger.logInfo(`Creating section: "${uri.fsPath}"`);
-    extensionScripts.sectionCreate({
-      type: type,
-      uri: uri,
-      parent: extensionScripts.root,
-    });
-    await refresh();
+async function watcherScriptOnDidCreate(uri: vscode.Uri) {
+  try {
+    // Check if it is root path
+    if (extensionScripts.root.isPath(uri)) {
+      return;
+    }
+    // New entry created
+    logger.logInfo(`Entry created: "${uri.fsPath}"`);
+    let type = extensionScripts.determineSectionType(uri);
+    // Checks if the editor section exists already
+    let child = extensionScripts.root.findChild((value) => {
+      return value.isPath(uri);
+    }, true);
+    // Create section only if it does not exists
+    if (type && !child) {
+      logger.logInfo(`Creating section: "${uri.fsPath}"`);
+      extensionScripts.sectionCreate({
+        type: type,
+        uri: uri,
+        parent: extensionScripts.root,
+      });
+      await refresh();
+    }
+  } catch (error) {
+    logger.logErrorUnknown(error);
   }
 }
 
 /**
- * Processes a file system watcher deletion event.
+ * Processes a script file system watcher deletion event.
  * @param uri Entry uri
  */
-async function watcherOnDidDelete(uri: vscode.Uri) {
-  logger.logInfo(`Entry deleted: "${uri.fsPath}"`);
-  // Find child instance that matches the deleted path.
-  let child = extensionScripts.root.findChild((value) => {
-    return value.isPath(uri);
-  }, true);
-  // Delete child if found.
-  if (child) {
-    logger.logInfo(`Deleting section: "${child.resourceUri.fsPath}"`);
-    extensionScripts.sectionDelete(child);
-    await refresh();
+async function watcherScriptOnDidDelete(uri: vscode.Uri) {
+  try {
+    logger.logInfo(`Entry deleted: "${uri.fsPath}"`);
+    // Find child instance that matches the deleted path.
+    let child = extensionScripts.root.findChild((value) => {
+      return value.isPath(uri);
+    }, true);
+    // Delete child if found.
+    if (child) {
+      logger.logInfo(`Deleting section: "${child.resourceUri.fsPath}"`);
+      extensionScripts.sectionDelete(child);
+      await refresh();
+    }
+  } catch (error) {
+    logger.logErrorUnknown(error);
+  }
+}
+
+/**
+ * Processes a game output file system watcher creation event.
+ * @param uri Entry uri
+ */
+async function watcherGameOutputOnDidCreate(uri: vscode.Uri) {
+  try {
+    extensionGameplay.createException(uri.fsPath);
+  } catch (error) {
+    logger.logErrorUnknown(error);
   }
 }
 

@@ -380,6 +380,53 @@ export class GameplayController {
   }
 
   /**
+   * Creates a ruby exception object from the given exception file
+   * @param exceptionFilePath Exception file path
+   * @throws An error if file does not exists
+   * @throws An error if it is impossible to create a ruby exception object
+   */
+  async createException(exceptionFilePath: string) {
+    // Checks if the exception file path exists
+    if (!fs.existsSync(exceptionFilePath)) {
+      throw new Error(
+        `Exception file path: "${exceptionFilePath}" does not exists!`
+      );
+    }
+
+    // If file exists, an exception ocurred in the last game session
+    let contents = fs.readFileSync(exceptionFilePath);
+    let rubyError = marshal.load(contents, {
+      string: 'binary',
+      hashSymbolKeysToString: true,
+    }) as RubyExceptionInfo;
+    // Process exception binary data
+    let type = this._textDecoder.decode(rubyError.type);
+    let mesg = this._textDecoder.decode(rubyError.mesg);
+    let back = rubyError.back.map((item) => this._textDecoder.decode(item));
+    // Build the extension error instance
+    let exception = new GameException(type, mesg);
+    back.forEach((backtrace) => {
+      let match = backtrace.match(GAME_EXCEPTION_REGEXP);
+      if (match) {
+        let file = match[1];
+        let line = parseInt(match[2]);
+        let mesg = match[3];
+        // Skips invalid backtrace lines, only files that exists.
+        // RPG Maker includes backtrace lines of scripts inside its built-in editor.
+        if (fs.existsSync(file)) {
+          exception.addTrace(file, line, mesg);
+        }
+      }
+    });
+    // Updates last exception.
+    this._lastException = exception;
+    // Deletes output for next game run
+    fs.unlinkSync(exceptionFilePath);
+    // Executes command to process the exception.
+    vscode.commands.executeCommand('rgss-script-editor.processGameException');
+  }
+
+  /**
    * Method called when the current game process finishes its execution.
    * @param pid Game process PID.
    * @param code Exit code.
@@ -402,39 +449,7 @@ export class GameplayController {
       // Checks output file for possible exceptions that killed the game
       let output = this._config.determineGameOutputPath()?.fsPath;
       if (output && fs.existsSync(output)) {
-        // If file exists, an exception ocurred in the last game session
-        let contents = fs.readFileSync(output);
-        let rubyError = marshal.load(contents, {
-          string: 'binary',
-          hashSymbolKeysToString: true,
-        }) as RubyExceptionInfo;
-        // Process exception binary data
-        let type = this._textDecoder.decode(rubyError.type);
-        let mesg = this._textDecoder.decode(rubyError.mesg);
-        let back = rubyError.back.map((item) => this._textDecoder.decode(item));
-        // Build the extension error instance
-        let exception = new GameException(type, mesg);
-        back.forEach((backtrace) => {
-          let match = backtrace.match(GAME_EXCEPTION_REGEXP);
-          if (match) {
-            let file = match[1];
-            let line = parseInt(match[2]);
-            let mesg = match[3];
-            // Skips invalid backtrace lines, only files that exists.
-            // RPG Maker includes backtrace lines of scripts inside its built-in editor.
-            if (fs.existsSync(file)) {
-              exception.addTrace(file, line, mesg);
-            }
-          }
-        });
-        // Updates last exception.
-        this._lastException = exception;
-        // Deletes output for next game run
-        fs.unlinkSync(output);
-        // Executes command to process the exception.
-        vscode.commands.executeCommand(
-          'rgss-script-editor.processGameException'
-        );
+        this.createException(output);
       }
     }
   }
