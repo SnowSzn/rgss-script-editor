@@ -195,11 +195,17 @@
             "description": "Choose the type of end of line that the extension will use for files.",
             "order": 12
           },
+          "rgssScriptEditor.extension.recreateScriptLoader": {
+            "type": "boolean",
+            "default": true,
+            "description": "Whether to re-create the script loader when a project is opened or not (Recommended: ON).",
+            "order": 13
+          },
           "rgssScriptEditor.extension.importScriptsOverwrite": {
             "type": "boolean",
             "default": false,
             "description": "Whether to overwrite existing scripts or not when importing a scripts bundle file.",
-            "order": 13
+            "order": 15
           },
           "rgssScriptEditor.external.backUpsFolder": {
             "type": "string",

@@ -193,6 +193,14 @@ export class Configuration {
   }
 
   /**
+   * Gets the extension re-create script loader flag.
+   * @returns Re-create script loader flag.
+   */
+  configRecreateScriptLoader(): boolean {
+    return this._getVSCodeConfig<boolean>('extension.recreateScriptLoader')!;
+  }
+
+  /**
    * Gets the import operation overwrite flag.
    * @returns Import overwrite flag.
    */
