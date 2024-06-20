@@ -115,12 +115,6 @@
         "icon": "$(tasklist)"
       },
       {
-        "command": "rgss-script-editor.revealInVSCodeExplorer",
-        "title": "Reveal in Explorer...",
-        "category": "RGSS Script Editor",
-        "icon": "$(eye)"
-      },
-      {
         "command": "rgss-script-editor.sectionCreate",
         "title": "Create Section...",
         "category": "RGSS Script Editor",
@@ -149,6 +143,12 @@
         "title": "Toggle Section/s Load Status On/Off...",
         "category": "RGSS Script Editor",
         "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "rgss-script-editor.sectionRevealInVSCodeExplorer",
+        "title": "Reveal in Explorer...",
+        "category": "RGSS Script Editor",
+        "icon": "$(eye)"
       },
       {
         "command": "rgss-script-editor.sectionOpenInExplorer",
@@ -440,7 +440,7 @@
           "group": "4"
         },
         {
-          "command": "rgss-script-editor.revealInVSCodeExplorer",
+          "command": "rgss-script-editor.sectionRevealInVSCodeExplorer",
           "when": "view == rgss-script-editor.editorView",
           "group": "5"
         },

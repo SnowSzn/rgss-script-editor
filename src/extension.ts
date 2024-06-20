@@ -139,24 +139,6 @@ export function activate(context: vscode.ExtensionContext) {
   // **********************************************************
   // Extension commands (won't be used by the user)
   // **********************************************************
-  // Reveal script section on VSCode explorer command
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'rgss-script-editor.revealInVSCodeExplorer',
-      (what) => {
-        manager.revealInVSCodeExplorer(what);
-      }
-    )
-  );
-  // Reveal script section on file explorer command
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'rgss-script-editor.sectionOpenInExplorer',
-      (what) => {
-        manager.revealInFileExplorer(what);
-      }
-    )
-  );
   // Create script command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -199,6 +181,24 @@ export function activate(context: vscode.ExtensionContext) {
       'rgss-script-editor.sectionToggleLoad',
       (what) => {
         manager.sectionToggleLoad(what);
+      }
+    )
+  );
+  // Reveal script section on VSCode explorer command
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.sectionRevealInVSCodeExplorer',
+      (what) => {
+        manager.revealInVSCodeExplorer(what);
+      }
+    )
+  );
+  // Reveal script section on file explorer command
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.sectionOpenInExplorer',
+      (what) => {
+        manager.revealInFileExplorer(what);
       }
     )
   );
