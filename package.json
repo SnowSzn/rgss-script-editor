@@ -149,6 +149,12 @@
         "title": "Toggle Section/s Load Status On/Off...",
         "category": "RGSS Script Editor",
         "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "rgss-script-editor.sectionOpenInExplorer",
+        "title": "Reveal In File Explorer...",
+        "category": "RGSS Script Editor",
+        "icon": "$(search)"
       }
     ],
     "configuration": [
@@ -409,24 +415,24 @@
       ],
       "view/item/context": [
         {
-          "command": "rgss-script-editor.sectionCreate",
-          "when": "view == rgss-script-editor.editorView",
-          "group": "3"
-        },
-        {
           "command": "rgss-script-editor.sectionRename",
           "when": "view == rgss-script-editor.editorView",
           "group": "1"
         },
         {
-          "command": "rgss-script-editor.sectionDelete",
+          "command": "rgss-script-editor.sectionToggleLoad",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "2"
+        },
+        {
+          "command": "rgss-script-editor.sectionCreate",
           "when": "view == rgss-script-editor.editorView",
           "group": "3"
         },
         {
-          "command": "rgss-script-editor.sectionToggleLoad",
+          "command": "rgss-script-editor.sectionDelete",
           "when": "view == rgss-script-editor.editorView",
-          "group": "2"
+          "group": "3"
         },
         {
           "command": "rgss-script-editor.createSelectedBundleFile",
@@ -435,6 +441,11 @@
         },
         {
           "command": "rgss-script-editor.revealInVSCodeExplorer",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "5"
+        },
+        {
+          "command": "rgss-script-editor.sectionOpenInExplorer",
           "when": "view == rgss-script-editor.editorView",
           "group": "5"
         }

@@ -148,6 +148,15 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+  // Reveal script section on file explorer command
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.sectionOpenInExplorer',
+      (what) => {
+        manager.revealInFileExplorer(what);
+      }
+    )
+  );
   // Create script command
   context.subscriptions.push(
     vscode.commands.registerCommand(

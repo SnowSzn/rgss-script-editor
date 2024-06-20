@@ -880,6 +880,35 @@ export async function revealInVSCodeExplorer(section?: EditorSectionBase) {
 }
 
 /**
+ * Reveals the given editor section file system entry on the OS file explorer
+ * @param section Editor section
+ * @returns A promise
+ */
+export async function revealInFileExplorer(section?: EditorSectionBase) {
+  try {
+    let selected = extensionUI.getTreeSelection();
+    let item = section ? section : selected ? selected[0] : undefined;
+
+    // Check item validness
+    if (!item) {
+      return;
+    }
+
+    // Reveal file based on type
+    switch (item.type) {
+      case EditorSectionType.Script:
+      case EditorSectionType.Folder: {
+        let folder = await openFolder(item.getDirectory().fsPath);
+        folder.unref();
+        break;
+      }
+    }
+  } catch (error) {
+    logger.logErrorUnknown(error);
+  }
+}
+
+/**
  * Chooses the current editor mode.
  *
  * Allows the editor to behave different for drag and drop operations.
