@@ -302,6 +302,7 @@ export class GameplayController {
     let gameArgs = this._config.determineGameArgs();
     let exePath = '';
     let exeArgs = [];
+    let usingWine = false;
     logger.logInfo(`Game working directory: "${workingDir}"`);
     logger.logInfo(`Game executable path: "${gamePath}"`);
     logger.logInfo(`Game executable arguments: "${gameArgs}"`);
@@ -336,6 +337,7 @@ export class GameplayController {
           if (wineCommand.length > 0) {
             exePath = wineCommand;
             exeArgs = [`"${gamePath}"`, ...gameArgs];
+            usingWine = true;
           } else {
             throw new Error(
               'Cannot run the game because it seems like a Windows executable and the command to run Wine is empty, check the extension settings to fix this'
@@ -361,6 +363,7 @@ export class GameplayController {
     const gameProcess = cp.spawn(exePath, exeArgs, {
       cwd: workingDir,
       stdio: ['ignore', 'ignore', 'ignore'],
+      shell: usingWine,
     });
 
     // Checks if the process spawned correctly
