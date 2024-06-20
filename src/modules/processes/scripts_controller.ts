@@ -2127,7 +2127,7 @@ export class ScriptsController {
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
-# Version: 1.3.1
+# Version: 1.3.2
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
@@ -2256,7 +2256,9 @@ module ScriptLoader
       log("Loading script: '#{path}'")
       @scripts = @scripts + 1
       script_file = process_path(path)
-      Kernel.send(:require, script_file)
+      loaded = Kernel.send(:require, script_file)
+      # Forces a reload if it was loaded previously (ResetLoader exception)
+      Kernel.send(:load, script_file) unless loaded
     else
       log("Skipping: '#{path}'")
     end
