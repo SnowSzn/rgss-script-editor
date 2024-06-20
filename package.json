@@ -8,7 +8,7 @@
     "url": "https://github.com/SnowSzn"
   },
   "publisher": "SnowSzn",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "keywords": [
     "Ruby Game Scripting System",
     "RGSS",
