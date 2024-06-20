@@ -42,6 +42,11 @@ export const enum ControllerEditorMode {
  */
 type ControllerCreateOptions = {
   /**
+   * Sets the checkbox state
+   */
+  checkboxState?: boolean;
+
+  /**
    * Create contents.
    *
    * This is ignored for section that are not scripts.
@@ -1337,7 +1342,7 @@ export class ScriptsController {
           uri: sectionPath,
           parent: this._root,
         },
-        { contents: sectionCode, overwrite: true }
+        { checkboxState: false, contents: sectionCode, overwrite: true }
       );
     }
     return ScriptsController.SCRIPTS_IMPORTED;
@@ -1528,7 +1533,7 @@ export class ScriptsController {
     let child = info.parent.createChild(info.type, info.uri, info.priority);
     // Process child instance is creation was successful
     if (child) {
-      child.setCheckboxState(true);
+      child.setCheckboxState(options?.checkboxState ?? true);
       // Creates file system entry
       if (options?.overwrite || !fs.existsSync(child.resourceUri.fsPath)) {
         switch (child.type) {
