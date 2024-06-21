@@ -52,6 +52,27 @@ export class EditorViewProvider
   }
 
   /**
+   * Checks if ``section`` is the root section
+   * @param section Editor section
+   * @returns Whether it is root or not
+   */
+  isRoot(section: EditorSectionBase): boolean {
+    return this._root === section;
+  }
+
+  /**
+   * Checks if URI of ``section`` is the root section URI
+   * @param section Editor section
+   * @returns Whether it is root or not
+   */
+  isRootPath(section: EditorSectionBase): boolean {
+    if (!this._root) {
+      return false;
+    }
+    return this._root?.isPath(section.resourceUri);
+  }
+
+  /**
    * Handles a drag operation in the tree.
    * @param source List of tree items
    * @param dataTransfer Data transfer

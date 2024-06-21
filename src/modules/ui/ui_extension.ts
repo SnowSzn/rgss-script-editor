@@ -24,7 +24,7 @@ export type ExtensionUiReveal = {
   /**
    * Expands the parent items in the tree view.
    */
-  expand?: boolean;
+  expand?: number | boolean;
 
   /**
    * Focuses the item in the tree view.
@@ -161,19 +161,54 @@ export class ExtensionUI {
    * Reveals the appropiate script section in the tree view by the given ``uri`` path.
    * @param uri Script section uri path.
    * @param options Reveal options.
-   * @returns The script section revealed.
+   * @returns A promise with the script section revealed.
    */
-  revealInTreeView(uri: vscode.Uri, options: ExtensionUiReveal) {
+  async revealInTreeView(uri: vscode.Uri, options: ExtensionUiReveal) {
     if (this._editorView?.visible || options.force) {
       // Avoids conflicts with other container auto reveals
       let section = this._editorViewProvider?.findTreeItem(uri);
-      if (section) {
-        this._editorView?.reveal(section, {
-          select: options.select,
-          expand: options.expand,
-          focus: options.focus,
-        });
+
+      // Check editor section validness
+      if (!section) {
+        return;
       }
+
+      // (Work-around) VSCode reveal api only allows up to 3 levels deep maximum
+      // since the extension allows to have subfolders we have to check how many
+      // parents exists first before calling reveal with the target section
+      let parents: EditorSectionBase[] = [];
+      let curParent = section.parent;
+      while (curParent) {
+        // Breaks if parent is the root section
+        if (this._editorViewProvider.isRootPath(curParent)) {
+          break;
+        }
+        // Tracks new parent
+        parents.push(curParent);
+        curParent = curParent.parent;
+      }
+
+      // Checks if the work-around is needed to reveal the target section
+      if (parents.length >= 3) {
+        // Reveals all parents first (stack)
+        while (parents.length > 0) {
+          let curParent = parents.pop();
+
+          // Reveal parent
+          await this._editorView?.reveal(curParent!, {
+            select: false,
+            expand: true,
+            focus: false,
+          });
+        }
+      }
+
+      // Reveals the target editor section
+      await this._editorView?.reveal(section, {
+        select: options.select,
+        expand: options.expand,
+        focus: options.focus,
+      });
       return section;
     }
   }

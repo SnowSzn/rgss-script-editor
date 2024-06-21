@@ -988,11 +988,15 @@ export async function chooseEditorMode() {
  * @returns A promise.
  */
 export async function updateTextEditor(editor?: vscode.TextEditor) {
-  if (editor && extensionConfig.configAutoReveal()) {
-    extensionUI.revealInTreeView(editor.document.uri, {
-      select: true,
-      expand: true,
-    });
+  try {
+    if (editor && extensionConfig.configAutoReveal()) {
+      await extensionUI.revealInTreeView(editor.document.uri, {
+        select: true,
+        expand: true,
+      });
+    }
+  } catch (error) {
+    logger.logErrorUnknown(error);
   }
 }
 
