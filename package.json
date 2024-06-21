@@ -175,7 +175,7 @@
           },
           "rgssScriptEditor.debug.logToFile": {
             "type": "boolean",
-            "default": true,
+            "default": false,
             "description": "Enables this extension to log information to a file inside the project's folder.",
             "order": 1
           },
