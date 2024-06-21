@@ -145,6 +145,12 @@
         "icon": "$(arrow-swap)"
       },
       {
+        "command": "rgss-script-editor.sectionToggleCollapse",
+        "title": "Toggle Section Collapse Status...",
+        "category": "RGSS Script Editor",
+        "icon": "$(arrow-both)"
+      },
+      {
         "command": "rgss-script-editor.sectionRevealInVSCodeExplorer",
         "title": "Reveal in Explorer...",
         "category": "RGSS Script Editor",

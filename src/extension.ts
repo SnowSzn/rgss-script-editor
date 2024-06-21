@@ -184,6 +184,15 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+  // Toggle collapsible status command
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.sectionToggleCollapse',
+      (what) => {
+        manager.sectionToggleCollapse(what);
+      }
+    )
+  );
   // Reveal script section on VSCode explorer command
   context.subscriptions.push(
     vscode.commands.registerCommand(

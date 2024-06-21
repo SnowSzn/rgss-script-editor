@@ -129,6 +129,22 @@ export class ExtensionUI {
         e.items
       );
     });
+
+    // Expand callback
+    this._editorView.onDidCollapseElement((e) => {
+      vscode.commands.executeCommand(
+        'rgss-script-editor.sectionToggleCollapse',
+        e.element
+      );
+    });
+
+    // Collapse callback
+    this._editorView.onDidExpandElement((e) => {
+      vscode.commands.executeCommand(
+        'rgss-script-editor.sectionToggleCollapse',
+        e.element
+      );
+    });
   }
 
   /**

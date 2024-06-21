@@ -789,6 +789,10 @@ class EditorSectionSeparator extends EditorSectionBase {
     super.setCheckboxState(undefined);
   }
 
+  setCollapsibleState(state?: vscode.TreeItemCollapsibleState) {
+    this.collapsibleState = EditorSectionBase.Collapsible.None;
+  }
+
   isLoaded(): boolean {
     return true;
   }
@@ -837,6 +841,10 @@ class EditorSectionScript extends EditorSectionBase {
     this._reset();
   }
 
+  setCollapsibleState(state?: vscode.TreeItemCollapsibleState) {
+    this.collapsibleState = EditorSectionBase.Collapsible.None;
+  }
+
   addChild(section: EditorSectionBase): void {
     this._children = [];
   }
@@ -874,6 +882,13 @@ class EditorSectionFolder extends EditorSectionBase {
   constructor(uri: vscode.Uri) {
     super(EditorSectionType.Folder, path.parse(uri.fsPath).name, uri);
     this._reset();
+  }
+
+  setCollapsibleState(state?: vscode.TreeItemCollapsibleState) {
+    if (!state) {
+      return;
+    }
+    super.setCollapsibleState(state);
   }
 
   addChild(section: EditorSectionBase): void {
@@ -1700,6 +1715,23 @@ export class ScriptsController {
         section.alternateLoad(state);
         break;
       }
+    }
+  }
+
+  /**
+   * Alternates the current collapse status of the given editor section to ``state``
+   * @param section Editor section
+   * @param state New state
+   */
+  sectionAlternateCollapse(
+    section: EditorSectionBase,
+    state?: vscode.TreeItemCollapsibleState
+  ) {
+    // Alternate collapse status based on type
+    switch (section.type) {
+      case EditorSectionType.Folder:
+        section.setCollapsibleState(state);
+        break;
     }
   }
 

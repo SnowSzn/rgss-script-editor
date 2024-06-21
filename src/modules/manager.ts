@@ -21,6 +21,23 @@ type ToggleLoadMatrix = Array<
 >;
 
 /**
+ * Refresh options
+ */
+type RefreshOptions = {
+  /**
+   * Tree item to refresh.
+   *
+   * If ``undefined`` all items (tree root) are refreshed
+   */
+  treeItem?: EditorSectionBase;
+
+  /**
+   * Disables refreshing the load order file.
+   */
+  noLoadOrderRefresh?: boolean;
+};
+
+/**
  * Extension extensionConfig.
  */
 const extensionConfig: Configuration = new Configuration();
@@ -764,7 +781,7 @@ export async function sectionRename(section?: EditorSectionBase) {
       );
       logger.logInfo(`Renaming section: "${item}" to: "${uri.fsPath}"`);
       extensionScripts.sectionRename(item, uri);
-      await refresh();
+      await refresh({ treeItem: item });
     }
   } catch (error) {
     logger.logErrorUnknown(error);
@@ -847,6 +864,37 @@ export async function sectionToggleLoad(
       }
       await refresh();
     }
+  } catch (error) {
+    logger.logErrorUnknown(error);
+  }
+}
+
+/**
+ * Toggles the collapsible status of the given editor section
+ *
+ * It is assumed that the given editor section is collapsible.
+ * @param section Editor section
+ * @returns A promise
+ */
+export async function sectionToggleCollapse(section?: EditorSectionBase) {
+  try {
+    if (!section) {
+      return;
+    }
+
+    // Determines the collapsible state
+    let collapsibleState = section.isCollapsed()
+      ? EditorSectionBase.Collapsible.Expanded
+      : EditorSectionBase.Collapsible.Collapsed;
+
+    // Alternates the collapse state
+    extensionScripts.sectionAlternateCollapse(section, collapsibleState);
+
+    logger.logInfo(
+      `Section: "${section}" collapsible state set to: ${collapsibleState}`
+    );
+
+    await refresh({ treeItem: section, noLoadOrderRefresh: true });
   } catch (error) {
     logger.logErrorUnknown(error);
   }
@@ -1044,19 +1092,23 @@ async function watcherGameOutputOnDidCreate(uri: vscode.Uri) {
 /**
  * Asynchronously refreshes the extension editor.
  *
- * Both the editor tree items and the load order file are updated.
- *
- * To ensure that the tree is refreshes this method should be awaited.
+ * To ensure that the tree is refreshed this method should be awaited.
  *
  * If a specific tree item is given, it will refresh that tree item and all of its children.
- * @param treeItem Tree item to refresh.
+ * @param options Refresh options
  */
-async function refresh(treeItem?: EditorSectionBase) {
+async function refresh(options?: RefreshOptions) {
   try {
-    let item = treeItem ?? extensionScripts.root;
+    let item = options?.treeItem ?? extensionScripts.root;
     if (item) {
       // Refreshes item/root based on the given argument
-      extensionUI.refresh(item, !treeItem);
+      extensionUI.refresh(item, !options?.treeItem);
+
+      // Checks if the load order file should be refreshed
+      if (options?.noLoadOrderRefresh) {
+        return;
+      }
+
       // Updates load order file to match the current VSCode editor tree
       let response = await extensionScripts.updateLoadOrderFile();
       if (response === 0) {
