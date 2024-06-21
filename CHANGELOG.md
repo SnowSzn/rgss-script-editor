@@ -2,6 +2,23 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.3.1] - 21/06/2024
+
+### Fixed
+
+- Fixed an issue reveal script on the tree view
+  - Due to VS Code limitations, the reveal depth allows up to three levels
+    - The reveal operation failed when the script is more deep than three levels
+- Fixed a problem when collapsing and expanding folders
+  - The extension did not update the collapsible status of the folder
+    - When the tree was refreshed, the collapsible status was reset to the default state
+
+### Changed
+
+- Changed debug to file option default value to false
+  - Avoids unnecesary file write calls
+  - Users can enable it manually when reporting bugs
+
 ## [1.3.0] - 20/06/2024
 
 ### Added

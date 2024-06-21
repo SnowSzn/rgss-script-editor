@@ -23,10 +23,13 @@
 - [Extension Settings](#extension-settings)
 - [Known Issues](#known-issues)
 - [Latest Release Notes](#latest-release-notes)
-- [\[1.3.0\] - 20/06/2024](#130---20062024)
-  - [Added](#added)
-  - [Fixed](#fixed)
-  - [Changed](#changed)
+  - [\[1.3.1\] - 21/06/2024](#131---21062024)
+    - [Fixed](#fixed)
+    - [Changed](#changed)
+  - [\[1.3.0\] - 20/06/2024](#130---20062024)
+    - [Added](#added)
+    - [Fixed](#fixed-1)
+    - [Changed](#changed-1)
 - [Contributors](#contributors)
 
 ## Introduction
@@ -121,6 +124,9 @@ As a security measure, the extension will not allow overwriting the script bundl
     - Move sections.
       - The tree can be arranged in any order desired.
       - The load order is defined by the order of the editor, before running the game.
+    - Collapse/Expand sections.
+      - You can expand or collapse folder sections.
+    - Reveal active script on the tree view
     - Reveal sections on VS Code explorer
       - You can reveal a script section on the VS Code built-in explorer
     - Reveal sections on the OS file explorer
@@ -236,6 +242,9 @@ These commands are identified with ellipses (such as the command "Create Section
   - Usable only in the tree view editor
 - `rgss-script-editor.sectionToggleLoad`
   - Toggles the load status (enabled/disabled) of the section/s on the tree view
+  - Usable only in the tree view editor
+- `rgss-script-editor.sectionToggleCollapse`
+  - Toggles the collapsible status (collapsed/expanded) of the section/s on the tree view
   - Usable only in the tree view editor
 - `rgss-script-editor.sectionRevealInVSCodeExplorer`
   - Reveals the selected section (script/folder) in the VSCode explorer tab
@@ -424,9 +433,26 @@ Nevertheless this feature should not be used, hence the **EXPERIMENTAL** label o
 
 ## Latest Release Notes
 
-## [1.3.0] - 20/06/2024
+### [1.3.1] - 21/06/2024
 
-### Added
+#### Fixed
+
+- Fixed an issue reveal script on the tree view
+  - Due to VS Code limitations, the reveal depth allows up to three levels
+    - The reveal operation failed when the script is more deep than three levels
+- Fixed a problem when collapsing and expanding folders
+  - The extension did not update the collapsible status of the folder
+    - When the tree was refreshed, the collapsible status was reset to the default state
+
+#### Changed
+
+- Changed debug to file option default value to false
+  - Avoids unnecesary file write calls
+  - Users can enable it manually when reporting bugs
+
+### [1.3.0] - 20/06/2024
+
+#### Added
 
 - The extension now automatically re-creates the script loader every time the user opens a folder if the scripts are already extracted
   - It is recommended to leave it active, so the extension can update the script loader between updates.
@@ -454,7 +480,7 @@ Nevertheless this feature should not be used, hence the **EXPERIMENTAL** label o
   - The script loader will load scripts again if a ResetLoader exception is raised
   - You can raise this exception anywhere on your code
 
-### Fixed
+#### Fixed
 
 - The extension now gets the appropriate game process PID instead of the shell process PID
   - The game processes are now properly killed when closing VS Code or switching between projects
@@ -463,7 +489,7 @@ Nevertheless this feature should not be used, hence the **EXPERIMENTAL** label o
     - The game fails to redirect output to the console output
   - Output is redirected to the null device if this happens to avoid crashes
 
-### Changed
+#### Changed
 
 - Changed extension's auto process game error option
   - If enabled, the extension will automatically show the exception without asking the user to peek the backtrace
