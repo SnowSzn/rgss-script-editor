@@ -1,11 +1,19 @@
 import * as vscode from 'vscode';
 import { UUID } from 'crypto';
-import { EditorSectionBase } from '../../processes/scripts_controller';
+import {
+  EditorSectionBase,
+  EditorSectionType,
+} from '../../processes/scripts_controller';
 
 /**
  * Drag and drop MIME type.
  */
 const MIME_TYPE = 'application/rgss.script.editor';
+
+/**
+ * VScode editor MIME type.
+ */
+const MIME_TYPE_VSCODE = 'text/uri-list';
 
 /**
  * A data provider that provides tree data.
@@ -84,12 +92,33 @@ export class EditorViewProvider
     token: vscode.CancellationToken
   ): void | Thenable<void> {
     // Prepares data (must be stringified)
-    let data: UUID[] = [];
+    let extensionData: UUID[] = [];
+    let vscodeData: string[] = [];
     source.forEach((section) => {
-      data.push(section.id);
+      extensionData.push(section.id);
+
+      // Checks editor section validness for VSCode editor
+      // URIs needs to be strings separated by "\r\n" EOL for VSCode editor (hardcoded)
+      // https://code.visualstudio.com/api/references/vscode-api#TreeDragAndDropController
+      if (section.isType(EditorSectionType.Script)) {
+        vscodeData.push(section.resourceUri.toString());
+      } else if (section.isType(EditorSectionType.Folder)) {
+        section.nestedChildren().forEach((child) => {
+          if (child.isType(EditorSectionType.Script)) {
+            vscodeData.push(child.resourceUri.toString());
+          }
+        });
+      }
     });
+
     // Sets data transfer package with the data
-    dataTransfer.set(MIME_TYPE, new vscode.DataTransferItem(data));
+    dataTransfer.set(MIME_TYPE, new vscode.DataTransferItem(extensionData));
+    if (vscodeData.length > 0) {
+      dataTransfer.set(
+        MIME_TYPE_VSCODE,
+        new vscode.DataTransferItem(vscodeData.join('\r\n'))
+      );
+    }
   }
 
   /**
