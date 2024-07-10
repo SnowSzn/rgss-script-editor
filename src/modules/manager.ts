@@ -1064,17 +1064,6 @@ export async function dispose() {
 }
 
 /**
- * Checks if the configuration change event affects this extension.
- *
- * This function must return ``true`` if a critical configuration value is changed
- * so the manager can trigger an update on the current folder.
- * @param event Config change event
- */
-export function affectsConfiguration(event: vscode.ConfigurationChangeEvent) {
-  return event.affectsConfiguration('rgssScriptEditor.external.scriptsFolder');
-}
-
-/**
  * Processes a configuration change event.
  *
  * It will execute a callback if an important configuration value is changed
