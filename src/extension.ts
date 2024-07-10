@@ -16,10 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
   // VSCode Configuration change event.
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event) => {
-      // Forces a restart so extension knows about the new change
-      if (manager.affectsConfiguration(event)) {
-        manager.restart();
-      }
+      manager.onDidChangeConfiguration(event);
     })
   );
   // VSCode Tree view update active file

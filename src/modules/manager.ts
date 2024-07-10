@@ -1075,6 +1075,21 @@ export function affectsConfiguration(event: vscode.ConfigurationChangeEvent) {
 }
 
 /**
+ * Processes a configuration change event.
+ *
+ * It will execute a callback if an important configuration value is changed
+ * @param event Config change event
+ */
+export async function onDidChangeConfiguration(
+  event: vscode.ConfigurationChangeEvent
+) {
+  // Restarts extension if the scripts folder path is changed
+  if (event.affectsConfiguration('rgssScriptEditor.external.scriptsFolder')) {
+    await restart();
+  }
+}
+
+/**
  * Processes a script file system watcher creation event.
  * @param uri Entry uri
  */
