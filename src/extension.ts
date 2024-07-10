@@ -79,15 +79,6 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
-  // Create bundle file from extracted scripts
-  context.subscriptions.push(
-    vscode.commands.registerCommand(
-      'rgss-script-editor.createBundleFile',
-      () => {
-        manager.createBundleFile();
-      }
-    )
-  );
   // Create a back up bundle file from extracted scripts
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -97,12 +88,30 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+  // Create bundle file from extracted scripts
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.createBundleFile',
+      () => {
+        manager.createBundleFile();
+      }
+    )
+  );
   // Create bundle file from selected scripts
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'rgss-script-editor.createSelectedBundleFile',
       () => {
         manager.createSelectedBundleFile();
+      }
+    )
+  );
+  // Compile bundle file from enabled scripts
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.compileBundleFile',
+      () => {
+        manager.compileBundleFile();
       }
     )
   );

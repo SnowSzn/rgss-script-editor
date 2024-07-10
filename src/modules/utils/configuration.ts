@@ -117,11 +117,19 @@ export class Configuration {
   /**
    * File name of the back up file that the user creates from the extracted scripts.
    *
-   * The name should avoid extensions since it will get automatically determined
+   * The name should not have extensions since it will get automatically determined
    * based on the RGSS version on runtime.
    */
   public static EXTRACTED_SCRIPTS_BACK_UP_FILE_NAME =
     'Manual Backup of Extracted Scripts';
+
+  /**
+   * File name for the compiled scripts bundle file
+   *
+   * The name should not have extensions since it will get automatically determined
+   * based on the RGSS version on runtime.
+   */
+  public static COMPILE_SCRIPTS_FILE_NAME = 'Scripts';
 
   /**
    * RGSS Version.
@@ -238,6 +246,14 @@ export class Configuration {
    */
   configScriptsFolder(): string {
     return this._getVSCodeConfig<string>('external.scriptsFolder')!;
+  }
+
+  /**
+   * Gets the project relative path to the compiled scripts folder.
+   * @returns Scripts compiled folder path.
+   */
+  configScriptsCompilePath(): string {
+    return this._getVSCodeConfig<string>('external.scriptsCompilePath')!;
   }
 
   /**
@@ -479,6 +495,17 @@ export class Configuration {
    */
   determineScriptsPath() {
     return this.joinProject(this.configScriptsFolder());
+  }
+
+  /**
+   * Determines the path to the scripts compile folder from the current project's folder.
+   * @returns Scripts compile folder uri path
+   */
+  determineScriptsCompilePath() {
+    return this.joinProject(
+      this.configScriptsCompilePath(),
+      Configuration.COMPILE_SCRIPTS_FILE_NAME
+    );
   }
 
   /**

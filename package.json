@@ -73,20 +73,26 @@
         "icon": "$(note)"
       },
       {
-        "command": "rgss-script-editor.createBundleFile",
-        "title": "Create a Bundle File From Enabled Scripts",
-        "category": "RGSS Script Editor",
-        "icon": "$(package)"
-      },
-      {
         "command": "rgss-script-editor.createBackupBundleFile",
         "title": "Create a Back Up With All Scripts",
         "category": "RGSS Script Editor",
         "icon": "$(archive)"
       },
       {
+        "command": "rgss-script-editor.createBundleFile",
+        "title": "Create a Bundle File From Enabled Scripts",
+        "category": "RGSS Script Editor",
+        "icon": "$(package)"
+      },
+      {
         "command": "rgss-script-editor.createSelectedBundleFile",
         "title": "Create a Bundle File From Selected Scripts",
+        "category": "RGSS Script Editor",
+        "icon": "$(package)"
+      },
+      {
+        "command": "rgss-script-editor.compileBundleFile",
+        "title": "Compile Enabled Scripts",
         "category": "RGSS Script Editor",
         "icon": "$(package)"
       },
@@ -231,6 +237,12 @@
             "description": "The relative path within the project's folder where all scripts will be extracted.",
             "order": 31
           },
+          "rgssScriptEditor.external.scriptsCompilePath": {
+            "type": "string",
+            "default": ".",
+            "description": "The relative path within the project's folder where the compiled scripts bundle file is saved.",
+            "order": 32
+          },
           "rgssScriptEditor.gameplay.gameExecutablePath": {
             "type": "string",
             "default": "./Game.exe",
@@ -307,6 +319,11 @@
       {
         "command": "rgss-script-editor.runGame",
         "key": "F12",
+        "when": "rgss-script-editor.openedFolder"
+      },
+      {
+        "command": "rgss-script-editor.compileBundleFile",
+        "key": "CTRL+F5",
         "when": "rgss-script-editor.openedFolder"
       },
       {
