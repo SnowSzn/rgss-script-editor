@@ -851,6 +851,53 @@ export async function sectionMove(
 }
 
 /**
+ * Copies the given editor section or all editor sections selected on the tree view to the clipboard.
+ *
+ * @param section Section
+ * @returns A promise
+ */
+export async function sectionCopy(section?: EditorSectionBase) {
+  try {
+    let items = extensionUI.getTreeSelection() || (section ? [section] : []);
+    // Checks validness
+    if (!items) {
+      return;
+    }
+
+    // Perform the copy operation
+    logger.logInfo(`Copying: "${items}"`);
+    extensionScripts.sectionCopy(items);
+  } catch (error) {
+    logger.logErrorUnknown(error);
+  }
+}
+
+/**
+ * Pastes all sections in the clipboard on the given target
+ * @param section Target section
+ * @returns A promise
+ */
+export async function sectionPaste(section?: EditorSectionBase) {
+  try {
+    // Determines the appropiate target
+    let selected = extensionUI.getTreeSelection();
+    let target = section ? section : selected ? selected.at(-1) : undefined;
+
+    // Checks validness
+    if (!target) {
+      return;
+    }
+    logger.logInfo(`Paste target: "${target}"`);
+    if (extensionScripts.sectionPaste(target)) {
+      // Refresh after paste operation
+      await refresh();
+    }
+  } catch (error) {
+    logger.logErrorUnknown(error);
+  }
+}
+
+/**
  * Toggles the load status (checkbox) of the given element or elements.
  *
  * If a {@link ToggleLoadMatrix} is given, it must be an array with the section

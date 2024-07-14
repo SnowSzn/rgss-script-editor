@@ -181,6 +181,24 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+  // Copy handler command
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.sectionCopy',
+      (what) => {
+        manager.sectionCopy(what);
+      }
+    )
+  );
+  // Paste handler command
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.sectionPaste',
+      (what) => {
+        manager.sectionPaste(what);
+      }
+    )
+  );
   // Toggle load status script command
   context.subscriptions.push(
     vscode.commands.registerCommand(

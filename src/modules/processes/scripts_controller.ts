@@ -60,11 +60,11 @@ type ControllerCreateOptions = {
 };
 
 /**
- * Controller determine section URi options type.
+ * Controller determine section URI options type.
  */
 type ControllerDetermineUriOptions = {
   /**
-   * Whether to avoid overwriting a section or not.
+   * Whether the controller should avoid overwriting a section or not.
    */
   avoidOverwrite?: boolean;
 };
@@ -1032,6 +1032,11 @@ export class ScriptsController {
   private _root: EditorSectionFolder;
 
   /**
+   * Script clipboard buffer
+   */
+  private _clipboard: EditorSectionBase[];
+
+  /**
    * Controller drop mode.
    */
   private _editorMode: ControllerEditorMode;
@@ -1046,6 +1051,7 @@ export class ScriptsController {
    */
   constructor() {
     this._root = new EditorSectionFolder(vscode.Uri.file('undefined'));
+    this._clipboard = [];
     this._editorMode = ControllerEditorMode.MERGE;
     this._textDecoder = new TextDecoder('utf8');
   }
@@ -1748,6 +1754,59 @@ export class ScriptsController {
   }
 
   /**
+   * Copies all editor sections into the scripts controller clipboard buffer
+   * @param sections Editor sections
+   */
+  sectionCopy(sections: readonly EditorSectionBase[]) {
+    // Resets the clipboard for each copy operation
+    this._clipboard = [];
+
+    // Select only the valid sections
+    sections.forEach((section) => {
+      if (!section.isType(EditorSectionType.Folder)) {
+        this._clipboard.push(section);
+      }
+    });
+  }
+
+  /**
+   * Pastes every editor section inside the clipboard buffer in ``target``
+   * @param target Editor section target
+   * @returns Whether something was pasted or not
+   */
+  sectionPaste(target: EditorSectionBase): boolean {
+    // Determines if something was pasted or not
+    let pasted = this._clipboard.length > 0;
+
+    // Perform the paste from the clipboard
+    for (let section of this._clipboard) {
+      // Determine section paste information
+      const info = this.determineSectionInfo(
+        section.type,
+        section.getName(),
+        target,
+        { avoidOverwrite: true }
+      );
+
+      // Checks for section information validness
+      if (info) {
+        // Gets section contents (if valid)
+        let contents = '';
+        if (section.isType(EditorSectionType.Script)) {
+          contents = fs.readFileSync(section.resourceUri.fsPath).toString();
+        }
+
+        // Create section
+        this.sectionCreate(info, {
+          checkboxState: section.isLoaded(),
+          contents: contents,
+        });
+      }
+    }
+    return pasted;
+  }
+
+  /**
    * Determines the information for a new editor section using the given arguments.
    *
    * This method will use the current editor mode to determine the appropiate information.
@@ -1942,6 +2001,7 @@ export class ScriptsController {
 
     // Clears previous editor section root instance
     this._root.clear();
+    this._clipboard = [];
     this._root.rename(scriptsFolderPath);
 
     // Updates load order file path

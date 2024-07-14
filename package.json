@@ -145,6 +145,18 @@
         "icon": "$(move)"
       },
       {
+        "command": "rgss-script-editor.sectionCopy",
+        "title": "Copy Section/s...",
+        "category": "RGSS Script Editor",
+        "icon": "$(clippy)"
+      },
+      {
+        "command": "rgss-script-editor.sectionPaste",
+        "title": "Paste Section/s...",
+        "category": "RGSS Script Editor",
+        "icon": "$(clippy)"
+      },
+      {
         "command": "rgss-script-editor.sectionToggleLoad",
         "title": "Toggle Section/s Load Status On/Off...",
         "category": "RGSS Script Editor",
@@ -339,11 +351,6 @@
         "when": "rgss-script-editor.openedFolder"
       },
       {
-        "command": "rgss-script-editor.sectionRename",
-        "key": "F2",
-        "when": "focusedView == 'rgss-script-editor.editorView'"
-      },
-      {
         "command": "rgss-script-editor.sectionCreate",
         "key": "insert",
         "when": "focusedView == 'rgss-script-editor.editorView'"
@@ -351,6 +358,21 @@
       {
         "command": "rgss-script-editor.sectionDelete",
         "key": "delete",
+        "when": "focusedView == 'rgss-script-editor.editorView'"
+      },
+      {
+        "command": "rgss-script-editor.sectionRename",
+        "key": "F2",
+        "when": "focusedView == 'rgss-script-editor.editorView'"
+      },
+      {
+        "command": "rgss-script-editor.sectionCopy",
+        "key": "CTRL+C",
+        "when": "focusedView == 'rgss-script-editor.editorView'"
+      },
+      {
+        "command": "rgss-script-editor.sectionPaste",
+        "key": "CTRL+V",
         "when": "focusedView == 'rgss-script-editor.editorView'"
       },
       {
@@ -470,19 +492,29 @@
           "group": "3"
         },
         {
-          "command": "rgss-script-editor.createSelectedBundleFile",
+          "command": "rgss-script-editor.sectionCopy",
           "when": "view == rgss-script-editor.editorView",
           "group": "4"
         },
         {
-          "command": "rgss-script-editor.sectionRevealInVSCodeExplorer",
+          "command": "rgss-script-editor.sectionPaste",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "4"
+        },
+        {
+          "command": "rgss-script-editor.createSelectedBundleFile",
           "when": "view == rgss-script-editor.editorView",
           "group": "5"
         },
         {
+          "command": "rgss-script-editor.sectionRevealInVSCodeExplorer",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "6"
+        },
+        {
           "command": "rgss-script-editor.sectionOpenInExplorer",
           "when": "view == rgss-script-editor.editorView",
-          "group": "5"
+          "group": "6"
         }
       ]
     }
