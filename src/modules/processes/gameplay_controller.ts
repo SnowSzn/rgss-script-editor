@@ -450,7 +450,7 @@ export class GameplayController {
     // Checks exception
     if (this._config) {
       // Checks output file for possible exceptions that killed the game
-      let output = this._config.determineGameOutputPath()?.fsPath;
+      let output = this._config.determineGameLogPath()?.fsPath;
       if (output && fs.existsSync(output)) {
         this.createException(output);
       }

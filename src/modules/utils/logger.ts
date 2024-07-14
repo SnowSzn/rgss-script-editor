@@ -81,11 +81,21 @@ class Logger {
     }
     // Logging to file enabled
     if (this._config?.configLogFile()) {
-      let logFile = this._config?.determineLogFilePath();
+      let logFile = this._config.determineLogFilePath();
+      let logFileDir = this._config.determineLogFilePath({
+        removeFilePart: true,
+      });
+
       // Process logging operation
-      if (logFile) {
-        fs.writeFileSync(logFile.fsPath, msg, { flag: 'a' });
+      if (!logFile || !logFileDir) {
+        return;
       }
+      // Creates the directory if it does not exists
+      if (!fs.existsSync(logFileDir.fsPath)) {
+        fs.mkdirSync(logFileDir.fsPath, { recursive: true });
+      }
+      // Writes the to log file
+      fs.writeFileSync(logFile.fsPath, msg, { flag: 'a' });
     }
   }
 

@@ -222,13 +222,13 @@
           "rgssScriptEditor.extension.importScriptsOverwrite": {
             "type": "boolean",
             "default": false,
-            "description": "Whether to overwrite existing scripts or not when importing a scripts bundle file.",
+            "description": "Whether to overwrite existing scripts or not when importing scripts from a bundle file.",
             "order": 15
           },
           "rgssScriptEditor.external.backUpsFolder": {
             "type": "string",
-            "default": "./.rgss-script-editor-backups",
-            "description": "The relative path within the project's folder where all back ups will be saved.",
+            "default": "./.rgss-script-editor/backups",
+            "description": "The relative path within the project's folder where all backups will be saved.",
             "order": 30
           },
           "rgssScriptEditor.external.scriptsFolder": {
@@ -237,11 +237,23 @@
             "description": "The relative path within the project's folder where all scripts will be extracted.",
             "order": 31
           },
-          "rgssScriptEditor.external.scriptsCompilePath": {
+          "rgssScriptEditor.external.extensionLogFileFolder": {
             "type": "string",
-            "default": ".",
+            "default": "./.rgss-script-editor",
+            "description": "The relative path within the project's folder where the extension log file is created.",
+            "order": 40
+          },
+          "rgssScriptEditor.external.gameLogFileFolder": {
+            "type": "string",
+            "default": "./.rgss-script-editor",
+            "description": "The relative path within the project's folder where the game log file is created.",
+            "order": 41
+          },
+          "rgssScriptEditor.external.scriptsCompileFolder": {
+            "type": "string",
+            "default": "./.rgss-script-editor/dist",
             "description": "The relative path within the project's folder where the compiled scripts bundle file is saved.",
-            "order": 32
+            "order": 45
           },
           "rgssScriptEditor.gameplay.gameExecutablePath": {
             "type": "string",

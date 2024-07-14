@@ -85,6 +85,16 @@ const enum FilesEOL {
 }
 
 /**
+ * Determine path options
+ */
+type DeterminePathOptions = {
+  /**
+   * Whether to remove the file segment from the path or not
+   */
+  removeFilePart?: boolean;
+};
+
+/**
  * Determine extension options
  */
 type DetermineExtensionOptions = {
@@ -103,7 +113,7 @@ export class Configuration {
    *
    * Log file that is created inside the active project folder.
    */
-  public static LOG_FILE_NAME = '.rgss-script-editor.log';
+  public static LOG_FILE_NAME = 'extension.log';
 
   /**
    * Game execution output file name.
@@ -112,15 +122,15 @@ export class Configuration {
    *
    * The exception's name and the backtrace are written inside of it.
    */
-  public static GAME_OUTPUT_FILE = '.rgss-script-editor-game.log';
+  public static GAME_OUTPUT_FILE = 'game.log';
 
   /**
-   * File name of the back up file that the user creates from the extracted scripts.
+   * File name of the backup file that the user creates from the extracted scripts.
    *
    * The name should not have extensions since it will get automatically determined
    * based on the RGSS version on runtime.
    */
-  public static EXTRACTED_SCRIPTS_BACK_UP_FILE_NAME =
+  public static EXTRACTED_SCRIPTS_BACKUP_FILE_NAME =
     'Manual Backup of Extracted Scripts';
 
   /**
@@ -249,11 +259,27 @@ export class Configuration {
   }
 
   /**
+   * Gets the project relative path to the extension log file folder.
+   * @returns Log file folder.
+   */
+  configLogFileFolder(): string {
+    return this._getVSCodeConfig<string>('external.extensionLogFileFolder')!;
+  }
+
+  /**
+   * Gets the project relative path to the game log file folder.
+   * @returns Log file folder.
+   */
+  configGameLogFileFolder(): string {
+    return this._getVSCodeConfig<string>('external.gameLogFileFolder')!;
+  }
+
+  /**
    * Gets the project relative path to the compiled scripts folder.
    * @returns Scripts compiled folder path.
    */
-  configScriptsCompilePath(): string {
-    return this._getVSCodeConfig<string>('external.scriptsCompilePath')!;
+  configScriptsCompileFolder(): string {
+    return this._getVSCodeConfig<string>('external.scriptsCompileFolder')!;
   }
 
   /**
@@ -435,32 +461,6 @@ export class Configuration {
   }
 
   /**
-   * Determines the path to the log file.
-   *
-   * The path is based on the current active folder.
-   *
-   * If the folder is not valid, it returns ``undefined``
-   * @returns Log file uri path
-   */
-  determineLogFilePath() {
-    return this.joinProject(Configuration.LOG_FILE_NAME);
-  }
-
-  /**
-   * Determines the path to the game's output file.
-   *
-   * This file is used by the extension to process possible game exceptions.
-   *
-   * The path is based on the current active folder.
-   *
-   * If the folder is not valid, it returns ``undefined``
-   * @returns Game output file uri path
-   */
-  determineGameOutputPath() {
-    return this.joinProject(Configuration.GAME_OUTPUT_FILE);
-  }
-
-  /**
    * Determines the path to the game scripts bundle file.
    *
    * The path is based on the current active folder and RGSS version.
@@ -490,25 +490,6 @@ export class Configuration {
   }
 
   /**
-   * Determines the path to the scripts folder from the current project's folder.
-   * @returns Scripts folder uri path
-   */
-  determineScriptsPath() {
-    return this.joinProject(this.configScriptsFolder());
-  }
-
-  /**
-   * Determines the path to the scripts compile folder from the current project's folder.
-   * @returns Scripts compile folder uri path
-   */
-  determineScriptsCompilePath() {
-    return this.joinProject(
-      this.configScriptsCompilePath(),
-      Configuration.COMPILE_SCRIPTS_FILE_NAME
-    );
-  }
-
-  /**
    * Determines the path to the backups folder.
    *
    * The path is based on the current active folder.
@@ -518,6 +499,83 @@ export class Configuration {
    */
   determineBackupsPath() {
     return this.joinProject(this.configBackUpsFolder());
+  }
+
+  /**
+   * Determines the path to the scripts folder from the current project's folder.
+   * @returns Scripts folder uri path
+   */
+  determineScriptsPath() {
+    return this.joinProject(this.configScriptsFolder());
+  }
+
+  /**
+   * Determines the path to the log file.
+   *
+   * The path is based on the current active folder.
+   *
+   * If the folder is not valid, it returns ``undefined``
+   *
+   * @param options Options
+   * @returns Log file uri path
+   */
+  determineLogFilePath(options?: DeterminePathOptions) {
+    if (options?.removeFilePart) {
+      return this.joinProject(this.configLogFileFolder());
+    } else {
+      return this.joinProject(
+        this.configLogFileFolder(),
+        Configuration.LOG_FILE_NAME
+      );
+    }
+  }
+
+  /**
+   * Determines the path to the game's output file.
+   *
+   * This file is used by the extension to process possible game exceptions.
+   *
+   * The path is based on the current active folder.
+   *
+   * If the folder is not valid, it returns ``undefined``
+   *
+   * @param options Options
+   * @returns Game output file uri path
+   */
+  determineGameLogPath(options?: DeterminePathOptions) {
+    if (options?.removeFilePart) {
+      return this.joinProject(this.configGameLogFileFolder());
+    } else {
+      return this.joinProject(
+        this.configGameLogFileFolder(),
+        Configuration.GAME_OUTPUT_FILE
+      );
+    }
+  }
+
+  /**
+   * Determines the path to the scripts compile folder from the current project's folder.
+   *
+   * The file extension is determined based on the RPG Maker version detected.
+   *
+   * @param options Options
+   * @returns Scripts compile folder uri path
+   */
+  determineScriptsCompilePath(options?: DeterminePathOptions) {
+    if (options?.removeFilePart) {
+      return this.joinProject(this.configScriptsCompileFolder());
+    } else {
+      let uri = this.joinProject(
+        this.configScriptsCompileFolder(),
+        Configuration.COMPILE_SCRIPTS_FILE_NAME
+      );
+
+      // Adds the appropiate extension
+      if (uri) {
+        uri = this.processExtension(uri);
+      }
+      return uri;
+    }
   }
 
   /**
@@ -654,9 +712,9 @@ export class Configuration {
    * @param uri Target Uri path
    * @returns Relative path to ``uri``
    */
-  fromProject(uri: vscode.Uri): string | undefined {
-    if (this.isValid()) {
-      path.relative(this._projectFolderPath!.fsPath, uri.fsPath);
+  fromProject(uri?: vscode.Uri): string | undefined {
+    if (this.isValid() && uri) {
+      return path.relative(this._projectFolderPath!.fsPath, uri.fsPath);
     }
     return undefined;
   }
@@ -714,6 +772,27 @@ export class Configuration {
   }
 
   /**
+   * Creates a backup uri path with the given filename.
+   *
+   * If the backup path cannot be determined, it returns ``undefined``.
+   * @param fileName File name
+   * @returns The formatted backup uri path
+   */
+  processBackupFilePath(fileName: string) {
+    const backupsFolder = this.determineBackupsPath();
+
+    // Checks backup folder validness
+    if (!backupsFolder) {
+      return undefined;
+    }
+
+    return vscode.Uri.joinPath(
+      backupsFolder,
+      `${fileName} - ${this._currentDate()}.bak`
+    );
+  }
+
+  /**
    * Gets the configuration value from the VS Code settings.
    *
    * If the key is not found it returns ``undefined``.
@@ -722,5 +801,20 @@ export class Configuration {
    */
   private _getVSCodeConfig<T>(key: string): T | undefined {
     return vscode.workspace.getConfiguration('rgssScriptEditor').get<T>(key);
+  }
+
+  /**
+   * Formats the current date and returns it as a string.
+   * @returns Formatted date.
+   */
+  private _currentDate(): string {
+    let date = new Date();
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString();
+    const hour = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const seconds = date.getSeconds().toString().padStart(2, '0');
+    return `${year}.${month}.${day} - ${hour}.${minutes}.${seconds}`;
   }
 }

@@ -78,12 +78,11 @@ export function isRubyFile(file: string): boolean {
 /**
  * Checks if the given folder path is a directory or not.
  *
- * This function won't check for the file existence.
+ * This function won't check for the folder existence.
  * @param folder Folder path
  * @returns Whether path is a directory.
  */
 export function isFolderLike(folder: string): boolean {
-  // Checks whether the given argument is a folder or not
   const baseName = path.basename(folder);
   return baseName.length > 0 && path.extname(baseName) === '';
 }
@@ -96,7 +95,6 @@ export function isFolderLike(folder: string): boolean {
  * @returns Whether path is a file.
  */
 export function isFileLike(file: string): boolean {
-  // Checks if file is actually a file.
   return path.extname(file) !== '';
 }
 
@@ -108,8 +106,16 @@ export function isFileLike(file: string): boolean {
  * @returns Whether path is a Ruby file.
  */
 export function isRubyFileLike(file: string): boolean {
-  // Checks if file is a Ruby script.
   return path.extname(file).toLowerCase() === '.rb';
+}
+
+/**
+ * Normalizes the given path for RPG Maker
+ * @param filePath File path
+ * @returns Normalized path
+ */
+export function normalizePath(filePath: string): string {
+  return filePath.split(path.sep).join(path.posix.sep);
 }
 
 /**

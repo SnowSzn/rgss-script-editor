@@ -60,6 +60,16 @@ type ControllerCreateOptions = {
 };
 
 /**
+ * Controller determine section URi options type.
+ */
+type ControllerDetermineUriOptions = {
+  /**
+   * Whether to avoid overwriting a section or not.
+   */
+  avoidOverwrite?: boolean;
+};
+
+/**
  * Controller editor section creation information type.
  */
 type ControllerSectionInfo = {
@@ -114,11 +124,11 @@ type LoaderScriptConfig = {
   loadOrderFileName: string;
 
   /**
-   * Error file name.
+   * Error file path.
    *
    * The file that creates the loader with the error output of the game process.
    */
-  errorFileName: string;
+  errorFilePath: string;
 
   /**
    * Skip script character.
@@ -1270,7 +1280,7 @@ export class ScriptsController {
     if (!this._config?.configImportOverwrite()) {
       basePath = vscode.Uri.joinPath(
         this._root.resourceUri,
-        `Import from ${path.parse(targetBundle.fsPath).name} bundle file`
+        `Import from ${path.parse(targetBundle.fsPath).name}`
       );
     }
 
@@ -1378,7 +1388,9 @@ export class ScriptsController {
     logger.logInfo('Creating script loader bundle file...');
     let bundleFilePath = this._config?.determineBundleFilePath();
     let scriptsFolderPath = this._config?.configScriptsFolder();
-    let gameOutputFile = Configuration.GAME_OUTPUT_FILE;
+    let gameOutputFile = this._config?.fromProject(
+      this._config?.determineGameLogPath()
+    );
     logger.logInfo(`RPG Maker bundle file path: "${bundleFilePath?.fsPath}"`);
     logger.logInfo(`Scripts folder relative path: "${scriptsFolderPath}"`);
     logger.logInfo(`Game output file: "${gameOutputFile}"`);
@@ -1390,13 +1402,13 @@ export class ScriptsController {
     // Checks if the backup is needed
     let oldBundle = this._readBundleFile(bundleFilePath.fsPath);
     if (this._checkValidExtraction(oldBundle)) {
-      const backUpFilePath = this.formatBackUpPath(
+      const backUpFilePath = this._config?.processBackupFilePath(
         path.basename(bundleFilePath.fsPath)
       );
-      logger.logInfo(`Resolved back up file: "${backUpFilePath?.fsPath}"`);
+      logger.logInfo(`Resolved backup file: "${backUpFilePath?.fsPath}"`);
       if (!backUpFilePath) {
         throw new Error(
-          `It was not possible to create a back up because the path: "${backUpFilePath}" is invalid!`
+          `It was not possible to create a backup because the path: "${backUpFilePath}" is invalid!`
         );
       }
       logger.logInfo('Backing up original RPG Maker bundle file...');
@@ -1405,7 +1417,7 @@ export class ScriptsController {
         recursive: true,
         overwrite: true,
       });
-      logger.logInfo('Back up completed!');
+      logger.logInfo('Backup completed!');
     } else {
       logger.logInfo(`A backup of the RPG Maker bundle file is not necessary!`);
     }
@@ -1419,7 +1431,7 @@ export class ScriptsController {
         scriptsFolder: scriptsFolderPath,
         scriptName: LOADER_SCRIPT_NAME,
         loadOrderFileName: LOAD_ORDER_FILE_NAME,
-        errorFileName: gameOutputFile,
+        errorFilePath: gameOutputFile,
         skipCharacter: EDITOR_SECTION_SKIPPED_CHARACTER,
       }),
       {
@@ -1742,12 +1754,14 @@ export class ScriptsController {
    * @param type Editor section type
    * @param name Editor section name
    * @param target Target section
+   * @param options Determine uri options
    * @returns Editor section information.
    */
   determineSectionInfo(
     type: EditorSectionType,
     name: string,
-    target: EditorSectionBase
+    target: EditorSectionBase,
+    options?: ControllerDetermineUriOptions
   ): ControllerSectionInfo | undefined {
     // Editor section information
     let sectionUri: vscode.Uri | undefined = undefined;
@@ -1790,7 +1804,8 @@ export class ScriptsController {
     sectionUri = this.determineSectionUri(
       sectionParent.resourceUri,
       type,
-      name
+      name,
+      options
     );
 
     return {
@@ -1806,12 +1821,14 @@ export class ScriptsController {
    * @param parent Parent uri path
    * @param type Editor section type
    * @param name Editor section name
+   * @param options Options
    * @returns The formatted uri path
    */
   determineSectionUri(
     parent: vscode.Uri,
     type: EditorSectionType,
-    name: string
+    name: string,
+    options?: ControllerDetermineUriOptions
   ) {
     let sectionName = name;
     // Processes the name based on the type
@@ -1829,8 +1846,22 @@ export class ScriptsController {
         break;
       }
     }
+
     // Formats uri path
-    return vscode.Uri.joinPath(parent, sectionName);
+    let uriPath = vscode.Uri.joinPath(parent, sectionName);
+
+    // Checks if overwriting an existing editor section should be avoided
+    if (options?.avoidOverwrite) {
+      let index = 1;
+      while (fs.existsSync(uriPath.fsPath)) {
+        let fileName = `${name} (${index})`;
+        uriPath = vscode.Uri.joinPath(parent, this._formatScriptName(fileName));
+        index++;
+      }
+    }
+
+    // Returns the final uri path
+    return uriPath;
   }
 
   /**
@@ -1897,26 +1928,6 @@ export class ScriptsController {
    */
   matchInvalidCharacters(str: string) {
     return str.match(INVALID_CHARACTERS);
-  }
-
-  /**
-   * Creates a back up uri path with the given filename.
-   *
-   * If the back up path cannot be determined, it returns ``undefined``.
-   * @param filename File name
-   * @returns The formatted back up uri path
-   */
-  formatBackUpPath(filename: string) {
-    const backUpsFolderPath = this._config?.determineBackupsPath();
-    // Checks back up path validness
-    if (!backUpsFolderPath) {
-      return undefined;
-    }
-    // Formats and returns the back up URI path
-    return vscode.Uri.joinPath(
-      backUpsFolderPath,
-      `${filename} - ${this._currentDate()}.bak`
-    );
   }
 
   /**
@@ -2164,7 +2175,7 @@ export class ScriptsController {
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
-# Version: 1.3.2
+# Version: 1.4.0
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
@@ -2214,7 +2225,14 @@ module ScriptLoaderConfiguration
   #
   # Note: The load order file is expected to exist inside this folder!
   #
-  SCRIPTS_PATH = '${config.scriptsFolder.split(path.sep).join(path.posix.sep)}'
+  SCRIPTS_PATH = '${fileutils.normalizePath(config.scriptsFolder)}'
+
+  #
+  # Path to the log file created when the game crashes
+  #
+  # The extension uses this file to get information about the exception
+  # 
+  ERROR_FILE_PATH = '${fileutils.normalizePath(config.errorFilePath)}'
 end
 
 ###############################################################################
@@ -2263,19 +2281,22 @@ module ScriptLoader
       load_order_path = File.join(SCRIPTS_PATH, '${config.loadOrderFileName}')
       log("Running script loader...")
       log("Scripts folder path is: '#{SCRIPTS_PATH}'")
+      log("Game error log file path is: '#{ERROR_FILE_PATH}'")
       log("Load order file path is: '#{load_order_path}'")
       log("Reading load order file...")
       load_order = File.read(load_order_path).split("\\n")
       # Start load order processing
       load_order.each do |script|
-        load_script(script)
+        load_script(script.chomp)
       end
     rescue ResetLoader
       log("Restarting script loader...")
       retry
     rescue => e
+      # Creates the error log file directory
+      create_dir(File.dirname(ERROR_FILE_PATH))
       # Notifies VSCode extension of the error
-      File.open('${config.errorFileName}', 'wb') do |file|
+      File.open(ERROR_FILE_PATH, 'wb') do |file|
         file.write(process_exception(e))
       end
       # Raises again the exception to kill the process
@@ -2445,6 +2466,17 @@ module ScriptLoader
   end
 
   #
+  # Creates a new directory and all subfolders needed
+  #
+  def self.create_dir(directory)
+    path = directory.to_s.split(File::SEPARATOR)
+    path.size.times do |i|
+      dir = path[0..i].join(File::SEPARATOR)
+      Dir.mkdir(dir) unless File.directory?(dir)
+    end
+  end
+
+  #
   # Logs the message.
   #
   # Logging is deactivated in RGSS1 and RGSS2 to avoid message box spam.
@@ -2541,20 +2573,5 @@ ScriptLoader.run
     // Removes any trailing whitespaces left
     processed = processed.trim();
     return processed;
-  }
-
-  /**
-   * Formats the current date and returns it as a string.
-   * @returns Formatted date.
-   */
-  private _currentDate(): string {
-    let date = new Date();
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear().toString();
-    const hour = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const seconds = date.getSeconds().toString().padStart(2, '0');
-    return `${year}.${month}.${day} - ${hour}.${minutes}.${seconds}`;
   }
 }

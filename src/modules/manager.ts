@@ -153,7 +153,7 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
     );
     extensionGameWatcher.update(
       new vscode.RelativePattern(
-        extensionConfig.projectFolderPath!,
+        extensionConfig.determineGameLogPath({ removeFilePart: true })!,
         Configuration.GAME_OUTPUT_FILE
       )
     );
@@ -319,11 +319,6 @@ export async function importScripts() {
       canSelectFiles: true,
       canSelectFolders: false,
       canSelectMany: false,
-      filters: {
-        'RPG Maker Bundle File': [
-          extensionConfig.determineExtension({ removeDot: true }),
-        ],
-      },
     });
 
     // Checks bundle file validness
@@ -401,21 +396,20 @@ export async function createScriptLoader() {
 }
 
 /**
- * Creates a back up bundle file from all extracted scripts available.
+ * Creates a backup bundle file from all extracted scripts available.
  *
  * This function includes all editor sections, whether they are enabled or not.
  *
- * The back up file order will be the same as the current tree order.
+ * The backup file order will be the same as the current tree order.
  * @returns A promise
  */
 export async function createBackUpBundleFile() {
   try {
-    // Gets the file name
-    const fileName = extensionConfig.processExtension(
-      Configuration.EXTRACTED_SCRIPTS_BACK_UP_FILE_NAME
+    // Gets the backup file path
+    const backUpFilePath = extensionConfig.processBackupFilePath(
+      Configuration.EXTRACTED_SCRIPTS_BACKUP_FILE_NAME
     );
-    // Formats the back up file path
-    const backUpFilePath = extensionScripts.formatBackUpPath(fileName.fsPath);
+
     // Checks whether the path was determined or not
     if (backUpFilePath) {
       const sections = extensionScripts.root.nestedChildren();
@@ -425,17 +419,17 @@ export async function createBackUpBundleFile() {
       );
       if (response === ScriptsController.BUNDLE_CREATED) {
         logger.logInfo(
-          `The back up bundle file was created successfully at: "${backUpFilePath.fsPath}"`
+          `The backup bundle file was created successfully at: "${backUpFilePath.fsPath}"`
         );
         vscode.window.showInformationMessage(
-          'The back up bundle file was created successfully!'
+          'The backup bundle file was created successfully!'
         );
       } else {
-        logger.logError(`Back up file creation reported an unknown code!`);
+        logger.logError(`Backup file creation reported an unknown code!`);
       }
     } else {
       logger.logError(
-        `The back up could not be created because it was impossible to determine the back up path!`
+        `The backup could not be created because it was impossible to determine the backup path!`
       );
       showBasicErrorMessage();
     }
@@ -551,7 +545,7 @@ export async function compileBundleFile() {
     logger.logInfo('Compiling scripts...');
 
     // Creates destination path
-    let destination = extensionConfig.determineScriptsCompilePath();
+    const destination = extensionConfig.determineScriptsCompilePath();
 
     // Checks destination validness
     if (!destination) {
@@ -561,9 +555,6 @@ export async function compileBundleFile() {
       return;
     }
 
-    // Processes the path to append the proper extension
-    const bundleFilePath = extensionConfig.processExtension(destination);
-
     // Create bundle file
     const loadedSections = extensionScripts.root.filterChildren(
       (section) => section.isLoaded(),
@@ -571,11 +562,11 @@ export async function compileBundleFile() {
     );
     let response = await extensionScripts.createBundle(
       loadedSections,
-      bundleFilePath
+      destination
     );
     if (response === ScriptsController.BUNDLE_CREATED) {
       logger.logInfo(
-        `Bundle file compiled successfully at: "${bundleFilePath.fsPath}"`
+        `Bundle file compiled successfully at: "${destination.fsPath}"`
       );
       vscode.window.showInformationMessage(
         'Scripts were compiled successfully!'
@@ -894,7 +885,6 @@ export async function sectionToggleLoad(
           ? selected
           : [section];
       for (let item of items) {
-        // for (let item of extensionUI.getTreeSelection() || [section]) {
         if (item) {
           toggleMatrix.push([item, !item.isLoaded()]);
         }
