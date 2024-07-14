@@ -348,7 +348,7 @@
       {
         "command": "rgss-script-editor.compileBundleFile",
         "key": "CTRL+F5",
-        "when": "rgss-script-editor.openedFolder"
+        "when": "rgss-script-editor.extractedScripts"
       },
       {
         "command": "rgss-script-editor.sectionCreate",
