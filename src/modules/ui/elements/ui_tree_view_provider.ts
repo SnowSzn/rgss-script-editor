@@ -154,12 +154,14 @@ export class EditorViewProvider
       }
     });
 
-    // Calls drap and drop command
-    vscode.commands.executeCommand(
-      'rgss-script-editor.sectionMove',
-      sections,
-      target
-    );
+    if (sections.length > 0) {
+      // Calls drap and drop command
+      vscode.commands.executeCommand(
+        'rgss-script-editor.sectionMove',
+        sections,
+        target
+      );
+    }
   }
 
   /**
