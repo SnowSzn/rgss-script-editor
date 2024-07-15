@@ -1761,10 +1761,22 @@ export class ScriptsController {
     // Resets the clipboard for each copy operation
     this._clipboard = [];
 
-    // Select only the valid sections
+    // Updates the clipboard with the editor section instances
     sections.forEach((section) => {
       if (!section.isType(EditorSectionType.Folder)) {
         this._clipboard.push(section);
+        this._clipboard.push(...section.nestedChildren());
+      }
+    });
+
+    // Removes duped instances
+    let dupedIds: Set<crypto.UUID> = new Set();
+    this._clipboard = this._clipboard.filter((section) => {
+      if (dupedIds.has(section.id)) {
+        return false;
+      } else {
+        dupedIds.add(section.id);
+        return true;
       }
     });
   }
