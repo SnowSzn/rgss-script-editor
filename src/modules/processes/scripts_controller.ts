@@ -1779,7 +1779,9 @@ export class ScriptsController {
     let pasted = this._clipboard.length > 0;
 
     // Perform the paste from the clipboard
-    for (let section of this._clipboard) {
+    for (let i = 0; i < this._clipboard.length; i++) {
+      const section = this._clipboard[i];
+
       // Determine section paste information
       const info = this.determineSectionInfo(
         section.type,
@@ -1795,6 +1797,9 @@ export class ScriptsController {
         if (section.isType(EditorSectionType.Script)) {
           contents = fs.readFileSync(section.resourceUri.fsPath).toString();
         }
+
+        // Increase the priority to keep the clipboard order
+        info.priority = info.priority ? info.priority + i : info.priority;
 
         // Create section
         this.sectionCreate(info, {
