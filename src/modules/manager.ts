@@ -1109,9 +1109,14 @@ export async function dispose() {
 export async function onDidChangeConfiguration(
   event: vscode.ConfigurationChangeEvent
 ) {
-  // Restarts extension if the scripts folder path is changed
   if (event.affectsConfiguration('rgssScriptEditor.external.scriptsFolder')) {
+    // Restarts extension if the scripts folder path is changed
     await restart();
+  } else if (
+    event.affectsConfiguration('rgssScriptEditor.external.gameLogFileFolder')
+  ) {
+    // Re-creates the script loader if user changes the game log folder path
+    await createScriptLoader();
   }
 }
 
