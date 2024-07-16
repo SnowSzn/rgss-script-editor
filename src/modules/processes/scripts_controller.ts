@@ -47,6 +47,11 @@ type ControllerCreateOptions = {
   checkboxState?: boolean;
 
   /**
+   * Sets the collapsible state
+   */
+  collapsibleState?: vscode.TreeItemCollapsibleState;
+
+  /**
    * Create contents.
    *
    * This is ignored for section that are not scripts.
@@ -1595,6 +1600,10 @@ export class ScriptsController {
             fileutils.createFolder(child.resourceUri.fsPath, {
               recursive: true,
             });
+            // Sets collapsible state (only if valid)
+            if (options?.collapsibleState) {
+              child.setCollapsibleState(options?.collapsibleState);
+            }
             break;
           }
         }
@@ -1816,6 +1825,7 @@ export class ScriptsController {
       // Create parent section
       let sectionParent = this.sectionCreate(info, {
         checkboxState: section.isLoaded(),
+        collapsibleState: section.collapsibleState,
         contents: sectionContents,
       });
 
@@ -1846,6 +1856,7 @@ export class ScriptsController {
           // Create child with the new parent instance
           this.sectionCreate(childInfo, {
             checkboxState: child.isLoaded(),
+            collapsibleState: child.collapsibleState,
             contents: childContents,
           });
         });
