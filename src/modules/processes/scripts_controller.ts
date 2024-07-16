@@ -2218,7 +2218,8 @@ export class ScriptsController {
         ? entry
         : EDITOR_SECTION_SKIPPED_CHARACTER.concat(entry);
       // Writes entry to the load order
-      fs.writeSync(fd, `${entry}\n`);
+      let eol = this._config?.determineFileEOL() || '\n';
+      fs.writeSync(fd, `${entry}${eol}`);
     }
     // Close file
     fs.closeSync(fd);
