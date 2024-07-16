@@ -1685,7 +1685,7 @@ export class ScriptsController {
       })
     ) {
       throw new Error(
-        `Cannot move sections because an editor section already exists at target!`
+        `Cannot move the sections because there is an existing section with the same name!`
       );
     }
 

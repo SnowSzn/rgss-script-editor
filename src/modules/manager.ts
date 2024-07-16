@@ -847,6 +847,9 @@ export async function sectionMove(
     await refresh();
   } catch (error) {
     logger.logErrorUnknown(error);
+    if (error instanceof Error) {
+      vscode.window.showErrorMessage(error.message);
+    }
   }
 }
 
