@@ -2,6 +2,33 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.4.0] - 16/07/2024
+
+### Added
+
+- Added configuration to change the log files path
+  - Moved all the extension's files and folders inside a parent folder to make it tidier
+  - The script loader is now re-created when the game log file path is changed
+- Drag and drop sections (folder/scripts) on the VSCode editor
+  - You can drop sections from the extension's tree view directly on the editor
+    - When a folder is dropped it will open all sections inside recursively
+    - You can drop sections on different columns
+- Compile enabled scripts using a keybind
+  - You can use a keybind (CTRL+F5 by default) to quickly compile the current enabled scripts
+  - The bundle file name is set to Scripts to match the RPG Maker bundle file name
+  - You can use this to automatize the creation of a bundle file for game distribution.
+- Copy and paste sections on the extension's tree view
+  - You can copy any section on the tree view
+    - Copied folders will keep all child sections
+    - All sections will be saved in the clipboard
+  - Paste any saved section on the clipboard anywhere on the tree
+    - Pasted sections will make sure not to overwrite existing sections with the same name
+
+### Changed
+
+- Load order file uses the user selected EOL characters when created
+- Extension shows an error message when it is not possible to move sections
+
 ## [1.3.1] - 21/06/2024
 
 ### Fixed

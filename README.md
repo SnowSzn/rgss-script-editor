@@ -23,13 +23,9 @@
 - [Extension Settings](#extension-settings)
 - [Known Issues](#known-issues)
 - [Latest Release Notes](#latest-release-notes)
-  - [\[1.3.1\] - 21/06/2024](#131---21062024)
-    - [Fixed](#fixed)
-    - [Changed](#changed)
-  - [\[1.3.0\] - 20/06/2024](#130---20062024)
+  - [\[1.4.0\] - 16/07/2024](#140---16072024)
     - [Added](#added)
-    - [Fixed](#fixed-1)
-    - [Changed](#changed-1)
+    - [Changed](#changed)
 - [Contributors](#contributors)
 
 ## Introduction
@@ -219,6 +215,9 @@ These commands are identified with ellipses (such as the command "Create Section
   - Creates a bundle file with the selected scripts in the tree view
   - **All selected sections are included**, whether they are enabled or disabled
   - The bundle file created keeps the same load order and tree structure as the tree view
+- `rgss-script-editor.compileBundleFile`
+  - Compiles current enabled scripts
+  - You can use this to automatize the creation of a bundle file for game distribution.
 - `rgss-script-editor.runGame`
   - Runs the game
 - `rgss-script-editor.processGameException`
@@ -239,6 +238,12 @@ These commands are identified with ellipses (such as the command "Create Section
   - Usable only in the tree view editor
 - `rgss-script-editor.sectionMove`
   - Move section/s on the tree view
+  - Usable only in the tree view editor
+- `rgss-script-editor.sectionCopy`
+  - Copy section/s from the tree view into the clipboard
+  - Usable only in the tree view editor
+- `rgss-script-editor.sectionPaste`
+  - Paste section/s from the clipboard into the tree view
   - Usable only in the tree view editor
 - `rgss-script-editor.sectionToggleLoad`
   - Toggles the load status (enabled/disabled) of the section/s on the tree view
@@ -286,6 +291,12 @@ This extension contributes the following settings:
   - The relative path within the project's folder where all back ups will be saved.
 - `rgssScriptEditor.external.scriptsFolder`
   - The relative path within the project's folder where all scripts will be extracted.
+- `rgssScriptEditor.external.extensionLogFileFolder`
+  - The relative path within the project's folder where the extension log file is created.
+- `rgssScriptEditor.external.gameLogFileFolder`
+  - The relative path within the project's folder where the game log file is created.
+- `rgssScriptEditor.external.scriptsCompileFolder`
+  - The relative path within the project's folder where the compiled scripts bundle file is saved.
 - `rgssScriptEditor.gameplay.gameExecutablePath`
   - The relative path to the game executable inside the project folder.
     - You can change this option to allow MKXP-Z executable to be launched.
@@ -433,67 +444,32 @@ Nevertheless this feature should not be used, hence the **EXPERIMENTAL** label o
 
 ## Latest Release Notes
 
-### [1.3.1] - 21/06/2024
-
-#### Fixed
-
-- Fixed an issue reveal script on the tree view
-  - Due to VS Code limitations, the reveal depth allows up to three levels
-    - The reveal operation failed when the script is more deep than three levels
-- Fixed a problem when collapsing and expanding folders
-  - The extension did not update the collapsible status of the folder
-    - When the tree was refreshed, the collapsible status was reset to the default state
-
-#### Changed
-
-- Changed debug to file option default value to false
-  - Avoids unnecesary file write calls
-  - Users can enable it manually when reporting bugs
-
-### [1.3.0] - 20/06/2024
+### [1.4.0] - 16/07/2024
 
 #### Added
 
-- The extension now automatically re-creates the script loader every time the user opens a folder if the scripts are already extracted
-  - It is recommended to leave it active, so the extension can update the script loader between updates.
-  - Optionally, it can be disabled, but the user will have to update the script loader manually with the corresponding command.
-- Added run game behavior option
-  - The user can choose how the extension behaves when trying to launch the game again.
-  - You can choose between the following behaviors:
-    - Nothing: Does nothing, this how RPG Maker behaves (default)
-    - Kill and Run: Kills the current game process and runs it again
-    - Allow Multiple: Allows the user to start more than one game process at the same time
-- Added files EOL (End-of-File) option
-  - Scripts are now created with the appropriate EOL characters
-  - You can force the extension to use a specific EOL type (LF, CRLF)
-  - You can also let the extension determine the appropriate EOL automatically
-    - This is based on the operating system
-- Import scripts from bundle files
-  - You can import all scripts inside an RPG Maker scripts bundle file
-  - Optionally, you can allow whether to overwrite existing scripts or not
-- Added a file system watcher to detect the output file the game creates when an exception kills the game
-  - In previous versions, the extension processes the game exception only it the game was launched from VS Code
-  - If the extension is running. you can launch the game out of VS Code, and it will process the game output file
-- Added a new command to reveal a script or folder on the operating system file explorer
-  - Available in the context menu when selecting a script or a folder in the script editor view
-- Added the possibility for developers to reload scripts on runtime **(EXPERIMENTAL)**
-  - The script loader will load scripts again if a ResetLoader exception is raised
-  - You can raise this exception anywhere on your code
-
-#### Fixed
-
-- The extension now gets the appropriate game process PID instead of the shell process PID
-  - The game processes are now properly killed when closing VS Code or switching between projects
-- Fixed game process Errno::EBADF exceptions
-  - Errno::EBADF was raised sometimes on RPG Maker VX Ace projects
-    - The game fails to redirect output to the console output
-  - Output is redirected to the null device if this happens to avoid crashes
+- Added configuration to change the log files path
+  - Moved all the extension's files and folders inside a parent folder to make it tidier
+  - The script loader is now re-created when the game log file path is changed
+- Drag and drop sections (folder/scripts) on the VSCode editor
+  - You can drop sections from the extension's tree view directly on the editor
+    - When a folder is dropped it will open all sections inside recursively
+    - You can drop sections on different columns
+- Compile enabled scripts using a keybind
+  - You can use a keybind (CTRL+F5 by default) to quickly compile the current enabled scripts
+  - The bundle file name is set to Scripts to match the RPG Maker bundle file name
+  - You can use this to automatize the creation of a bundle file for game distribution.
+- Copy and paste sections on the extension's tree view
+  - You can copy any section on the tree view
+    - Copied folders will keep all child sections
+    - All sections will be saved in the clipboard
+  - Paste any saved section on the clipboard anywhere on the tree
+    - Pasted sections will make sure not to overwrite existing sections with the same name
 
 #### Changed
 
-- Changed extension's auto process game error option
-  - If enabled, the extension will automatically show the exception without asking the user to peek the backtrace
-  - If disabled, it will ask the user before showing the exception information.
+- Load order file uses the user selected EOL characters when created
+- Extension shows an error message when it is not possible to move sections
 
 ## Contributors
 
