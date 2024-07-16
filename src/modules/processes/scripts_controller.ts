@@ -1831,8 +1831,8 @@ export class ScriptsController {
           // Create child info
           let childInfo: ControllerSectionInfo = {
             type: child.type,
-            parent: sectionParent,
-            uri: vscode.Uri.joinPath(sectionParent.resourceUri, relativeUri),
+            parent: sectionParent!,
+            uri: vscode.Uri.joinPath(sectionParent!.resourceUri, relativeUri),
           };
 
           // Gets section contents (if valid)
