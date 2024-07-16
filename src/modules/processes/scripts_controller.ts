@@ -1762,23 +1762,17 @@ export class ScriptsController {
     this._clipboard = [];
 
     // Updates the clipboard with the editor section instances
-    sections.forEach((section) => {
-      if (!section.isType(EditorSectionType.Folder)) {
-        this._clipboard.push(section);
-        this._clipboard.push(...section.nestedChildren());
-      }
-    });
-
-    // Removes duped instances
     let dupedIds: Set<crypto.UUID> = new Set();
-    this._clipboard = this._clipboard.filter((section) => {
-      if (dupedIds.has(section.id)) {
-        return false;
-      } else {
+    for (let section of sections) {
+      if (!dupedIds.has(section.id)) {
+        this._clipboard.push(section);
         dupedIds.add(section.id);
-        return true;
+        // Include nested children IDs to avoid duplication
+        section.nestedChildren().forEach((child) => {
+          dupedIds.add(child.id);
+        });
       }
-    });
+    }
   }
 
   /**
@@ -1793,8 +1787,9 @@ export class ScriptsController {
     // Perform the paste from the clipboard
     for (let i = 0; i < this._clipboard.length; i++) {
       const section = this._clipboard[i];
+      const sectionChildren = section.nestedChildren();
 
-      // Determine section paste information
+      // Determine parent section creation info
       const info = this.determineSectionInfo(
         section.type,
         section.getName(),
@@ -1802,24 +1797,64 @@ export class ScriptsController {
         { avoidOverwrite: true }
       );
 
-      // Checks for section information validness
-      if (info) {
-        // Gets section contents (if valid)
-        let contents = '';
-        if (section.isType(EditorSectionType.Script)) {
-          contents = fs.readFileSync(section.resourceUri.fsPath).toString();
-        }
+      // Checks info validness
+      if (!info) {
+        continue;
+      }
 
-        // Increase the priority to keep the clipboard order
-        info.priority = info.priority ? info.priority + i : info.priority;
+      // Gets parent section contents (if allowed)
+      let sectionContents = '';
+      if (section.isType(EditorSectionType.Script)) {
+        sectionContents = fs
+          .readFileSync(section.resourceUri.fsPath)
+          .toString();
+      }
 
-        // Create section
-        this.sectionCreate(info, {
-          checkboxState: section.isLoaded(),
-          contents: contents,
+      // Increase the priority to keep the clipboard order
+      info.priority = info.priority ? info.priority + i : info.priority;
+
+      // Create parent section
+      let sectionParent = this.sectionCreate(info, {
+        checkboxState: section.isLoaded(),
+        contents: sectionContents,
+      });
+
+      // Create all children
+      if (sectionParent) {
+        sectionChildren.forEach((child) => {
+          // Determine the relative path to the child
+          let relativeUri = path.relative(
+            section.resourceUri.fsPath,
+            child.resourceUri.fsPath
+          );
+
+          // Create child info
+          let childInfo: ControllerSectionInfo = {
+            type: child.type,
+            parent: sectionParent,
+            uri: vscode.Uri.joinPath(sectionParent.resourceUri, relativeUri),
+          };
+
+          // Gets section contents (if valid)
+          let childContents = '';
+          if (child.isType(EditorSectionType.Script)) {
+            childContents = fs
+              .readFileSync(child.resourceUri.fsPath)
+              .toString();
+          }
+
+          // Create child with the new parent instance
+          this.sectionCreate(childInfo, {
+            checkboxState: child.isLoaded(),
+            contents: childContents,
+          });
         });
       }
     }
+
+    // Resets the clipboard after paste
+    this._clipboard = [];
+
     return pasted;
   }
 
@@ -1906,38 +1941,45 @@ export class ScriptsController {
     name: string,
     options?: ControllerDetermineUriOptions
   ) {
-    let sectionName = name;
-    // Processes the name based on the type
     switch (type) {
       case EditorSectionType.Separator: {
-        sectionName = this.getSeparatorName();
-        break;
+        let sectionName = this.getSeparatorName();
+        return vscode.Uri.joinPath(parent, sectionName);
       }
       case EditorSectionType.Folder: {
-        sectionName = this._removeInvalidCharacters(name);
-        break;
+        let sectionName = this._removeInvalidCharacters(name);
+        let sectionUri = vscode.Uri.joinPath(parent, sectionName);
+
+        // Checks if overwriting an existing editor section should be avoided
+        if (options?.avoidOverwrite) {
+          let index = 1;
+          while (fs.existsSync(sectionUri.fsPath)) {
+            sectionName = this._removeInvalidCharacters(`${name} (${index})`);
+            sectionUri = vscode.Uri.joinPath(parent, sectionName);
+            index++;
+          }
+        }
+        return sectionUri;
       }
       case EditorSectionType.Script: {
-        sectionName = this._formatScriptName(name);
-        break;
+        let sectionName = this._formatScriptName(name);
+        let sectionUri = vscode.Uri.joinPath(parent, sectionName);
+
+        // Checks if overwriting an existing editor section should be avoided
+        if (options?.avoidOverwrite) {
+          let index = 1;
+          while (fs.existsSync(sectionUri.fsPath)) {
+            sectionName = this._formatScriptName(`${name} (${index})`);
+            sectionUri = vscode.Uri.joinPath(parent, sectionName);
+            index++;
+          }
+        }
+        return sectionUri;
+      }
+      default: {
+        return vscode.Uri.joinPath(parent, name);
       }
     }
-
-    // Formats uri path
-    let uriPath = vscode.Uri.joinPath(parent, sectionName);
-
-    // Checks if overwriting an existing editor section should be avoided
-    if (options?.avoidOverwrite) {
-      let index = 1;
-      while (fs.existsSync(uriPath.fsPath)) {
-        let fileName = `${name} (${index})`;
-        uriPath = vscode.Uri.joinPath(parent, this._formatScriptName(fileName));
-        index++;
-      }
-    }
-
-    // Returns the final uri path
-    return uriPath;
   }
 
   /**
