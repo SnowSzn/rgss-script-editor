@@ -981,7 +981,8 @@ export async function sectionToggleCollapse(section?: EditorSectionBase) {
       `Section: "${section}" collapsible state set to: ${collapsibleState}`
     );
 
-    await refresh({ treeItem: section, noLoadOrderRefresh: true });
+    console.log(section.parent);
+    await refresh({ treeItem: section.parent, noLoadOrderRefresh: true });
   } catch (error) {
     logger.logErrorUnknown(error);
   }
