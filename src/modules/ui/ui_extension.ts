@@ -173,36 +173,6 @@ export class ExtensionUI {
         return;
       }
 
-      // (Work-around) VSCode reveal api only allows up to 3 levels deep maximum
-      // since the extension allows to have subfolders we have to check how many
-      // parents exists first before calling reveal with the target section
-      let parents: EditorSectionBase[] = [];
-      let curParent = section.parent;
-      while (curParent) {
-        // Breaks if parent is the root section
-        if (this._editorViewProvider.isRootPath(curParent)) {
-          break;
-        }
-        // Tracks new parent
-        parents.push(curParent);
-        curParent = curParent.parent;
-      }
-
-      // Checks if the work-around is needed to reveal the target section
-      if (parents.length >= 3) {
-        // Reveals all parents first (stack)
-        while (parents.length > 0) {
-          let curParent = parents.pop();
-
-          // Reveal parent
-          await this._editorView?.reveal(curParent!, {
-            select: false,
-            expand: true,
-            focus: false,
-          });
-        }
-      }
-
       // Reveals the target editor section
       await this._editorView?.reveal(section, {
         select: options.select,
