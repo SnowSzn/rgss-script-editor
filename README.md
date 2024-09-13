@@ -9,6 +9,7 @@
 
 - [Table of Contents](#table-of-contents)
 - [Introduction](#introduction)
+  - [Long explanation](#long-explanation)
 - [Features](#features)
 - [Screenshots](#screenshots)
   - [Extension Editor View](#extension-editor-view)
@@ -22,10 +23,6 @@
 - [Extension Commands](#extension-commands)
 - [Extension Settings](#extension-settings)
 - [Known Issues](#known-issues)
-- [Latest Release Notes](#latest-release-notes)
-  - [\[1.4.0\] - 16/07/2024](#140---16072024)
-    - [Added](#added)
-    - [Changed](#changed)
 - [Contributors](#contributors)
 
 ## Introduction
@@ -37,11 +34,11 @@ This is an extension for Visual Studio Code that makes VSCode usable as the scri
 - RPG Maker VX Ace
 
 In a nutshell, this extension extracts each script from the bundle file that RPG Maker uses into individual ruby files.
-Once the extraction is done, it creates a backup of the original bundle file (`Scripts.rxdata`, `Scripts.rvdata` or `Scripts.rvdata2`) as a security measure, subsequently it overwrites the original bundle file with a script loader bundle file that loads ruby scripts inside a relative folder based on a text file that dictates the loading order.
+Once the extraction is done, it creates a backup of the original bundle file (`Scripts.rxdata`, `Scripts.rvdata` or `Scripts.rvdata2`), subsequently it overwrites the original bundle file with a script loader bundle file that loads ruby scripts inside a relative folder based on a text file that dictates the loading order.
 
-Since this extension uses a different approach for loading scripts, you can use the RPG Maker editor and edit scripts in Visual Studio Code at the same time without worrying about RPG Maker overwriting the bundled file with outdated data.
+Since this extension uses a different approach for loading scripts, **you can use the RPG Maker editor and edit scripts in Visual Studio Code at the same time** without worrying about RPG Maker overwriting the bundled file with outdated data.
 
-**Long explanation**
+### Long explanation
 
 RPG Maker loads all data (database, maps, scripts...) at startup when the editor is launched, so you can modify anything of the project and save it into their appropiate data file (scripts are saved into: `Scripts.rxdata`, `Scripts.rvdata` or `Scripts.rvdata2`), this happens with every modification you do inside the editor.
 
@@ -57,37 +54,41 @@ As a security measure, the extension will not allow overwriting the script bundl
 
 ## Features
 
+- **Version Control**
+  - Allows you to have a version control of the game's scripts
+  - The script editor view shows VS Code source control diff colors on the tree view
 - **Workspace Support**
   - You can change the active folder easily in a workspace.
   - If an important setting is modified, it will re-open the current workspace folder automatically.
 - **Run Game**
-  - You can run the game within VSCode using a customizable key shortcut (F12 by default)
+  - You can run the game within VS Code using a customizable keybind (F12 by default)
   - Both `test` (`debug`) and `console` (RPG Maker VX Ace) modes are supported.
-  - Optionally, custom arguments can be used instead of the default ones.
+    - Optionally, custom arguments can be used instead of the default ones.
   - You can also specify a custom path to the game, in case you want to run an MKXP-Z executable.
   - You can set the behavior of the extension when running the game executable:
-    - Nothing: Does nothing, this how RPG Maker Editor behaves (default)
-    - Kill and Run: Kills the current game process and runs it again
-    - Allow Multiple: Allows the user to start more than one game process at the same time
+    - **Nothing**: Does nothing, this how RPG Maker Editor behaves (default)
+    - **Kill and Run**: Kills the current game process and runs it again.
+    - **Allow Multiple**: Allows the user to start more than one game process at the same time.
 - **Backup Creation**
-  - A back up of the original scripts bundle file will always be created upon script extraction
-    - Thus, the script loader will be created
-  - You can freely create a bundle file of all scripts as a back up at any time.
-    - All back ups are named with a timestamp of when they were created.
-    - The back up bundle file will include **all editor sections** (whether they are enabled or disabled)
+  - A back-up of the original scripts bundle file will always be created upon script extraction.
+  - You can freely create a bundle file of all scripts as a back-up at any time.
+    - All back-ups are named with a timestamp of when they were created.
+    - The back-up bundle file will include **all editor sections** (whether they are enabled or disabled)
   - All back ups are saved into the specified folder in the extension's settings.
 - **Scripts Extraction**
   - You can extract all scripts inside the bundle file to a custom folder within the project's folder.
   - Each RPG Maker script entry will be converted into the appropiate equivalent for the extension's script editor in the process.
-    - Every nameless entry with no code will be treated as a separator.
-    - Any other entry, will be treated as a script file.
+    - Every **nameless entry** with no code will be treated as a **separator**.
+    - **Any other entry** will be treated as a **script file**.
     - An entry with no code besides an specific comment this extension creates will be treated as a folder.
-  - If you are extracting a bundle file previously created by this extension, the tree structure will be recreated.
+  - If you are extracting a bundle file previously created by this extension, **the tree structure will be recreated**.
 - **Bundle File Creation**
   - This process is **heavily recommended** when sharing a copy of your game.
   - You can create an RPG Maker bundle file (`Scripts.rxdata`, `Scripts.rvdata` or `Scripts.rvdata2`) using the current enabled scripts.
-    - If you do not want to include a folder or a certain script in the final bundle file, you can just uncheck them and it will be ignored when creating the bundle file
-  - You can create a new bundle file from the selected scripts on the extension's tree view
+    - If you do not want to include a folder or a certain script in the final bundle file, you can just uncheck them and it will be ignored when creating the bundle file.
+  - You can quickly compile a bundle file with a customizable keybind (CTRL+F5 by default)
+    - This bundle file will be saved at the path specified in the extension's settings.
+  - You can create a new bundle file with specific scripts on the extension's tree view.
     - You must select manually all editor sections in the tree view you want to include in the package file
   - The bundle file is always created keeping the order and tree structure the user creates (subfolders, separators...)
     - You can later rebuild the tree from any bundle file created by this extension (as well as the loading order) if it is not improperly modified by the user.
@@ -117,9 +118,14 @@ As a security measure, the extension will not allow overwriting the script bundl
     - Rename sections.
       - You can rename sections.
       - All changes will be reflected in its children sections.
-    - Move sections.
-      - The tree can be arranged in any order desired.
-      - The load order is defined by the order of the editor, before running the game.
+    - Drag and drop sections.
+      - You can move any group of sections on the tree view.
+        - The tree can be arranged in any order desired.
+      - The load order is defined by the order of the extension's script editor, before running the game.
+      - You can also drag and drop sections on the VS Code editor to open them
+        - Folders will open all scripts inside recursively.
+    - Copy/Paste sections.
+      - You can copy and paste sections on the tree view.
     - Collapse/Expand sections.
       - You can expand or collapse folder sections.
     - Reveal active script on the tree view
@@ -129,8 +135,8 @@ As a security measure, the extension will not allow overwriting the script bundl
       - You can reveal a script section on the operating system file explorer
     - Editor Mode.
       - There are two editor modes available, you can switch freely between them:
-        - Merge Mode: Merges any supported section with the section in which they are dropped.
-        - Move Mode: Moves the selected sections to the next position of the section where they are dropped inside the same parent section.
+        - **Merge Mode**: Merges any supported section with the section in which they are dropped (default)
+        - **Move Mode**: Moves the selected sections to the next position of the section where they are dropped inside the same parent section.
 - **Game Exception Processing**
   - This extension can process the exception that killed the game in the last test game session.
   - The extension backtrace will be shown in a markdown file besides the active editor.
@@ -439,37 +445,6 @@ end
 ```
 
 Nevertheless this feature should not be used, hence the **EXPERIMENTAL** label on it, since scripts are loaded on top of the previous scripts causing possible undefined or unexpected behavior problems.
-
----
-
-## Latest Release Notes
-
-### [1.4.0] - 16/07/2024
-
-#### Added
-
-- Added configuration to change the log files path
-  - Moved all the extension's files and folders inside a parent folder to make it tidier
-  - The script loader is now re-created when the game log file path is changed
-- Drag and drop sections (folder/scripts) on the VSCode editor
-  - You can drop sections from the extension's tree view directly on the editor
-    - When a folder is dropped it will open all sections inside recursively
-    - You can drop sections on different columns
-- Compile enabled scripts using a keybind
-  - You can use a keybind (CTRL+F5 by default) to quickly compile the current enabled scripts
-  - The bundle file name is set to Scripts to match the RPG Maker bundle file name
-  - You can use this to automatize the creation of a bundle file for game distribution.
-- Copy and paste sections on the extension's tree view
-  - You can copy any section on the tree view
-    - Copied folders will keep all child sections
-    - All sections will be saved in the clipboard
-  - Paste any saved section on the clipboard anywhere on the tree
-    - Pasted sections will make sure not to overwrite existing sections with the same name
-
-#### Changed
-
-- Load order file uses the user selected EOL characters when created
-- Extension shows an error message when it is not possible to move sections
 
 ## Contributors
 

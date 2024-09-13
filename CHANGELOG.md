@@ -2,6 +2,18 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.4.1] - 13/09/2024
+
+### Changed
+
+- Removed unnecesary refresh call on the editor section expand/collapse callbacks
+  - Script reveals on the editor view should be faster now on projects with many subfolders in depth
+- Removed work-around to reveal editor section with 3 levels of depth or more
+
+### Fixed
+
+- Tree data item not found errors when revealing script sections on the script editor view
+
 ## [1.4.0] - 16/07/2024
 
 ### Added
