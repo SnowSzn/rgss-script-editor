@@ -130,7 +130,7 @@ export class ExtensionUI {
       );
     });
 
-    // Expand callback
+    // Collapse callback
     this._editorView.onDidCollapseElement((e) => {
       vscode.commands.executeCommand(
         'rgss-script-editor.sectionToggleCollapse',
@@ -138,7 +138,7 @@ export class ExtensionUI {
       );
     });
 
-    // Collapse callback
+    // Expand callback
     this._editorView.onDidExpandElement((e) => {
       vscode.commands.executeCommand(
         'rgss-script-editor.sectionToggleCollapse',
