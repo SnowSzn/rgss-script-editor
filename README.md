@@ -187,6 +187,24 @@ As a security measure, the extension will not allow overwriting the script bundl
 - [Visual Studio Code Marketplace](https://marketplace.visualstudio.com/items?itemName=SnowSzn.rgss-script-editor)
 - [Open VSX Marketplace](https://open-vsx.org/extension/SnowSzn/rgss-script-editor)
 
+## How To Use
+
+This extension operates on the root folder of your project (where Game.exe is), it determines the RPG Maker version you are using by checking the Scripts bundle file which should be located in the Data folder for every RPG Maker version, this file could be one of the following:
+
+    Data/Scripts.rvdata2 (for RPG Maker VX Ace)
+    Data/Scripts.rvdata (for RPG Maker VX)
+    Data/Scripts.rxdata (for RPG Maker XP)
+
+As soon as the extension is enabled, you should see a new container in VS Code activity bar with a gem icon:
+
+This container provides a new tree view which you will use as the new script editor.
+
+If opening your project for the first time, it will ask you to extract all scripts from the bundled Scripts data file, once done, the script editor should show all individual scripts within the relative folder where all scripts should be created (you can change this folder in the extension settings)
+
+The status bar is also used to show some useful buttons, you can also use keybinds instead of these buttons (like F12 to start the game)
+
+**If the extension fails to detect the RPG Maker version, you won't be able to use it, make sure you are opening the correct folder in VS Code.**
+
 ## Extension Commands
 
 The commands in this list that has the "Usable only in the tree view editor" are commands that do not work if called from the command palette.
