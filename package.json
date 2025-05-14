@@ -237,6 +237,22 @@
             "description": "Whether to overwrite existing scripts or not when importing scripts from a bundle file.",
             "order": 15
           },
+          "rgssScriptEditor.extension.scriptNameValidation": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "always",
+              "never"
+            ],
+            "enumDescriptions": [
+              "Auto mode enabled/disabled script name validation when necessary",
+              "Always validate script names (enabled)",
+              "Never validate script names (disabled)"
+            ],
+            "default": "auto",
+            "description": "Choose script name validation mode\n\nDue to a Ruby limitation, any RPG Maker that uses a version of Ruby below v1.9 must enable this setting.\n\nThe RPG Maker versions affected by this limitation are: RPG Maker XP and RPG Maker VX.\n\nIf you are using MKXP-Z you don't need to use this, regardless of the RPG Maker version.\n\nCheck extension's README for more information.\n\n**DISABLE AT YOUR OWN RISK**",
+            "order": 18
+          },
           "rgssScriptEditor.external.backUpsFolder": {
             "type": "string",
             "default": "./.rgss-script-editor/backups",
