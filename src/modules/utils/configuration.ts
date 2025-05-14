@@ -40,6 +40,15 @@ export const enum RunGameBehavior {
 }
 
 /**
+ * Enum of script name validation types
+ */
+export const enum NameValidation {
+  AUTO = 'auto',
+  ALWAYS = 'always',
+  NEVER = 'never',
+}
+
+/**
  * Enum of valid RGSS versions.
  */
 const enum RGSSVersion {
@@ -224,6 +233,14 @@ export class Configuration {
    */
   configImportOverwrite(): boolean {
     return this._getVSCodeConfig<boolean>('extension.importScriptsOverwrite')!;
+  }
+
+  /**
+   * Gets the script name validation mode.
+   * @returns Script name validation mode.
+   */
+  configScriptNameValidation(): string {
+    return this._getVSCodeConfig<string>('extension.scriptNameValidation')!;
   }
 
   /**
@@ -672,6 +689,31 @@ export class Configuration {
         return FilesEOL.LF;
       default:
         return FilesEOL.LF;
+    }
+  }
+
+  /**
+   * Determines if the extension should validate script names or not
+   * @returns Script name validation
+   */
+  determineNameValidation(): boolean {
+    let mode = this.configScriptNameValidation();
+
+    // Checks depending of the mode
+    switch (mode) {
+      case NameValidation.ALWAYS:
+        return true;
+      case NameValidation.NEVER:
+        return false;
+      case NameValidation.AUTO:
+        if (this._rgssVersion === RGSSVersion.RGSS3) {
+          return false;
+        } else {
+          return true;
+        }
+
+      default:
+        return true;
     }
   }
 
