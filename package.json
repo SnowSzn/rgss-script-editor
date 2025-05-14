@@ -200,7 +200,7 @@
           "rgssScriptEditor.extension.quickStart": {
             "type": "boolean",
             "default": true,
-            "description": "Enables the extension's quick start mode.",
+            "description": "Enables quick start mode.\n\nWhen quick start mode is enabled, the extension will open the current folder automatically if it is a valid RPG Maker project.",
             "order": 10
           },
           "rgssScriptEditor.extension.autoReveal": {
@@ -228,7 +228,7 @@
           "rgssScriptEditor.extension.recreateScriptLoader": {
             "type": "boolean",
             "default": true,
-            "description": "Whether to re-create the script loader when a project is opened or not (Recommended: ON).",
+            "description": "Whether to re-create the script loader when a project is opened or not.\n\nThe script loader this extension uses is subject to change between updates so it is recommended to leave it enabled.\n\nOnly disable this if you are using a custom script loader or you want to update the script loader manually between updates.",
             "order": 13
           },
           "rgssScriptEditor.extension.importScriptsOverwrite": {
@@ -245,7 +245,7 @@
               "never"
             ],
             "enumDescriptions": [
-              "Auto mode enabled/disabled script name validation when necessary",
+              "Auto mode enables/disables script name validation when necessary",
               "Always validate script names (enabled)",
               "Never validate script names (disabled)"
             ],
@@ -314,7 +314,7 @@
           "rgssScriptEditor.gameplay.automaticArgumentsDetection": {
             "type": "boolean",
             "default": true,
-            "description": "Enables automatic arguments detection mode. If enabled, the extension will automatically choose the appropiate arguments based on the RPG Maker version detected.",
+            "description": "Enables automatic arguments detection mode.\n\nIf enabled, the extension will automatically choose the appropiate arguments based on the RPG Maker version detected.",
             "order": 60
           },
           "rgssScriptEditor.gameplay.editorTestMode": {
@@ -332,7 +332,7 @@
           "rgssScriptEditor.gameplay.customArguments": {
             "type": "string",
             "default": "",
-            "description": "Set your own custom arguments here separated by a whitespace (You must disable 'auto. arguments detection' behavior to use this!)",
+            "description": "Set your own custom arguments here separated by a whitespace.\n\nYou must disable 'auto. arguments detection' behavior to use this!",
             "order": 63
           },
           "rgssScriptEditor.gameplay.gameExceptionAutoProcess": {
