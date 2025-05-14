@@ -220,6 +220,14 @@ export class Configuration {
   }
 
   /**
+   * Gets the extension insert encoding magic comment flag.
+   * @returns Insert encoding comment flag.
+   */
+  configInsertEncodingComment(): string {
+    return this._getVSCodeConfig<string>('extension.insertEncodingComment')!;
+  }
+
+  /**
    * Gets the extension re-create script loader flag.
    * @returns Re-create script loader flag.
    */
