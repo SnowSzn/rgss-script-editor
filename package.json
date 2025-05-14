@@ -225,11 +225,17 @@
             "description": "Choose the type of end of line that the extension will use for files.",
             "order": 12
           },
+          "rgssScriptEditor.extension.insertEncodingComment": {
+            "type": "boolean",
+            "default": false,
+            "description": "Allows the extension to insert a magic comment (# encoding: utf-8) inside every Ruby script file.\n\nIn older versions, all scripts must have this magic comment because Ruby was not able to determine the encoding of a file.\n\nThis is not needed anymore since v1.5.0 but it is available at the user's choice.\n\nYou can read more in the extension's README.",
+            "order": 13
+          },
           "rgssScriptEditor.extension.recreateScriptLoader": {
             "type": "boolean",
             "default": true,
             "description": "Whether to re-create the script loader when a project is opened or not.\n\nThe script loader this extension uses is subject to change between updates so it is recommended to leave it enabled.\n\nOnly disable this if you are using a custom script loader or you want to update the script loader manually between updates.",
-            "order": 13
+            "order": 14
           },
           "rgssScriptEditor.extension.importScriptsOverwrite": {
             "type": "boolean",
