@@ -221,6 +221,13 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   public static CheckState = vscode.TreeItemCheckboxState;
 
   /**
+   * Editor section empty theme icon.
+   */
+  public static EmptyIcon = new vscode.ThemeIcon(
+    'rgss-script-editor-empty-icon'
+  );
+
+  /**
    * Editor section type.
    *
    * **Note: This attribute is inmutable and cannot be changed in subclasses.**
@@ -438,12 +445,8 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    * Sets this editor section tree item icon.
    * @param icon Tree item icon.
    */
-  setIcon(icon?: vscode.ThemeIcon | vscode.Uri | string) {
-    // The only way to not show an icon is using
-    // { light: '', dark: '' } and not undefined.
-    // When falsy, Folder Theme Icon is auto. assigned,
-    // if item is collapsible, otherwise File Theme Icon.
-    this.iconPath = icon ? icon : { light: '', dark: '' };
+  setIcon(icon?: vscode.IconPath | vscode.Uri | string) {
+    this.iconPath = icon ? icon : EditorSectionBase.EmptyIcon;
   }
 
   /**
