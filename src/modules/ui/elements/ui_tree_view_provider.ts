@@ -45,12 +45,12 @@ export class EditorViewProvider
   /**
    * Drop accepted MIME types.
    */
-  dropMimeTypes: readonly string[] = [MIME_TYPE];
+  readonly dropMimeTypes: readonly string[] = [MIME_TYPE];
 
   /**
    * Drag accepted MIME types.
    */
-  dragMimeTypes: readonly string[] = [MIME_TYPE];
+  readonly dragMimeTypes: readonly string[] = [MIME_TYPE];
 
   /**
    * Constructor.
@@ -90,7 +90,7 @@ export class EditorViewProvider
     source: readonly EditorSectionBase[],
     dataTransfer: vscode.DataTransfer,
     token: vscode.CancellationToken
-  ): void | Thenable<void> {
+  ): Thenable<void> | void {
     // Prepares data (must be stringified)
     let extensionData: UUID[] = [];
     let vscodeData: string[] = [];
@@ -131,7 +131,7 @@ export class EditorViewProvider
     target: EditorSectionBase | undefined,
     dataTransfer: vscode.DataTransfer,
     token: vscode.CancellationToken
-  ): void | Thenable<void> {
+  ): Thenable<void> | void {
     // Checks target validness
     if (!target) {
       return;
@@ -214,7 +214,9 @@ export class EditorViewProvider
    * @param element Element
    * @returns Tree item
    */
-  getTreeItem(element: EditorSectionBase): vscode.TreeItem {
+  getTreeItem(
+    element: EditorSectionBase
+  ): vscode.TreeItem | Thenable<vscode.TreeItem> {
     return element;
   }
 
@@ -227,7 +229,9 @@ export class EditorViewProvider
    * @param element Base script section
    * @returns Returns the data
    */
-  getChildren(element?: EditorSectionBase): Thenable<EditorSectionBase[]> {
+  getChildren(
+    element?: EditorSectionBase
+  ): vscode.ProviderResult<EditorSectionBase[]> {
     try {
       if (this._root) {
         let children = element ? element.children : this._root.children;

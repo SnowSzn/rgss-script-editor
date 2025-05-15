@@ -39,7 +39,7 @@ export class FileSystemWatcher {
    * Updates the scripts controller instance attributes.
    * @param config Configuration.
    */
-  update(pattern: vscode.RelativePattern) {
+  async update(pattern: vscode.RelativePattern) {
     this._pattern = pattern;
     this._restart();
   }
@@ -47,7 +47,7 @@ export class FileSystemWatcher {
   /**
    * Disposes the file system watcher instance.
    */
-  dispose() {
+  async dispose() {
     this._watcher?.dispose();
     this._watcher = undefined;
   }

@@ -49,15 +49,6 @@ export type ExtensionUiOptions<T> = {
    * If it is ``undefined`` the tree view will be empty.
    */
   treeRoot: T;
-
-  /**
-   * Drag and drop controller for the tree view.
-   *
-   * This class instance is used by the tree view to handle drag and drop operations.
-   *
-   * If no instance is given, the default drag and drop controller will be the tree provider.
-   */
-  dragAndDropController?: vscode.TreeDragAndDropController<T>;
 };
 
 /**
@@ -85,37 +76,11 @@ export class ExtensionUI {
   constructor() {
     this._editorViewProvider = new EditorViewProvider();
     this._statusBar = new StatusBarItems();
-    this._editorView = undefined;
-  }
-
-  /**
-   * Gets all current items selected on the tree view.
-   *
-   * If there are not items selected it returns ``undefined``.
-   * @returns Tree view selection.
-   */
-  getTreeSelection() {
-    return this._editorView?.selection;
-  }
-
-  /**
-   * Updates the extension UI with the given options.
-   * @param options Extension UI options.
-   */
-  update(options: ExtensionUiOptions<EditorSectionBase>) {
-    // Updates status bar items
-    this._statusBar.update(options.statusBarOptions);
-
-    // Updates view provider
-    this._editorViewProvider.update(options.treeRoot);
-
-    // Creates the tree view
     this._editorView = vscode.window.createTreeView(
       'rgss-script-editor.editorView',
       {
         treeDataProvider: this._editorViewProvider,
-        dragAndDropController:
-          options.dragAndDropController || this._editorViewProvider,
+        dragAndDropController: this._editorViewProvider,
         canSelectMany: true,
         manageCheckboxStateManually: true,
         showCollapseAll: true,
@@ -145,6 +110,28 @@ export class ExtensionUI {
         e.element
       );
     });
+  }
+
+  /**
+   * Gets all current items selected on the tree view.
+   *
+   * If there are not items selected it returns ``undefined``.
+   * @returns Tree view selection.
+   */
+  getTreeSelection() {
+    return this._editorView?.selection;
+  }
+
+  /**
+   * Updates the extension UI with the given options.
+   * @param options Extension UI options.
+   */
+  async update(options: ExtensionUiOptions<EditorSectionBase>) {
+    // Updates status bar items
+    this._statusBar.update(options.statusBarOptions);
+
+    // Updates view provider
+    this._editorViewProvider.update(options.treeRoot);
   }
 
   /**
@@ -227,9 +214,10 @@ export class ExtensionUI {
   /**
    * Disposes all extension UI elements.
    */
-  dispose() {
+  async dispose() {
     // Disposes all status bar items
     this._statusBar.dispose();
+
     // Disposes the editor view
     this._editorView?.dispose();
   }

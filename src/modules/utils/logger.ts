@@ -56,7 +56,7 @@ class Logger {
   /**
    * Disposes this logger instance.
    */
-  dispose() {
+  async dispose() {
     this._output.dispose();
   }
 

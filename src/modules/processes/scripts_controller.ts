@@ -1133,7 +1133,7 @@ export class ScriptsController {
    * Updates the scripts controller instance attributes.
    * @param config Configuration.
    */
-  update(config: Configuration) {
+  async update(config: Configuration) {
     this._config = config;
     this._restart();
   }

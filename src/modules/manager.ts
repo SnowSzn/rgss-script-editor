@@ -146,18 +146,18 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
 
     // Updates extension instances
     logger.update(extensionConfig);
-    extensionGameplay.update(extensionConfig);
-    extensionScripts.update(extensionConfig);
-    extensionScriptsWatcher.update(
+    await extensionGameplay.update(extensionConfig);
+    await extensionScripts.update(extensionConfig);
+    await extensionScriptsWatcher.update(
       new vscode.RelativePattern(extensionConfig.determineScriptsPath()!, '**')
     );
-    extensionGameWatcher.update(
+    await extensionGameWatcher.update(
       new vscode.RelativePattern(
         extensionConfig.determineGameLogPath({ removeFilePart: true })!,
         Configuration.GAME_OUTPUT_FILE
       )
     );
-    extensionUI.update({
+    await extensionUI.update({
       treeRoot: extensionScripts.root,
       statusBarOptions: {
         projectFolder: folder.curProjectFolder.projectFolderName,
@@ -1092,13 +1092,13 @@ export async function dispose() {
   // Disposes the game controller
   await extensionGameplay.dispose();
   // Disposes UI elements
-  extensionUI.dispose();
+  await extensionUI.dispose();
   // Disposes script file system watcher
-  extensionScriptsWatcher.dispose();
+  await extensionScriptsWatcher.dispose();
   // Disposes game output file system watcher
-  extensionGameWatcher.dispose();
+  await extensionGameWatcher.dispose();
   // Disposes logger
-  logger.dispose();
+  await logger.dispose();
 }
 
 /**

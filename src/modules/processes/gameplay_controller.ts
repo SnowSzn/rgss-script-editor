@@ -228,9 +228,9 @@ export class GameplayController {
    * The given ``configuration`` instance must be valid.
    * @param config Configuration instance.
    */
-  update(config: Configuration) {
+  async update(config: Configuration) {
     // Make sure to dispose so info does not mix up between projects
-    this.dispose();
+    await this.dispose();
     this._config = config;
   }
 
