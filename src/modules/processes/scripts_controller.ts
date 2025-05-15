@@ -147,7 +147,7 @@ type LoaderScriptConfig = {
  * All script section names must not match this regular expression.
  */
 const BLACKLIST_REGEXP =
-  /(\bCON\b|\bPRN\b|\bAUX\b|\bNUL\b|\bCOM[1-9]\b|\bLPT[1-9]\b)/gi;
+  /[\\\/:*?"<>|#\0]|(\bCON\b|\bPRN\b|\bAUX\b|\bNUL\b|\bCOM[1-9]\b|\bLPT[1-9]\b)/gi;
 
 /**
  * Regexp of blacklisted (optional) characters and combinations.
