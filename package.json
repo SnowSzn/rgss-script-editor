@@ -228,7 +228,7 @@
           "rgssScriptEditor.extension.insertEncodingComment": {
             "type": "boolean",
             "default": false,
-            "description": "Allows the extension to insert a magic comment (# encoding: utf-8) inside every Ruby script file.\n\nIn older versions, all scripts must have this magic comment because Ruby was not able to determine the encoding of a file.\n\nThis is not needed anymore since v1.5.0 but it is available at the user's choice.\n\nYou can read more in the extension's README.",
+            "description": "Allows the extension to insert a magic comment (# encoding: utf-8) inside every Ruby script file.\n\nIn older versions of the extension, all scripts must have this magic comment because Ruby was not able to determine the encoding of a file.\n\nThis is not needed anymore since v1.5.0 but it is available at the user's choice.\n\nYou can read more in the extension's README.",
             "order": 13
           },
           "rgssScriptEditor.extension.recreateScriptLoader": {
@@ -256,7 +256,7 @@
               "Never validate script names (disabled)"
             ],
             "default": "auto",
-            "description": "Choose script name validation mode\n\nDue to a Ruby limitation, any RPG Maker that uses a version of Ruby below v1.9 must enable this setting.\n\nThe RPG Maker versions affected by this limitation are: RPG Maker XP and RPG Maker VX.\n\nIf you are using MKXP-Z you don't need to use this, regardless of the RPG Maker version.\n\nCheck extension's README for more information.\n\n**DISABLE AT YOUR OWN RISK**",
+            "description": "Choose script name validation mode.\n\nDue to a Ruby limitation, any RPG Maker that uses a version of Ruby below v1.9 must enable this setting.\n\nThe RPG Maker versions affected by this limitation are: RPG Maker XP and RPG Maker VX.\n\nIf you are using MKXP-Z you don't need to use this, regardless of the RPG Maker version.\n\nCheck extension's README for more information.\n\n**DISABLE AT YOUR OWN RISK**",
             "order": 18
           },
           "rgssScriptEditor.external.backUpsFolder": {
