@@ -142,10 +142,23 @@ type LoaderScriptConfig = {
 };
 
 /**
- * Regexp of invalid characters for Windows, Linux-based systems and this extension.
+ * Regexp of blacklisted characters and combinations.
+ *
+ * All script section names must not match this regular expression.
  */
-const INVALID_CHARACTERS =
-  /[\\/:\*\?"<>\|#▼■¬·ºª€¿¡¨´çñ☆“‘–ƒ„’…†‡ˆ‰Š‹ŒŽ•–—™š›œžŸ¢£¤¦§¨©®ª«¯°±²³µ¶¸¹»¼½¾ÆÅÄÃÐ×÷öøáéíóúÁÉÍÓÚ]|(\bCON\b|\bPRN\b|\bAUX\b|\bNUL\b|\bCOM[1-9]\b|\bLPT[1-9]\b)/g;
+const BLACKLIST_REGEXP =
+  /(\bCON\b|\bPRN\b|\bAUX\b|\bNUL\b|\bCOM[1-9]\b|\bLPT[1-9]\b)/gi;
+
+/**
+ * Regexp of blacklisted (optional) characters and combinations.
+ *
+ * This blacklist is only used depending on the Ruby version being used.
+ *
+ * Older Ruby versions (below v1.9) does not work properly with wide characters, hence this blacklist.
+ *
+ * Since v1.9, Ruby included support for multi-languages, which enables support for special characters that are represented with more bytes
+ */
+const BLACKLIST_OPT_REGEXP = /[^\w\s-]/gi;
 
 /**
  * Load order file name within the scripts folder.
@@ -155,7 +168,7 @@ const LOAD_ORDER_FILE_NAME = 'load_order.txt';
 /**
  * Name for the editor section separator instance.
  *
- * To avoid issues, it should include, at least, an invalid character from {@link INVALID_CHARACTERS} invalid character list.
+ * To avoid issues, it should include, at least, an invalid character from {@link BLACKLIST_REGEXP} invalid character list.
  */
 const EDITOR_SECTION_SEPARATOR_NAME = '*separator*';
 
@@ -170,7 +183,7 @@ const EDITOR_SECTION_FOLDER_CONTENTS =
 /**
  * Character used to mark a editor section as skipped.
  *
- * To avoid issues, this character should be included inside the {@link INVALID_CHARACTERS} invalid character list.
+ * To avoid issues, this character should be included inside the {@link BLACKLIST_REGEXP} invalid character list.
  *
  * Also, make sure it is not present in other configuration constants (like {@link EDITOR_SECTION_SEPARATOR_NAME}).
  */
@@ -2043,23 +2056,22 @@ export class ScriptsController {
   }
 
   /**
-   * Validates the given name.
+   * Validates the given section name.
    *
-   * It returns ``true`` if the given name is valid, otherwise ``false``.
+   * It returns ``null`` if the given name is valid, otherwise a list (``RegExpMatchArray``) of matches.
    * @param name Item name
    * @returns Whether name is valid or not.
    */
   validateName(name: string) {
-    return !name.match(INVALID_CHARACTERS);
-  }
+    let validation = name.match(BLACKLIST_REGEXP);
 
-  /**
-   * Matches extension's invalid characters on the given string.
-   * @param str String
-   * @returns The match
-   */
-  matchInvalidCharacters(str: string) {
-    return str.match(INVALID_CHARACTERS);
+    // Validate for script names too if needed
+    if (this._config?.determineNameValidation()) {
+      const nameValidness = name.match(BLACKLIST_OPT_REGEXP);
+      validation = validation || nameValidness;
+    }
+
+    return validation;
   }
 
   /**
@@ -2309,7 +2321,7 @@ export class ScriptsController {
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
-# Version: 1.4.0
+# Version: 1.5.0
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
@@ -2410,13 +2422,15 @@ module ScriptLoader
   #
   def self.run
     begin
-      @scripts = 0
-      ensure_file_descriptor_validness
-      load_order_path = File.join(SCRIPTS_PATH, '${config.loadOrderFileName}')
       log("Running script loader...")
+      load_order_path = File.join(SCRIPTS_PATH, '${config.loadOrderFileName}')
+      ensure_file_descriptor_validness
+      @scripts = 0
+
       log("Scripts folder path is: '#{SCRIPTS_PATH}'")
       log("Game error log file path is: '#{ERROR_FILE_PATH}'")
       log("Load order file path is: '#{load_order_path}'")
+
       log("Reading load order file...")
       load_order = File.read(load_order_path).split("\\n")
       # Start load order processing
@@ -2434,7 +2448,7 @@ module ScriptLoader
         file.write(process_exception(e))
       end
       # Raises again the exception to kill the process
-      raise e
+      raise
     end
     # Post-load logic
     unless loaded_scripts > 0
@@ -2452,11 +2466,10 @@ module ScriptLoader
     # Handles the script if valid
     if valid_entry?(path)
       log("Loading script: '#{path}'")
-      @scripts = @scripts + 1
       script_file = process_path(path)
-      loaded = Kernel.send(:require, script_file)
-      # Forces a reload if it was loaded previously (ResetLoader exception)
-      Kernel.send(:load, script_file) unless loaded
+      script_contents = File.read(script_file)
+      Kernel.eval(script_contents, TOPLEVEL_BINDING, script_file)
+      @scripts += 1
     else
       log("Skipping: '#{path}'")
     end
@@ -2681,12 +2694,13 @@ ScriptLoader.run
    */
   private _formatScriptCode(scriptCode: string): string {
     let script = '';
-    if (!scriptCode.startsWith('# encoding: utf-8')) {
-      // Ruby 1.9 (RGSS3) does not detect file encoding so it must be added inside to avoid crashes.
+    if (
+      this._config?.configInsertEncodingComment() &&
+      !scriptCode.startsWith('# encoding: utf-8')
+    ) {
       let eol = this._config?.determineFileEOL() || '\n';
       script = `# encoding: utf-8${eol}${scriptCode}`;
     } else {
-      // Code already contains encoding comment
       script = scriptCode;
     }
     return script;
@@ -2702,10 +2716,17 @@ ScriptLoader.run
    * @returns The processed item
    */
   private _removeInvalidCharacters(item: string): string {
-    // Removes any invalid characters
-    let processed = item.replace(INVALID_CHARACTERS, '');
     // Removes any trailing whitespaces left
-    processed = processed.trim();
+    let processed = item.trim();
+
+    // Removes blacklist characters
+    processed = processed.replaceAll(BLACKLIST_REGEXP, '');
+
+    // Removes name invalid characters if needed
+    if (this._config?.determineNameValidation()) {
+      processed = processed.replaceAll(BLACKLIST_OPT_REGEXP, '');
+    }
+
     return processed;
   }
 }
