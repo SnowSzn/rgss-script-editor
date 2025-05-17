@@ -842,6 +842,13 @@ export async function sectionMove(
     if (!source || !target) {
       return;
     }
+
+    // Checks if source and target are the same section
+    if (source.every((value) => value === target)) {
+      return;
+    }
+
+    // Perform move operation
     logger.logInfo(`Moving: "${source}" to: "${target}"`);
     extensionScripts.sectionMove(source, target);
     await refresh();
