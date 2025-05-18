@@ -13,21 +13,25 @@ export function activate(context: vscode.ExtensionContext) {
   // **********************************************************
   // Basic configuration
   // **********************************************************
+
   // VSCode Configuration change event.
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((event) => {
       manager.onDidChangeConfiguration(event);
     })
   );
+
   // VSCode Tree view update active file
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor((editor) => {
       manager.updateTextEditor(editor);
     })
   );
+
   // **********************************************************
   // User commands
   // **********************************************************
+
   // Set project folder command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -46,6 +50,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Open project folder command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -55,18 +60,21 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Extract scripts
   context.subscriptions.push(
     vscode.commands.registerCommand('rgss-script-editor.extractScripts', () => {
       manager.extractScripts();
     })
   );
+
   // Import scripts
   context.subscriptions.push(
     vscode.commands.registerCommand('rgss-script-editor.importScripts', () => {
       manager.importScripts();
     })
   );
+
   // Create script loader
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -76,6 +84,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Create a back up bundle file from extracted scripts
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -85,6 +94,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Create bundle file from extracted scripts
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -94,6 +104,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Create bundle file from selected scripts
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -103,6 +114,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Compile bundle file from enabled scripts
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -112,12 +124,14 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Run game command
   context.subscriptions.push(
     vscode.commands.registerCommand('rgss-script-editor.runGame', () => {
       manager.runGame();
     })
   );
+
   // Process game exception
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -127,6 +141,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Choose drop mode command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -136,15 +151,18 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Open load order txt file.
   context.subscriptions.push(
     vscode.commands.registerCommand('rgss-script-editor.openLoadOrder', () => {
       manager.openLoadOrderFile();
     })
   );
+
   // **********************************************************
   // Extension commands (won't be used by the user)
   // **********************************************************
+
   // Create script command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -154,6 +172,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Delete script command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -163,6 +182,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Rename script command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -172,6 +192,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Drag and drop handler command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -181,6 +202,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Copy handler command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -190,6 +212,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Paste handler command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -199,6 +222,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Toggle load status script command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -208,6 +232,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Toggle collapsible status command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -217,6 +242,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // Reveal script section on VSCode explorer command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -226,6 +252,27 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
+  // Copy section absolute path command
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.sectionCopyAbsolutePath',
+      (what) => {
+        manager.sectionCopyAbsolutePath(what);
+      }
+    )
+  );
+
+  // Copy section relative path command
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.sectionCopyRelativePath',
+      (what) => {
+        manager.sectionCopyRelativePath(what);
+      }
+    )
+  );
+
   // Reveal script section on file explorer command
   context.subscriptions.push(
     vscode.commands.registerCommand(
@@ -235,9 +282,11 @@ export function activate(context: vscode.ExtensionContext) {
       }
     )
   );
+
   // **********************************************************
   // Start extension logic
   // **********************************************************
+
   // Restart manager
   manager.restart();
 }

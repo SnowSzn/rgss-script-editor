@@ -991,6 +991,70 @@ export async function sectionToggleCollapse(section?: EditorSectionBase) {
 }
 
 /**
+ * Copies the absolute path of the given editor section or all editor sections selected on the tree view to the clipboard.
+ *
+ * If several sections are selected, it will every path.
+ *
+ * @param section Section
+ * @returns A promise
+ */
+export async function sectionCopyAbsolutePath(section?: EditorSectionBase) {
+  try {
+    let items = extensionUI.getTreeSelection() || (section ? [section] : []);
+
+    // Checks validness
+    if (!items) {
+      return;
+    }
+    logger.logInfo(`Copying absolute path from: "${items}"`);
+
+    // Perform the copy operation
+    let contents = items.map((item) => {
+      return item.resourceUri.fsPath;
+    });
+
+    // Copies the contents in the clipboard
+    vscode.env.clipboard.writeText(
+      contents.join(extensionConfig.determineFileEOL())
+    );
+  } catch (error) {
+    logger.logErrorUnknown(error);
+  }
+}
+
+/**
+ * Copies the relative path from the root folder of the given editor section or all editor sections selected on the tree view to the clipboard.
+ *
+ * If several sections are selected, it will every path.
+ *
+ * @param section Section
+ * @returns A promise
+ */
+export async function sectionCopyRelativePath(section?: EditorSectionBase) {
+  try {
+    let items = extensionUI.getTreeSelection() || (section ? [section] : []);
+
+    // Checks validness
+    if (!items) {
+      return;
+    }
+    logger.logInfo(`Copying relative path from: "${items}"`);
+
+    // Perform the copy operation
+    let contents = items.map((item) => {
+      return extensionScripts.root.relative(item.resourceUri);
+    });
+
+    // Copies the contents in the clipboard
+    vscode.env.clipboard.writeText(
+      contents.join(extensionConfig.determineFileEOL())
+    );
+  } catch (error) {
+    logger.logErrorUnknown(error);
+  }
+}
+
+/**
  * Reveals the given editor section file system entry on the VSCode built-in file explorer.
  * @param section Editor section
  * @returns A promise
@@ -1205,30 +1269,29 @@ async function watcherGameOutputOnDidCreate(uri: vscode.Uri) {
 async function refresh(options?: RefreshOptions) {
   try {
     let item = options?.treeItem ?? extensionScripts.root;
-    if (item) {
-      // Refreshes item/root based on the given argument
-      extensionUI.refresh(item, !options?.treeItem);
 
-      // Checks if the load order file should be refreshed
-      if (options?.noLoadOrderRefresh) {
-        return;
-      }
+    // Refreshes item/root based on the given argument
+    extensionUI.refresh(item, !options?.treeItem);
 
-      // Updates load order file to match the current VSCode editor tree
-      let response = await extensionScripts.updateLoadOrderFile();
-      if (response === 0) {
-        logger.logWarning('Load order TXT file is empty!');
-        logger.logWarning(
-          'You should use the RGSS Script Editor view in VSCode to load scripts'
-        );
-        logger.logWarning(
-          'If load order TXT file is left empty, the game will not work at all!'
-        );
-      } else {
-        logger.logInfo(
-          `${response} entries were written in the load order TXT file.`
-        );
-      }
+    // Checks if the load order file should be refreshed
+    if (options?.noLoadOrderRefresh) {
+      return;
+    }
+
+    // Updates load order file to match the current VSCode editor tree
+    let response = await extensionScripts.updateLoadOrderFile();
+    if (response === 0) {
+      logger.logWarning('Load order TXT file is empty!');
+      logger.logWarning(
+        'You should use the RGSS Script Editor view in VSCode to load scripts'
+      );
+      logger.logWarning(
+        'If load order TXT file is left empty, the game will not work at all!'
+      );
+    } else {
+      logger.logInfo(
+        `${response} entries were written in the load order TXT file.`
+      );
     }
   } catch (error) {
     logger.logErrorUnknown(error);

@@ -175,6 +175,18 @@
         "icon": "$(eye)"
       },
       {
+        "command": "rgss-script-editor.sectionCopyAbsolutePath",
+        "title": "Copy Absolute Path...",
+        "category": "RGSS Script Editor",
+        "icon": "$(copy)"
+      },
+      {
+        "command": "rgss-script-editor.sectionCopyRelativePath",
+        "title": "Copy Relative Path...",
+        "category": "RGSS Script Editor",
+        "icon": "$(copy)"
+      },
+      {
         "command": "rgss-script-editor.sectionOpenInExplorer",
         "title": "Reveal In File Explorer...",
         "category": "RGSS Script Editor",
@@ -401,6 +413,16 @@
         "command": "rgss-script-editor.sectionToggleLoad",
         "key": "F4",
         "when": "focusedView == 'rgss-script-editor.editorView'"
+      },
+      {
+        "command": "rgss-script-editor.sectionCopyAbsolutePath",
+        "key": "F7",
+        "when": "focusedView == 'rgss-script-editor.editorView'"
+      },
+      {
+        "command": "rgss-script-editor.sectionCopyRelativePath",
+        "key": "F8",
+        "when": "focusedView == 'rgss-script-editor.editorView'"
       }
     ],
     "viewsContainers": {
@@ -524,19 +546,29 @@
           "group": "4"
         },
         {
-          "command": "rgss-script-editor.createSelectedBundleFile",
+          "command": "rgss-script-editor.sectionCopyAbsolutePath",
           "when": "view == rgss-script-editor.editorView",
-          "group": "5"
+          "group": "6"
+        },
+        {
+          "command": "rgss-script-editor.sectionCopyRelativePath",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "6"
         },
         {
           "command": "rgss-script-editor.sectionRevealInVSCodeExplorer",
           "when": "view == rgss-script-editor.editorView",
-          "group": "6"
+          "group": "7"
         },
         {
           "command": "rgss-script-editor.sectionOpenInExplorer",
           "when": "view == rgss-script-editor.editorView",
-          "group": "6"
+          "group": "7"
+        },
+        {
+          "command": "rgss-script-editor.createSelectedBundleFile",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "8"
         }
       ]
     }
