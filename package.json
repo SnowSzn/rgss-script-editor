@@ -80,13 +80,13 @@
       },
       {
         "command": "rgss-script-editor.createBundleFile",
-        "title": "Create a Bundle File From Enabled Scripts",
+        "title": "Create a Bundle File With Enabled Scripts",
         "category": "RGSS Script Editor",
         "icon": "$(package)"
       },
       {
         "command": "rgss-script-editor.createSelectedBundleFile",
-        "title": "Create a Bundle File From Selected Scripts",
+        "title": "Create a Bundle File With Selected Scripts",
         "category": "RGSS Script Editor",
         "icon": "$(package)"
       },
