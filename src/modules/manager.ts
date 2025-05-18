@@ -1148,7 +1148,6 @@ async function watcherScriptOnDidCreate(uri: vscode.Uri) {
         parent: extensionScripts.root,
         type: type,
         uri: uri,
-        priority: 0,
       });
       await refresh();
     }

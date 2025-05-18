@@ -99,11 +99,11 @@ type ControllerSectionInfo = {
   uri: vscode.Uri;
 
   /**
-   * Editor section priority value.
+   * Editor section position value.
    *
-   * Set priority to anything below {@link EDITOR_SECTION_MIN_PRIORITY} to always append at the end.
+   * Set position to ``undefined`` to always append at the end.
    */
-  priority: number;
+  position?: number;
 };
 
 /**
@@ -202,15 +202,6 @@ const EDITOR_SECTION_FOLDER_CONTENTS =
 const EDITOR_SECTION_SKIPPED_CHARACTER = '#';
 
 /**
- * Mininum priority value for all editor section instances.
- *
- * This minimum value is included in the range.
- *
- * The value ``0`` should not be used to avoid treating priorities as a falsy value.
- */
-const EDITOR_SECTION_MIN_PRIORITY = 1;
-
-/**
  * Unique script section for this extension's external scripts loader script.
  *
  * Note: This value is used to uniquely identify the script loader this extension creates.
@@ -265,11 +256,6 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   private readonly _type: number;
 
   /**
-   * Editor section priority.
-   */
-  protected _priority: number;
-
-  /**
    * Editor section children.
    */
   protected _children: EditorSectionBase[];
@@ -304,17 +290,21 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
     this._type = type;
     this.resourceUri = uri;
     this.id = crypto.randomUUID();
-    this._priority = EDITOR_SECTION_MIN_PRIORITY;
     this._parent = undefined;
     this._children = [];
   }
 
   /**
-   * Adds the given editor section instance as a new child of this one.
+   * Adds the given editor section instance as a new child of this one at the given position ``pos``.
+   *
+   * If the editor section is a child of another section it will remove it and add it to this editor section instance children.
+   *
+   * If position is not valid, it will be appended at the end.
    *
    * @param section Editor section.
+   * @param section pos Editor section position.
    */
-  abstract addChild(section: EditorSectionBase): void;
+  abstract addChild(section: EditorSectionBase, pos?: number): void;
 
   /**
    * Recursively creates a new child instance and automatically inserts it into the children list of this editor section.
@@ -328,13 +318,13 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    * does not exists it will create it before the last child (in this case, ``file.rb``) is created.
    * @param type Editor section type.
    * @param uri Editor section Uri path.
-   * @param priority Editor section priority.
+   * @param pos Editor section position.
    * @returns The last editor section child instance.
    */
   abstract createChild(
     type: EditorSectionType,
     uri: vscode.Uri,
-    priority: number
+    pos?: number
   ): EditorSectionBase | undefined;
 
   /**
@@ -349,13 +339,6 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    */
   get type() {
     return this._type;
-  }
-
-  /**
-   * Editor section priority.
-   */
-  get priority() {
-    return this._priority;
   }
 
   /**
@@ -402,19 +385,6 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    */
   getName(): string {
     return path.parse(this.resourceUri.fsPath).name;
-  }
-
-  /**
-   * Sets this instance prioriry to the given ``priority`` value.
-   *
-   * The mininum priority value allowed is {@link EDITOR_SECTION_MIN_PRIORITY}.
-   * @param priority Editor section priority.
-   */
-  setPriority(priority: number) {
-    this._priority =
-      priority >= EDITOR_SECTION_MIN_PRIORITY
-        ? priority
-        : EDITOR_SECTION_MIN_PRIORITY;
   }
 
   /**
@@ -546,7 +516,6 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
     return (
       this.resourceUri === other.resourceUri &&
       this._type === other.type &&
-      this._priority === other.priority &&
       this._parent === other.parent &&
       this._children === other.children
     );
@@ -561,6 +530,74 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
     let relative = this.relative(uri);
     let tokens = this._tokenize(relative);
     return tokens.length <= 1;
+  }
+
+  /**
+   * Gets the relative path from this editor section to the given ``uri`` path.
+   * @param uri Uri Path.
+   * @returns Relative uri path.
+   */
+  relative(uri: vscode.Uri) {
+    return path.relative(this.resourceUri.fsPath, uri.fsPath);
+  }
+
+  /**
+   * Clears this instance children list.
+   *
+   * All children instances will be removed and their parent references nullified.
+   *
+   * This method does not remove each child entry from the filesystem.
+   */
+  clear() {
+    // Nullifies parent references
+    this._children.forEach((child) => {
+      child.setParent(undefined);
+    });
+
+    // Resets children list
+    this._children = [];
+  }
+
+  /**
+   * Alternates this editor section load status checkbox.
+   *
+   * This method also updates the status of all child instances and the parent reference if it is valid.
+   * @param state Checkbox state.
+   */
+  alternateLoad(state?: vscode.TreeItemCheckboxState | boolean) {
+    // Updates this editor section checkbox
+    this.setCheckboxState(state);
+
+    // Performs the change on all children instances
+    this._children.forEach((child) => {
+      child.alternateLoad(state);
+    });
+  }
+
+  /**
+   * Renames this editor section instance uri path to ``uri``.
+   *
+   * The current tree item label will be updated using the new uri.
+   *
+   * This method updates all children to the new path in case this instance has children.
+   * @param uri New uri path
+   */
+  rename(uri: vscode.Uri) {
+    // Updates this instance information
+    this.label = path.parse(uri.fsPath).name;
+    this.resourceUri = uri;
+
+    // Triggers reset
+    this._reset();
+
+    // Recursively updates children instances
+    this._children.forEach((child) => {
+      let childPath = vscode.Uri.joinPath(
+        this.resourceUri,
+        child.getBaseName()
+      );
+      child.rename(childPath);
+    });
   }
 
   /**
@@ -614,15 +651,6 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   }
 
   /**
-   * Gets the relative path from this editor section to the given ``uri`` path.
-   * @param uri Uri Path.
-   * @returns Relative uri path.
-   */
-  relative(uri: vscode.Uri) {
-    return path.relative(this.resourceUri.fsPath, uri.fsPath);
-  }
-
-  /**
    * Recursively returns all nested child instances from this editor section.
    * @returns Nested editor section instances.
    */
@@ -641,78 +669,22 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   }
 
   /**
-   * Clears this instance children list.
-   *
-   * All children instances will be removed and their parent references nullified.
-   *
-   * This method does not remove each child entry from the filesystem.
+   * Gets the child editor section at the given position.
+   * @param pos Position
+   * @returns Editor section child.
    */
-  clear() {
-    // Nullifies parent references
-    this._children.forEach((child) => {
-      child.setParent(undefined);
-    });
-
-    // Resets children list
-    this._children = [];
+  getChild(pos: number) {
+    return this._children[pos];
   }
 
   /**
-   * Gets the max priority value between all children instances.
+   * Gets the position of the given editor section inside this section children list.
    *
-   * If this editor section instance does not have children it returns ``0``.
-   * @returns The max priority.
+   * If the section is not found, it returns ``-1``.
+   * @param section Editor section.
    */
-  maxChildPriority() {
-    // Determines child with max priority
-    const child = this.reduceChild((previous, current) => {
-      return current.priority > previous.priority ? current : previous;
-    });
-
-    // Returns the priority
-    return child ? child.priority : 0;
-  }
-
-  /**
-   * Alternates this editor section load status checkbox.
-   *
-   * This method also updates the status of all child instances and the parent reference if it is valid.
-   * @param state Checkbox state.
-   */
-  alternateLoad(state?: vscode.TreeItemCheckboxState | boolean) {
-    // Updates this editor section checkbox
-    this.setCheckboxState(state);
-
-    // Performs the change on all children instances
-    this._children.forEach((child) => {
-      child.alternateLoad(state);
-    });
-  }
-
-  /**
-   * Renames this editor section instance uri path to ``uri``.
-   *
-   * The current tree item label will be updated using the new uri.
-   *
-   * This method updates all children to the new path in case this instance has children.
-   * @param uri New uri path
-   */
-  rename(uri: vscode.Uri) {
-    // Updates this instance information
-    this.label = path.parse(uri.fsPath).name;
-    this.resourceUri = uri;
-
-    // Triggers reset
-    this._reset();
-
-    // Recursively updates children instances
-    this._children.forEach((child) => {
-      let childPath = vscode.Uri.joinPath(
-        this.resourceUri,
-        child.getBaseName()
-      );
-      child.rename(childPath);
-    });
+  getChildPos(section: EditorSectionBase) {
+    return this._children.indexOf(section);
   }
 
   /**
@@ -726,11 +698,13 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    */
   deleteChild(section: EditorSectionBase): EditorSectionBase | undefined {
     let index = this._children.indexOf(section);
+
     if (index !== -1) {
       let child = this._children.splice(index, 1)[0];
       child.setParent(undefined);
       return child;
     }
+
     return undefined;
   }
 
@@ -745,12 +719,14 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
    */
   deleteChildren(...sections: EditorSectionBase[]): EditorSectionBase[] {
     let deleted: EditorSectionBase[] = [];
+
     sections.forEach((section) => {
       let item = this.deleteChild(section);
       if (item) {
         deleted.push(item);
       }
     });
+
     return deleted;
   }
 
@@ -827,15 +803,6 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   }
 
   /**
-   * Sorts the list of children of this editor section instance.
-   *
-   * Every child is sorted by their priority value.
-   */
-  sortChildren() {
-    this._children = this._children.sort((a, b) => a.priority - b.priority);
-  }
-
-  /**
    * Creates a string of this editor section instance.
    * @returns Editor section stringified.
    */
@@ -882,14 +849,14 @@ class EditorSectionSeparator extends EditorSectionBase {
     return true;
   }
 
-  addChild(section: EditorSectionBase): void {
+  addChild(section: EditorSectionBase, pos?: number): void {
     this._children = [];
   }
 
   createChild(
     type: EditorSectionType,
     uri: vscode.Uri,
-    priority?: number | undefined
+    pos?: number
   ): EditorSectionBase | undefined {
     return undefined;
   }
@@ -930,14 +897,14 @@ class EditorSectionScript extends EditorSectionBase {
     this.collapsibleState = EditorSectionBase.Collapsible.None;
   }
 
-  addChild(section: EditorSectionBase): void {
+  addChild(section: EditorSectionBase, pos?: number): void {
     this._children = [];
   }
 
   createChild(
     type: EditorSectionType,
     uri: vscode.Uri,
-    priority?: number | undefined
+    pos?: number
   ): EditorSectionBase | undefined {
     return undefined;
   }
@@ -976,33 +943,25 @@ class EditorSectionFolder extends EditorSectionBase {
     super.setCollapsibleState(state);
   }
 
-  addChild(section: EditorSectionBase): void {
-    // Do not add the same child instance twice.
-    if (this.hasChild(section)) {
-      return;
-    }
-
-    // Updates all children priority values
-    this._children.forEach((child) => {
-      if (child.priority >= section.priority) {
-        child.setPriority(child.priority + 1);
-      }
-    });
+  addChild(section: EditorSectionBase, pos?: number): void {
+    // Removes the section (from self or other) if it is already a child.
+    section.parent?.deleteChild(section);
 
     // Updates the parent reference.
     section.setParent(this);
 
     // Adds the new child instance.
-    this._children.push(section);
-
-    // Sort list by priority
-    this.sortChildren();
+    if (pos == undefined || pos < 0 || pos >= this._children.length) {
+      this._children.push(section);
+    } else {
+      this._children.splice(pos, 0, section);
+    }
   }
 
   createChild(
     type: EditorSectionType,
     uri: vscode.Uri,
-    priority: number
+    pos?: number
   ): EditorSectionBase | undefined {
     // Child instance
     let child: EditorSectionBase | undefined = undefined;
@@ -1042,26 +1001,18 @@ class EditorSectionFolder extends EditorSectionBase {
         }
       }
 
-      // Determines new child priority based on the argument
-      let childPriority =
-        priority >= EDITOR_SECTION_MIN_PRIORITY
-          ? priority
-          : this.maxChildPriority() + 1;
-
       // Process new inmediate child
-      child.setPriority(childPriority);
-      this.addChild(child);
+      this.addChild(child, pos);
       return child;
     } else {
       // Create parent first if it does not exists
       let parent = this.createChild(
         EditorSectionType.Folder,
-        vscode.Uri.file(path.dirname(uri.fsPath)),
-        0
+        vscode.Uri.file(path.dirname(uri.fsPath))
       );
 
       // Create child in parent (must be inmediate at this point)
-      return parent?.createChild(type, uri, priority);
+      return parent?.createChild(type, uri, pos);
     }
   }
 
@@ -1303,7 +1254,7 @@ export class ScriptsController {
           parent: sectionInfo.parent,
           type: sectionInfo.type,
           uri: sectionInfo.uri,
-          priority: sectionInfo.priority,
+          position: sectionInfo.position,
         },
         { contents: baseCode }
       );
@@ -1586,7 +1537,7 @@ export class ScriptsController {
     options?: ControllerCreateOptions
   ) {
     // Create child instance.
-    let child = info.parent.createChild(info.type, info.uri, info.priority);
+    let child = info.parent.createChild(info.type, info.uri, info.position);
 
     // Process child instance is creation was successful
     if (child) {
@@ -1734,8 +1685,7 @@ export class ScriptsController {
 
       // Checks whether parent ref has not changed
       if (info.parent === section.parent) {
-        section.setPriority(info.priority);
-        section.parent.sortChildren();
+        section.parent.addChild(section, info.position);
       } else {
         // Renames (moves) section if not a separator (not a real file)
         if (!section.isType(EditorSectionType.Separator)) {
@@ -1743,10 +1693,8 @@ export class ScriptsController {
         }
 
         // Perform move operation
-        section.parent?.deleteChild(section);
-        section.setPriority(info.priority + i);
+        info.parent.addChild(section, info.position);
         section.rename(info.uri);
-        info.parent.addChild(section);
       }
     }
     return true;
@@ -1828,7 +1776,7 @@ export class ScriptsController {
       }
 
       // Increase the priority to keep the clipboard order
-      info.priority = info.priority + i;
+      // info.position = info.position + i;
 
       // Create parent section
       let sectionParent = this.sectionCreate(info, {
@@ -1851,7 +1799,6 @@ export class ScriptsController {
             type: child.type,
             parent: sectionParent,
             uri: vscode.Uri.joinPath(sectionParent.resourceUri, relativeUri),
-            priority: 0,
           };
 
           // Gets section contents (if valid)
@@ -1918,34 +1865,32 @@ export class ScriptsController {
   ): ControllerSectionInfo {
     // Editor section information
     let sectionParent: EditorSectionBase = target;
-    let sectionPriority: number = 0;
+    let sectionPriority: number | undefined = undefined;
 
     // Determines real parent section
     if (options?.ignoreEditorMode || target === this._root) {
       // In case target is root, always treat it as a merge operation
       // to avoid files being created outside the tracked root folder
       sectionParent = target;
-      sectionPriority = target.maxChildPriority() + 1;
     } else {
       switch (this._editorMode) {
         case ControllerEditorMode.MERGE: {
           // Merge inside folder
           if (target.isType(EditorSectionType.Folder)) {
             sectionParent = target;
-            sectionPriority = target.maxChildPriority() + 1;
             break;
           }
 
           // Merge is not available for types that are not folders
           sectionParent = target.parent!;
-          sectionPriority = target.priority + 1;
+          sectionPriority = sectionParent.getChildPos(target) + 1;
           break;
         }
 
         case ControllerEditorMode.MOVE: {
           // Always avoid merge operations
           sectionParent = target.parent!;
-          sectionPriority = target.priority + 1;
+          sectionPriority = sectionParent.getChildPos(target) + 1;
           break;
         }
       }
@@ -1964,7 +1909,7 @@ export class ScriptsController {
       type: type,
       uri: sectionUri,
       parent: sectionParent,
-      priority: sectionPriority,
+      position: sectionPriority,
     };
   }
 
@@ -2213,7 +2158,6 @@ export class ScriptsController {
         parent: this._root,
         type: sectionType,
         uri: entry,
-        priority: 0,
       });
     }
   }
@@ -2281,7 +2225,6 @@ export class ScriptsController {
             parent: this._root,
             type: sectionType,
             uri: sectionPath,
-            priority: 0,
           });
           break;
         }
@@ -2299,7 +2242,6 @@ export class ScriptsController {
             parent: this._root,
             type: sectionType,
             uri: sectionPath,
-            priority: 0,
           });
           child?.setCheckboxState(sectionEnabled);
           break;
