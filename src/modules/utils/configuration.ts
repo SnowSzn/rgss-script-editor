@@ -240,14 +240,6 @@ export class Configuration {
   }
 
   /**
-   * Gets the import operation create folder flag.
-   * @returns Import create folder flag.
-   */
-  configImportCreateFolder(): boolean {
-    return this._getVSCodeConfig<boolean>('extension.importCreateFolder')!;
-  }
-
-  /**
    * Gets the script name validation mode.
    * @returns Script name validation mode.
    */

@@ -1287,10 +1287,7 @@ export class ScriptsController {
 
     // Reads bundle file (may throw an error if it is not valid)
     const bundle = this._readBundleFile(targetBundle.fsPath);
-    let parent: EditorSectionBase = this._root;
 
-    // Determines whether importing into a folder or not
-    if (!this._config?.configImportCreateFolder()) {
       // Determines import folder info
       const folderInfo = this.determineSectionInfo(
         EditorSectionType.Folder,
@@ -1303,8 +1300,7 @@ export class ScriptsController {
       );
 
       // Creates import folder section
-      parent = this.sectionCreate(folderInfo)!;
-    }
+    let parent: EditorSectionBase = this.sectionCreate(folderInfo)!;
 
     // Iterate through the bundle file extracting each script section
     for (let i = 0; i < bundle.length; i++) {

@@ -261,12 +261,6 @@
             "description": "Whether to re-create the script loader when a project is opened or not.\n\nThe script loader this extension uses is subject to change between updates so it is recommended to leave it enabled.\n\nOnly disable this if you are using a custom script loader or you want to update the script loader manually between updates.",
             "order": 14
           },
-          "rgssScriptEditor.extension.importCreateFolder": {
-            "type": "boolean",
-            "default": true,
-            "description": "Whether to create a folder or not when importing scripts from a bundle file.\n\nRecommended to enable it to keep things tidier.",
-            "order": 15
-          },
           "rgssScriptEditor.extension.scriptNameValidation": {
             "type": "string",
             "enum": [
