@@ -460,6 +460,7 @@ export async function createBackUpLoadOrder() {
     if (backUpFilePath) {
       logger.logInfo('Backing up current load order...');
       extensionScripts.createLoadOrderBackUp(backUpFilePath);
+      vscode.window.showInformationMessage('Load order backup created!');
     } else {
       logger.logError(
         `The backup could not be created because it was impossible to determine the backup path!`
