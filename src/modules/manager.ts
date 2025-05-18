@@ -375,6 +375,9 @@ export async function createScriptLoader() {
       logger.logError(
         'You should make sure to extract the scripts to avoid data loss before doing this'
       );
+      vscode.window.showErrorMessage(
+        'Cannot create script loader because RPG Maker bundle file still has valid scripts inside of it!'
+      );
       return;
     }
     // Overwrite bundle file with the script loader
@@ -695,8 +698,7 @@ export async function sectionCreate(section?: EditorSectionBase) {
     switch (typeOption) {
       case 'Create Separator': {
         type = EditorSectionType.Separator;
-        // Automatically sets separator name
-        name = extensionScripts.getSeparatorName();
+        name = '*separator*';
         break;
       }
       case 'Create Folder': {
@@ -719,11 +721,7 @@ export async function sectionCreate(section?: EditorSectionBase) {
         title: `Create a new section at: ${target}`,
         placeHolder: 'Type a name for the new section...',
         validateInput(value) {
-          let info = extensionScripts.determineSectionInfo(
-            type!,
-            value,
-            target!
-          );
+          let info = extensionScripts.determineSectionInfo(type, value, target);
           return info
             ? validateUserInput(info.parent, info.uri, value)
             : 'Cannot determine validness!';
@@ -802,11 +800,11 @@ export async function sectionRename(section?: EditorSectionBase) {
       value: item.label?.toString(),
       validateInput(value) {
         let uri = extensionScripts.determineSectionUri(
-          item!.parent!.resourceUri,
-          item!.type,
+          item.parent!.resourceUri,
+          item.type,
           value
         );
-        return validateUserInput(item!.parent!, uri, value);
+        return validateUserInput(item.parent!, uri, value);
       },
     });
 
@@ -843,15 +841,11 @@ export async function sectionMove(
       return;
     }
 
-    // Checks if source and target are the same section
-    if (source.every((value) => value === target)) {
-      return;
-    }
-
     // Perform move operation
-    logger.logInfo(`Moving: "${source}" to: "${target}"`);
-    extensionScripts.sectionMove(source, target);
-    await refresh();
+    if (extensionScripts.sectionMove(source, target)) {
+      logger.logInfo(`Moved: "${source}" to: "${target}"`);
+      await refresh();
+    }
   } catch (error) {
     logger.logErrorUnknown(error);
     if (error instanceof Error) {
@@ -869,14 +863,18 @@ export async function sectionMove(
 export async function sectionCopy(section?: EditorSectionBase) {
   try {
     let items = extensionUI.getTreeSelection() || (section ? [section] : []);
+
     // Checks validness
     if (!items) {
       return;
     }
 
+    // Creates mutable array
+    const itemsArray = Array.from(items);
+
     // Perform the copy operation
     logger.logInfo(`Copying: "${items}"`);
-    extensionScripts.sectionCopy(items);
+    extensionScripts.sectionCopy(itemsArray);
   } catch (error) {
     logger.logErrorUnknown(error);
   }
@@ -897,9 +895,9 @@ export async function sectionPaste(section?: EditorSectionBase) {
     if (!target) {
       return;
     }
+
     logger.logInfo(`Paste target: "${target}"`);
     if (extensionScripts.sectionPaste(target)) {
-      // Refresh after paste operation
       await refresh();
     }
   } catch (error) {
@@ -1138,20 +1136,19 @@ async function watcherScriptOnDidCreate(uri: vscode.Uri) {
     if (extensionScripts.root.isPath(uri)) {
       return;
     }
-    // New entry created
-    logger.logInfo(`Entry created: "${uri.fsPath}"`);
-    let type = extensionScripts.determineSectionType(uri);
-    // Checks if the editor section exists already
-    let child = extensionScripts.root.findChild((value) => {
-      return value.isPath(uri);
-    }, true);
-    // Create section only if it does not exists
-    if (type && !child) {
-      logger.logInfo(`Creating section: "${uri.fsPath}"`);
+
+    // Determine entry type
+    logger.logInfo(`(Watcher) Entry created: "${uri.fsPath}"`);
+    let type = extensionScripts.determineSectionType(uri.fsPath);
+
+    // Create new section
+    if (type) {
+      logger.logInfo(`(Watcher) Creating section: "${uri.fsPath}"`);
       extensionScripts.sectionCreate({
+        parent: extensionScripts.root,
         type: type,
         uri: uri,
-        parent: extensionScripts.root,
+        priority: 0,
       });
       await refresh();
     }
@@ -1166,14 +1163,18 @@ async function watcherScriptOnDidCreate(uri: vscode.Uri) {
  */
 async function watcherScriptOnDidDelete(uri: vscode.Uri) {
   try {
-    logger.logInfo(`Entry deleted: "${uri.fsPath}"`);
+    logger.logInfo(`(Watcher) Entry deleted: "${uri.fsPath}"`);
+
     // Find child instance that matches the deleted path.
     let child = extensionScripts.root.findChild((value) => {
       return value.isPath(uri);
     }, true);
+
     // Delete child if found.
     if (child) {
-      logger.logInfo(`Deleting section: "${child.resourceUri.fsPath}"`);
+      logger.logInfo(
+        `(Watcher) Deleting section: "${child.resourceUri.fsPath}"`
+      );
       extensionScripts.sectionDelete(child);
       await refresh();
     }
@@ -1250,13 +1251,13 @@ function validateUserInput(
   name: string
 ): string | null {
   let nameValidness = extensionScripts.validateName(name);
-  let uriValidness = extensionScripts.validateUri(parent, uri);
+  let sectionValidness = extensionScripts.sectionFind(uri, parent);
   // Checks name validness
   if (nameValidness) {
     return `Input contains invalid characters or words! (${nameValidness})`;
   }
-  // Checks uri validness
-  if (!uriValidness) {
+  // Checks section validness
+  if (sectionValidness) {
     return 'An editor section already exists with the given input!';
   }
   return null;

@@ -43,6 +43,7 @@ export function isFolder(folder: string): boolean {
   if (!fs.existsSync(folder)) {
     return false;
   }
+
   // Checks if file is a directory.
   return fs.statSync(folder).isDirectory();
 }
@@ -57,6 +58,7 @@ export function isFile(file: string): boolean {
   if (!fs.existsSync(file)) {
     return false;
   }
+
   // Checks if file is actually a file.
   return fs.statSync(file).isFile();
 }
@@ -71,6 +73,7 @@ export function isRubyFile(file: string): boolean {
   if (!isFile(file)) {
     return false;
   }
+
   // Checks if file is a Ruby script.
   return path.extname(file).toLowerCase() === '.rb';
 }
@@ -84,18 +87,7 @@ export function isRubyFile(file: string): boolean {
  */
 export function isFolderLike(folder: string): boolean {
   const baseName = path.basename(folder);
-  return baseName.length > 0 && path.extname(baseName) === '';
-}
-
-/**
- * Checks if the given file path is a file or not.
- *
- * This function won't check for the file existence.
- * @param file File path
- * @returns Whether path is a file.
- */
-export function isFileLike(file: string): boolean {
-  return path.extname(file) !== '';
+  return baseName.length > 0 && path.extname(baseName) !== '.rb';
 }
 
 /**
@@ -107,15 +99,6 @@ export function isFileLike(file: string): boolean {
  */
 export function isRubyFileLike(file: string): boolean {
   return path.extname(file).toLowerCase() === '.rb';
-}
-
-/**
- * Normalizes the given path for RPG Maker
- * @param filePath File path
- * @returns Normalized path
- */
-export function normalizePath(filePath: string): string {
-  return filePath.split(path.sep).join(path.posix.sep);
 }
 
 /**
@@ -149,6 +132,7 @@ export function copyFile(
   if (!fs.existsSync(destinationPath) && options?.recursive) {
     createFolder(destinationPath, options);
   }
+
   // Copy file
   fs.copyFileSync(
     source,
@@ -177,12 +161,14 @@ export function readDirectory(
 ): string[] {
   // Gets data (absolute paths)
   let entries = readDir(base, options?.recursive);
+
   // Process relative flag
   if (options?.relative) {
     entries = entries.map((entry) => {
       return path.relative(base, entry);
     });
   }
+
   // Returns data
   return filter ? filter(entries) : entries;
 }
@@ -197,14 +183,18 @@ export function readDirectory(
  */
 function readDir(base: string, recursive?: boolean) {
   let entries: string[] = [];
+
   fs.readdirSync(base).forEach((entry) => {
     let fullPath = path.join(base, entry);
+
     // Inserts entry
     entries.push(fullPath);
+
     // Process recursiveness
     if (fs.statSync(fullPath).isDirectory() && recursive) {
       entries = entries.concat(...readDir(fullPath, recursive));
     }
   });
+
   return entries;
 }
