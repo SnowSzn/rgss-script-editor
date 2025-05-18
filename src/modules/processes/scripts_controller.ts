@@ -1288,18 +1288,18 @@ export class ScriptsController {
     // Reads bundle file (may throw an error if it is not valid)
     const bundle = this._readBundleFile(targetBundle.fsPath);
 
-      // Determines import folder info
-      const folderInfo = this.determineSectionInfo(
-        EditorSectionType.Folder,
-        `Import from ${path.parse(targetBundle.fsPath).name}`,
-        this._root,
-        {
-          ignoreEditorMode: true,
-          avoidOverwrite: true,
-        }
-      );
+    // Determines import folder info
+    const folderInfo = this.determineSectionInfo(
+      EditorSectionType.Folder,
+      `Import from ${path.parse(targetBundle.fsPath).name}`,
+      this._root,
+      {
+        ignoreEditorMode: true,
+        avoidOverwrite: true,
+      }
+    );
 
-      // Creates import folder section
+    // Creates import folder section
     let parent: EditorSectionBase = this.sectionCreate(folderInfo)!;
 
     // Iterate through the bundle file extracting each script section
@@ -1708,6 +1708,9 @@ export class ScriptsController {
         }
       );
 
+      // Increase the priority to keep the real order
+      info.position = info.position ? info.position + i : info.position;
+
       // Checks whether parent ref has not changed
       if (info.parent === section.parent) {
         section.parent.addChild(section, info.position);
@@ -1825,7 +1828,7 @@ export class ScriptsController {
         }
 
         // Increase the priority to keep the clipboard order
-        // info.position = info.position + i;
+        info.position = info.position ? info.position + i : info.position;
 
         // Create parent section
         let sectionParent = this.sectionCreate(info, {
