@@ -1282,7 +1282,7 @@ export class ScriptsController {
     let parent: EditorSectionBase = this._root;
 
     // Determines whether importing into a folder or not
-    if (!this._config?.configImportOverwrite()) {
+    if (!this._config?.configImportCreateFolder()) {
       // Determines import folder info
       const folderInfo = this.determineSectionInfo(
         EditorSectionType.Folder,

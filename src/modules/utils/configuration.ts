@@ -236,11 +236,11 @@ export class Configuration {
   }
 
   /**
-   * Gets the import operation overwrite flag.
-   * @returns Import overwrite flag.
+   * Gets the import operation create folder flag.
+   * @returns Import create folder flag.
    */
-  configImportOverwrite(): boolean {
-    return this._getVSCodeConfig<boolean>('extension.importScriptsOverwrite')!;
+  configImportCreateFolder(): boolean {
+    return this._getVSCodeConfig<boolean>('extension.importCreateFolder')!;
   }
 
   /**
