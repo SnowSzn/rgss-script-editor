@@ -855,6 +855,32 @@ export async function sectionMove(
 }
 
 /**
+ * Cuts the given editor section or all editor sections selected on the tree view to the clipboard.
+ *
+ * @param section Section
+ * @returns A promise
+ */
+export async function sectionCut(section?: EditorSectionBase) {
+  try {
+    let items = extensionUI.getTreeSelection() || (section ? [section] : []);
+
+    // Checks validness
+    if (!items) {
+      return;
+    }
+
+    // Creates mutable array
+    const itemsArray = Array.from(items);
+
+    // Perform the copy operation
+    logger.logInfo(`Cutting: "${items}"`);
+    extensionScripts.sectionCut(itemsArray);
+  } catch (error) {
+    logger.logErrorUnknown(error);
+  }
+}
+
+/**
  * Copies the given editor section or all editor sections selected on the tree view to the clipboard.
  *
  * @param section Section

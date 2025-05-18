@@ -1075,9 +1075,16 @@ export class ScriptsController {
   private _root: EditorSectionFolder;
 
   /**
-   * Script clipboard buffer
+   * Script clipboard buffer.
    */
   private _clipboard: EditorSectionBase[];
+
+  /**
+   * Script clipboard mode.
+   *
+   * Determines whether the paste operation is cutting or pasting.
+   */
+  private _clipboardCut: boolean;
 
   /**
    * Controller drop mode.
@@ -1097,6 +1104,7 @@ export class ScriptsController {
     this._editorMode = ControllerEditorMode.MERGE;
     this._textDecoder = new TextDecoder('utf8');
     this._clipboard = [];
+    this._clipboardCut = false;
   }
 
   /**
@@ -1737,6 +1745,21 @@ export class ScriptsController {
   }
 
   /**
+   * Cuts all editor sections into the scripts controller clipboard buffer.
+   * @param sections Editor sections
+   */
+  sectionCut(sections: EditorSectionBase[]) {
+    // Resets the clipboard for each copy operation
+    this._clipboard = [];
+
+    // Updates the clipboard with the editor section instances
+    this._clipboard = this._collectParents(sections);
+
+    // Enables clipboard cut flag
+    this._clipboardCut = true;
+  }
+
+  /**
    * Copies all editor sections into the scripts controller clipboard buffer.
    * @param sections Editor sections
    */
@@ -1746,6 +1769,9 @@ export class ScriptsController {
 
     // Updates the clipboard with the editor section instances
     this._clipboard = this._collectParents(sections);
+
+    // Disables clipboard cut flag
+    this._clipboardCut = false;
   }
 
   /**
@@ -1754,68 +1780,75 @@ export class ScriptsController {
    * @returns Whether something was pasted or not
    */
   sectionPaste(target: EditorSectionBase): boolean {
-    // Perform the paste from the clipboard
-    for (let i = 0; i < this._clipboard.length; i++) {
-      const section = this._clipboard[i];
-      const sectionChildren = section.nestedChildren();
+    // Checks the clipboard flag to determine paste mode
+    if (this._clipboardCut) {
+      // Delegate work on this method when cutting sections
+      logger.logInfo('Clipboard mode is cutting, delegating to section move.');
+      this.sectionMove(this._clipboard, target);
+    } else {
+      // Perform the paste from the clipboard
+      for (let i = 0; i < this._clipboard.length; i++) {
+        const section = this._clipboard[i];
+        const sectionChildren = section.nestedChildren();
 
-      // Determine parent section creation info
-      const info = this.determineSectionInfo(
-        section.type,
-        section.getName(),
-        target,
-        { avoidOverwrite: true }
-      );
+        // Determine parent section creation info
+        const info = this.determineSectionInfo(
+          section.type,
+          section.getName(),
+          target,
+          { avoidOverwrite: true }
+        );
 
-      // Gets parent section contents (if allowed)
-      let sectionContents = '';
-      if (section.isType(EditorSectionType.Script)) {
-        sectionContents = fs
-          .readFileSync(section.resourceUri.fsPath)
-          .toString();
-      }
+        // Gets parent section contents (if allowed)
+        let sectionContents = '';
+        if (section.isType(EditorSectionType.Script)) {
+          sectionContents = fs
+            .readFileSync(section.resourceUri.fsPath)
+            .toString();
+        }
 
-      // Increase the priority to keep the clipboard order
-      // info.position = info.position + i;
+        // Increase the priority to keep the clipboard order
+        // info.position = info.position + i;
 
-      // Create parent section
-      let sectionParent = this.sectionCreate(info, {
-        checkboxState: section.isLoaded(),
-        collapsibleState: section.collapsibleState,
-        contents: sectionContents,
-      });
-
-      // Create all children
-      if (sectionParent) {
-        sectionChildren.forEach((child) => {
-          // Determine the relative path to the child
-          let relativeUri = path.relative(
-            section.resourceUri.fsPath,
-            child.resourceUri.fsPath
-          );
-
-          // Create child info
-          let childInfo: ControllerSectionInfo = {
-            type: child.type,
-            parent: sectionParent,
-            uri: vscode.Uri.joinPath(sectionParent.resourceUri, relativeUri),
-          };
-
-          // Gets section contents (if valid)
-          let childContents = '';
-          if (child.isType(EditorSectionType.Script)) {
-            childContents = fs
-              .readFileSync(child.resourceUri.fsPath)
-              .toString();
-          }
-
-          // Create child with the new parent instance
-          this.sectionCreate(childInfo, {
-            checkboxState: child.isLoaded(),
-            collapsibleState: child.collapsibleState,
-            contents: childContents,
-          });
+        // Create parent section
+        let sectionParent = this.sectionCreate(info, {
+          checkboxState: section.isLoaded(),
+          collapsibleState: section.collapsibleState,
+          contents: sectionContents,
         });
+
+        // Create all children
+        if (sectionParent) {
+          sectionChildren.forEach((child) => {
+            // Determine the relative path to the child
+            let relativeUri = path.relative(
+              section.resourceUri.fsPath,
+              child.resourceUri.fsPath
+            );
+
+            // Create child info
+            let childInfo: ControllerSectionInfo = {
+              type: child.type,
+              parent: sectionParent,
+              uri: vscode.Uri.joinPath(sectionParent.resourceUri, relativeUri),
+            };
+
+            // Gets section contents (if valid)
+            let childContents = '';
+            if (child.isType(EditorSectionType.Script)) {
+              childContents = fs
+                .readFileSync(child.resourceUri.fsPath)
+                .toString();
+            }
+
+            // Create child with the new parent instance
+            this.sectionCreate(childInfo, {
+              checkboxState: child.isLoaded(),
+              collapsibleState: child.collapsibleState,
+              contents: childContents,
+            });
+          });
+        }
       }
     }
 

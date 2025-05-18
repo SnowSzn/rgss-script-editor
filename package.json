@@ -145,6 +145,12 @@
         "icon": "$(move)"
       },
       {
+        "command": "rgss-script-editor.sectionCut",
+        "title": "Cut Section/s...",
+        "category": "RGSS Script Editor",
+        "icon": "$(clippy)"
+      },
+      {
         "command": "rgss-script-editor.sectionCopy",
         "title": "Copy Section/s...",
         "category": "RGSS Script Editor",
@@ -400,6 +406,11 @@
         "when": "focusedView == 'rgss-script-editor.editorView'"
       },
       {
+        "command": "rgss-script-editor.sectionCut",
+        "key": "CTRL+X",
+        "when": "focusedView == 'rgss-script-editor.editorView'"
+      },
+      {
         "command": "rgss-script-editor.sectionCopy",
         "key": "CTRL+C",
         "when": "focusedView == 'rgss-script-editor.editorView'"
@@ -534,6 +545,11 @@
           "command": "rgss-script-editor.sectionDelete",
           "when": "view == rgss-script-editor.editorView",
           "group": "3"
+        },
+        {
+          "command": "rgss-script-editor.sectionCut",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "4"
         },
         {
           "command": "rgss-script-editor.sectionCopy",

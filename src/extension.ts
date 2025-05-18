@@ -203,6 +203,13 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
 
+  // Cut handler command
+  context.subscriptions.push(
+    vscode.commands.registerCommand('rgss-script-editor.sectionCut', (what) => {
+      manager.sectionCut(what);
+    })
+  );
+
   // Copy handler command
   context.subscriptions.push(
     vscode.commands.registerCommand(
