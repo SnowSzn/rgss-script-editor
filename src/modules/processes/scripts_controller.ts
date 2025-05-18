@@ -2072,7 +2072,7 @@ export class ScriptsController {
     const sectionCode = sectionContents?.trim();
 
     // Determines section type
-    if (sectionCode !== undefined) {
+    if (sectionCode != undefined) {
       // Section has code in it
       if (sectionCode === EDITOR_SECTION_FOLDER_CONTENTS) {
         return EditorSectionType.Folder;
