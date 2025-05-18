@@ -95,6 +95,16 @@ export function activate(context: vscode.ExtensionContext) {
     )
   );
 
+  // Create a back up of the load order file
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'rgss-script-editor.createBackupLoadOrder',
+      () => {
+        manager.createBackUpLoadOrder();
+      }
+    )
+  );
+
   // Create bundle file from extracted scripts
   context.subscriptions.push(
     vscode.commands.registerCommand(

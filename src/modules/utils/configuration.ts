@@ -139,8 +139,12 @@ export class Configuration {
    * The name should not have extensions since it will get automatically determined
    * based on the RGSS version on runtime.
    */
-  public static EXTRACTED_SCRIPTS_BACKUP_FILE_NAME =
-    'Manual Backup of Extracted Scripts';
+  public static BACKUP_SCRIPTS_FILE_NAME = 'Manual Backup of Extracted Scripts';
+
+  /**
+   * File name of the backup file that the user creates from the load order.
+   */
+  public static BACKUP_LOAD_ORDER_FILE_NAME = 'Load Order Backup';
 
   /**
    * File name for the compiled scripts bundle file
@@ -273,6 +277,14 @@ export class Configuration {
    */
   configBackUpsFolder(): string {
     return this._getVSCodeConfig<string>('external.backUpsFolder')!;
+  }
+
+  /**
+   * Gets the project relative path to the load order back ups folder.
+   * @returns Load order back ups folder path.
+   */
+  configLoadOrderBackUpsFolder(): string {
+    return this._getVSCodeConfig<string>('external.loadOrderBackUpsFolder')!;
   }
 
   /**
@@ -524,6 +536,18 @@ export class Configuration {
    */
   determineBackupsPath() {
     return this.joinProject(this.configBackUpsFolder());
+  }
+
+  /**
+   * Determines the path to the load order backups folder.
+   *
+   * The path is based on the current active folder.
+   *
+   * If the folder is not valid, it returns ``undefined``
+   * @returns Backups folder uri path
+   */
+  determineLoadOrderBackupsPath() {
+    return this.joinProject(this.configLoadOrderBackUpsFolder());
   }
 
   /**
@@ -830,6 +854,27 @@ export class Configuration {
    */
   processBackupFilePath(fileName: string) {
     const backupsFolder = this.determineBackupsPath();
+
+    // Checks backup folder validness
+    if (!backupsFolder) {
+      return undefined;
+    }
+
+    return vscode.Uri.joinPath(
+      backupsFolder,
+      `${fileName} - ${this._currentDate()}.bak`
+    );
+  }
+
+  /**
+   * Creates a backup uri path with the given filename.
+   *
+   * If the backup path cannot be determined, it returns ``undefined``.
+   * @param fileName File name
+   * @returns The formatted backup uri path
+   */
+  processLoadOrderBackupFilePath(fileName: string) {
+    const backupsFolder = this.determineLoadOrderBackupsPath();
 
     // Checks backup folder validness
     if (!backupsFolder) {

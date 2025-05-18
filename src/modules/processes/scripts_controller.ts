@@ -1205,8 +1205,8 @@ export class ScriptsController {
    * @throws An error if extraction is not possible
    */
   async extractScripts(): Promise<number> {
+    const bundleFilePath = this._config?.determineBundleFilePath();
     logger.logInfo('Extracting scripts from RPG Maker bundle file...');
-    let bundleFilePath = this._config?.determineBundleFilePath();
     logger.logInfo(`Bundle file path is: "${bundleFilePath?.fsPath}"`);
     logger.logInfo(`Scripts root path is: "${this._root.resourceUri}"`);
 
@@ -1352,8 +1352,6 @@ export class ScriptsController {
    *
    * This method creates all nested folders needed to create the bundle file.
    *
-   * As a general rule, all script names will be standarized to use the ``/`` separator for compatibility.
-   *
    * **The promise is resolved when the creation is done with a code number.**
    *
    * **If the creation was impossible it rejects the promise with an error.**
@@ -1417,6 +1415,29 @@ export class ScriptsController {
       flag: 'w',
     });
     return ScriptsController.BUNDLE_CREATED;
+  }
+
+  /**
+   * Creates a back up of the current load order file at the given URI path.
+   *
+   * **If the creation was impossible it rejects the promise with an error.**
+   * @param uri Back up URI path
+   */
+  async createLoadOrderBackUp(uri: vscode.Uri) {
+    logger.logInfo(`Backing up load order file at: ${uri.fsPath}...`);
+
+    // Checks load order path validness
+    if (!this._loadOrderFilePath) {
+      throw new Error(
+        'Cannot create load order back up because load order path is invalid!'
+      );
+    }
+
+    // Creates the backup file
+    fileutils.copyFile(this._loadOrderFilePath?.fsPath, uri.fsPath, {
+      recursive: true,
+      overwrite: true,
+    });
   }
 
   /**

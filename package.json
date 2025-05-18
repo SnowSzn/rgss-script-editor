@@ -79,6 +79,12 @@
         "icon": "$(archive)"
       },
       {
+        "command": "rgss-script-editor.createBackupLoadOrder",
+        "title": "Create a Back Up of the Load Order",
+        "category": "RGSS Script Editor",
+        "icon": "$(archive)"
+      },
+      {
         "command": "rgss-script-editor.createBundleFile",
         "title": "Create a Bundle File With Enabled Scripts",
         "category": "RGSS Script Editor",
@@ -280,14 +286,20 @@
           "rgssScriptEditor.external.backUpsFolder": {
             "type": "string",
             "default": "./.rgss-script-editor/backups",
-            "description": "The relative path within the project's folder where all backups will be saved.",
+            "description": "The relative path within the project's folder where all bundle scripts files backups will be saved.",
             "order": 30
+          },
+          "rgssScriptEditor.external.loadOrderBackUpsFolder": {
+            "type": "string",
+            "default": "./.rgss-script-editor/backups/load orders",
+            "description": "The relative path within the project's folder where all bundle scripts files backups will be saved.",
+            "order": 32
           },
           "rgssScriptEditor.external.scriptsFolder": {
             "type": "string",
             "default": "./Scripts",
             "description": "The relative path within the project's folder where all scripts will be extracted.",
-            "order": 31
+            "order": 35
           },
           "rgssScriptEditor.external.extensionLogFileFolder": {
             "type": "string",
@@ -511,6 +523,11 @@
         },
         {
           "command": "rgss-script-editor.createBackupBundleFile",
+          "when": "view == rgss-script-editor.editorView",
+          "group": "4"
+        },
+        {
+          "command": "rgss-script-editor.createBackupLoadOrder",
           "when": "view == rgss-script-editor.editorView",
           "group": "4"
         },

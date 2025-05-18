@@ -271,6 +271,7 @@ export async function extractScripts() {
   try {
     // Extracts all scripts
     let extractionResponse = await extensionScripts.extractScripts();
+
     // Evaluate extraction
     if (extractionResponse === ScriptsController.SCRIPTS_EXTRACTED) {
       logger.logInfo('Scripts extracted successfully!');
@@ -313,6 +314,7 @@ export async function importScripts() {
 
     // Gets the project folder
     const projectFolder = extensionConfig.projectFolderPath;
+
     // Gets the target bundle file
     const target = await vscode.window.showOpenDialog({
       defaultUri: projectFolder,
@@ -335,11 +337,11 @@ export async function importScripts() {
     // Import scripts
     let importResponse = await extensionScripts.importScripts(bundleFile);
     if (importResponse === ScriptsController.SCRIPTS_IMPORTED) {
-      logger.logInfo('All scripts were imported successfully!');
       // Refresh editor view
+      logger.logInfo('All scripts were imported successfully!');
       await refresh();
     } else {
-      logger.logError('Import operation reported an unknown code!');
+      logger.logError('Import operation returned an unknown code!');
     }
   } catch (error) {
     logger.logErrorUnknown(error);
@@ -410,7 +412,7 @@ export async function createBackUpBundleFile() {
   try {
     // Gets the backup file path
     const backUpFilePath = extensionConfig.processBackupFilePath(
-      Configuration.EXTRACTED_SCRIPTS_BACKUP_FILE_NAME
+      Configuration.BACKUP_SCRIPTS_FILE_NAME
     );
 
     // Checks whether the path was determined or not
@@ -443,6 +445,34 @@ export async function createBackUpBundleFile() {
 }
 
 /**
+ * Creates a back up of the current load order file.
+ *
+ * @returns A promise
+ */
+export async function createBackUpLoadOrder() {
+  try {
+    // Gets the backup file path
+    const backUpFilePath = extensionConfig.processLoadOrderBackupFilePath(
+      Configuration.BACKUP_LOAD_ORDER_FILE_NAME
+    );
+
+    // Checks whether the path was determined or not
+    if (backUpFilePath) {
+      logger.logInfo('Backing up current load order...');
+      extensionScripts.createLoadOrderBackUp(backUpFilePath);
+    } else {
+      logger.logError(
+        `The backup could not be created because it was impossible to determine the backup path!`
+      );
+      showBasicErrorMessage();
+    }
+  } catch (error) {
+    logger.logErrorUnknown(error);
+    showBasicErrorMessage();
+  }
+}
+
+/**
  * Creates a RPG Maker bundle file including only the current enabled editor sections.
  *
  * This function should be used to create the bundle file for distribution.
@@ -454,10 +484,12 @@ export async function createBundleFile() {
   try {
     // Gets the project folder
     const projectFolder = extensionConfig.projectFolderPath;
+
     // Gets destination folder
     let destination = await vscode.window.showSaveDialog({
       defaultUri: projectFolder,
     });
+
     // Checks destination validness (user may have cancelled operation no need for an Error)
     if (!destination) {
       logger.logError(`You must select a valid path to save the bundle file!`);
@@ -465,19 +497,23 @@ export async function createBundleFile() {
     }
     // Processes the path to append the proper extension
     const bundleFilePath = extensionConfig.processExtension(destination);
+
     // Create bundle file
     const loadedSections = extensionScripts.root.filterChildren(
       (section) => section.isLoaded(),
       true
     );
+
     let response = await extensionScripts.createBundle(
       loadedSections,
       bundleFilePath
     );
+
     if (response === ScriptsController.BUNDLE_CREATED) {
       logger.logInfo(
         `Bundle file created successfully at: "${bundleFilePath.fsPath}"`
       );
+
       vscode.window.showInformationMessage(
         'The bundle file was created successfully!'
       );
