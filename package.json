@@ -92,7 +92,7 @@
       },
       {
         "command": "rgss-script-editor.createSelectedBundleFile",
-        "title": "Create a Bundle File With Selected Scripts",
+        "title": "Create a Bundle File With Selected Sections",
         "category": "RGSS Script Editor",
         "icon": "$(package)"
       },
