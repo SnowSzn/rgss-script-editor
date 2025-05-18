@@ -565,26 +565,44 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
 
   /**
    * Checks if this instance has the given ``section`` as a child instance.
+   *
+   * If ``nested``, all nested children will be checked.
    * @param section Editor section instance.
+   * @param nested Check nested children flag
    * @returns Whether it is a child or not.
    */
-  hasChild(section: EditorSectionBase) {
-    return this._children.some((child) => {
-      return child === section;
-    });
+  hasChild(section: EditorSectionBase, nested?: boolean) {
+    if (nested) {
+      return this.nestedChildren().some((child) => {
+        return child === section;
+      });
+    } else {
+      return this._children.some((child) => {
+        return child === section;
+      });
+    }
   }
 
   /**
    * Checks if this instance has a child equal to the given ``section``.
    *
+   * If ``nested``, all nested children will be checked.
+   *
    * This method uses the ``isEqual()`` method to evaluate truthiness.
    * @param section Editor section instance.
+   * @param nested Check nested children flag
    * @returns Whether it has an equal child instance or not.
    */
-  hasChildEqual(section: EditorSectionBase) {
-    return this._children.some((child) => {
-      return child.isEqual(section);
-    });
+  hasChildEqual(section: EditorSectionBase, nested?: boolean) {
+    if (nested) {
+      return this.nestedChildren().some((child) => {
+        return child.isEqual(section);
+      });
+    } else {
+      return this._children.some((child) => {
+        return child.isEqual(section);
+      });
+    }
   }
 
   /**
