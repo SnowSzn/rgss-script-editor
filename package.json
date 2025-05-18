@@ -74,7 +74,7 @@
       },
       {
         "command": "rgss-script-editor.createBackupBundleFile",
-        "title": "Create a Back Up With All Scripts",
+        "title": "Create a Back Up With All Sections",
         "category": "RGSS Script Editor",
         "icon": "$(archive)"
       },
@@ -86,7 +86,7 @@
       },
       {
         "command": "rgss-script-editor.createBundleFile",
-        "title": "Create a Bundle File With Enabled Scripts",
+        "title": "Create a Bundle File With Enabled Sections",
         "category": "RGSS Script Editor",
         "icon": "$(package)"
       },
