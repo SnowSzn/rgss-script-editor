@@ -39,170 +39,171 @@
   "activationEvents": [
     "workspaceContains:Game.ini"
   ],
+  "l10n": "./l10n",
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "rgss-script-editor.setProjectFolder",
-        "title": "Set Project Folder",
+        "title": "%command.setProjectFolder.title%",
         "category": "RGSS Script Editor",
         "icon": "$(folder)"
       },
       {
         "command": "rgss-script-editor.openProjectFolder",
-        "title": "Open Project Folder",
+        "title": "%command.openProjectFolder.title%",
         "category": "RGSS Script Editor",
         "icon": "$(folder-opened)"
       },
       {
         "command": "rgss-script-editor.extractScripts",
-        "title": "Extract Scripts",
+        "title": "%command.extractScripts.title%",
         "category": "RGSS Script Editor",
         "icon": "$(arrow-down)"
       },
       {
         "command": "rgss-script-editor.importScripts",
-        "title": "Import Scripts From Bundle File",
+        "title": "%command.importScripts.title%",
         "category": "RGSS Script Editor",
         "icon": "$(file-add)"
       },
       {
         "command": "rgss-script-editor.createScriptLoader",
-        "title": "Create Script Loader",
+        "title": "%command.createScriptLoader.title%",
         "category": "RGSS Script Editor",
         "icon": "$(note)"
       },
       {
         "command": "rgss-script-editor.createBackupBundleFile",
-        "title": "Create a Back Up With All Sections",
+        "title": "%command.createBackupBundleFile.title%",
         "category": "RGSS Script Editor",
         "icon": "$(archive)"
       },
       {
         "command": "rgss-script-editor.createBackupLoadOrder",
-        "title": "Create a Back Up of the Load Order",
+        "title": "%command.createBackupLoadOrder.title%",
         "category": "RGSS Script Editor",
         "icon": "$(archive)"
       },
       {
         "command": "rgss-script-editor.createBundleFile",
-        "title": "Create a Bundle File With Enabled Sections",
+        "title": "%command.createBundleFile.title%",
         "category": "RGSS Script Editor",
         "icon": "$(package)"
       },
       {
         "command": "rgss-script-editor.createSelectedBundleFile",
-        "title": "Create a Bundle File With Selected Sections",
+        "title": "%command.createSelectedBundleFile.title%",
         "category": "RGSS Script Editor",
         "icon": "$(package)"
       },
       {
         "command": "rgss-script-editor.compileBundleFile",
-        "title": "Compile Enabled Scripts",
+        "title": "%command.compileBundleFile.title%",
         "category": "RGSS Script Editor",
         "icon": "$(package)"
       },
       {
         "command": "rgss-script-editor.runGame",
-        "title": "Run Game",
+        "title": "%command.runGame.title%",
         "category": "RGSS Script Editor",
         "icon": "$(run)"
       },
       {
         "command": "rgss-script-editor.processGameException",
-        "title": "Check Last Game Exception",
+        "title": "%command.processGameException.title%",
         "category": "RGSS Script Editor",
         "icon": "$(warning)"
       },
       {
         "command": "rgss-script-editor.chooseEditorMode",
-        "title": "Choose Editor Mode",
+        "title": "%command.chooseEditorMode.title%",
         "category": "RGSS Script Editor",
         "icon": "$(insert)"
       },
       {
         "command": "rgss-script-editor.openLoadOrder",
-        "title": "Open Load Order File",
+        "title": "%command.openLoadOrder.title%",
         "category": "RGSS Script Editor",
         "icon": "$(tasklist)"
       },
       {
         "command": "rgss-script-editor.sectionCreate",
-        "title": "Create Section...",
+        "title": "%command.sectionCreate.title%",
         "category": "RGSS Script Editor",
         "icon": "$(new-file)"
       },
       {
         "command": "rgss-script-editor.sectionDelete",
-        "title": "Delete Section/s...",
+        "title": "%command.sectionDelete.title%",
         "category": "RGSS Script Editor",
         "icon": "$(trash)"
       },
       {
         "command": "rgss-script-editor.sectionRename",
-        "title": "Rename Section...",
+        "title": "%command.sectionRename.title%",
         "category": "RGSS Script Editor",
         "icon": "$(edit)"
       },
       {
         "command": "rgss-script-editor.sectionMove",
-        "title": "Move Section...",
+        "title": "%command.sectionMove.title%",
         "category": "RGSS Script Editor",
         "icon": "$(move)"
       },
       {
         "command": "rgss-script-editor.sectionCut",
-        "title": "Cut Section/s...",
+        "title": "%command.sectionCut.title%",
         "category": "RGSS Script Editor",
         "icon": "$(clippy)"
       },
       {
         "command": "rgss-script-editor.sectionCopy",
-        "title": "Copy Section/s...",
+        "title": "%command.sectionCopy.title%",
         "category": "RGSS Script Editor",
         "icon": "$(clippy)"
       },
       {
         "command": "rgss-script-editor.sectionPaste",
-        "title": "Paste Section/s...",
+        "title": "%command.sectionPaste.title%",
         "category": "RGSS Script Editor",
         "icon": "$(clippy)"
       },
       {
         "command": "rgss-script-editor.sectionToggleLoad",
-        "title": "Toggle Section/s Load Status On/Off...",
+        "title": "%command.sectionToggleLoad.title%",
         "category": "RGSS Script Editor",
         "icon": "$(arrow-swap)"
       },
       {
         "command": "rgss-script-editor.sectionToggleCollapse",
-        "title": "Toggle Section Collapse Status...",
+        "title": "%command.sectionToggleCollapse.title%",
         "category": "RGSS Script Editor",
         "icon": "$(arrow-both)"
       },
       {
         "command": "rgss-script-editor.sectionRevealInVSCodeExplorer",
-        "title": "Reveal in Explorer...",
+        "title": "%command.sectionRevealInVSCodeExplorer.title%",
         "category": "RGSS Script Editor",
         "icon": "$(eye)"
       },
       {
+        "command": "rgss-script-editor.sectionOpenInExplorer",
+        "title": "%command.sectionOpenInExplorer.title%",
+        "category": "RGSS Script Editor",
+        "icon": "$(search)"
+      },
+      {
         "command": "rgss-script-editor.sectionCopyAbsolutePath",
-        "title": "Copy Absolute Path...",
+        "title": "%command.sectionCopyAbsolutePath.title%",
         "category": "RGSS Script Editor",
         "icon": "$(copy)"
       },
       {
         "command": "rgss-script-editor.sectionCopyRelativePath",
-        "title": "Copy Relative Path...",
+        "title": "%command.sectionCopyRelativePath.title%",
         "category": "RGSS Script Editor",
         "icon": "$(copy)"
-      },
-      {
-        "command": "rgss-script-editor.sectionOpenInExplorer",
-        "title": "Reveal In File Explorer...",
-        "category": "RGSS Script Editor",
-        "icon": "$(search)"
       }
     ],
     "configuration": [
@@ -212,25 +213,25 @@
           "rgssScriptEditor.debug.logToConsole": {
             "type": "boolean",
             "default": true,
-            "description": "Enables this extension to log information to a VSCode output channel.",
+            "description": "%configuration.debug.logToConsole.description%",
             "order": 0
           },
           "rgssScriptEditor.debug.logToFile": {
             "type": "boolean",
             "default": false,
-            "description": "Enables this extension to log information to a file inside the project's folder.",
+            "description": "%configuration.debug.logToFile.description%",
             "order": 1
           },
           "rgssScriptEditor.extension.quickStart": {
             "type": "boolean",
             "default": true,
-            "description": "Enables quick start mode.\n\nWhen quick start mode is enabled, the extension will open the current folder automatically if it is a valid RPG Maker project.",
+            "description": "%configuration.extension.quickStart.description%",
             "order": 10
           },
           "rgssScriptEditor.extension.autoReveal": {
             "type": "boolean",
             "default": true,
-            "description": "Allows the extension to reveal the active script file on the extension's script editor view.",
+            "description": "%configuration.extension.autoReveal.description%",
             "order": 11
           },
           "rgssScriptEditor.extension.filesEndOfLine": {
@@ -241,24 +242,24 @@
               "\n"
             ],
             "enumDescriptions": [
-              "Auto mode uses the appropiate EOL type based on the operating system",
-              "CRLF",
-              "LF"
+              "%configuration.extension.filesEndOfLine.enumDescriptionAuto%",
+              "%configuration.extension.filesEndOfLine.enumDescriptionCRLF%",
+              "%configuration.extension.filesEndOfLine.enumDescriptionLF%"
             ],
             "default": "auto",
-            "description": "Choose the type of end of line that the extension will use for files.",
+            "description": "%configuration.extension.filesEndOfLine.description%",
             "order": 12
           },
           "rgssScriptEditor.extension.insertEncodingComment": {
             "type": "boolean",
             "default": false,
-            "description": "Allows the extension to insert a magic comment (# encoding: utf-8) inside every Ruby script file.\n\nIn older versions of the extension, all scripts must have this magic comment because Ruby was not able to determine the encoding of a file.\n\nThis is not needed anymore since v1.5.0 but it is available at the user's choice.\n\nYou can read more in the extension's README.",
+            "description": "%configuration.extension.insertEncodingComment.description%",
             "order": 13
           },
           "rgssScriptEditor.extension.recreateScriptLoader": {
             "type": "boolean",
             "default": true,
-            "description": "Whether to re-create the script loader when a project is opened or not.\n\nThe script loader this extension uses is subject to change between updates so it is recommended to leave it enabled.\n\nOnly disable this if you are using a custom script loader or you want to update the script loader manually between updates.",
+            "description": "%configuration.extension.recreateScriptLoader.description%",
             "order": 14
           },
           "rgssScriptEditor.extension.scriptNameValidation": {
@@ -269,60 +270,60 @@
               "never"
             ],
             "enumDescriptions": [
-              "Auto mode enables/disables script name validation when necessary",
-              "Always validate script names (enabled)",
-              "Never validate script names (disabled)"
+              "%configuration.extension.scriptNameValidation.enumDescriptionAuto%",
+              "%configuration.extension.scriptNameValidation.enumDescriptionAlways%",
+              "%configuration.extension.scriptNameValidation.enumDescriptionNever%"
             ],
             "default": "auto",
-            "description": "Choose script name validation mode.\n\nDue to a Ruby limitation, any RPG Maker that uses a version of Ruby below v1.9 must enable this setting.\n\nThe RPG Maker versions affected by this limitation are: RPG Maker XP and RPG Maker VX.\n\nIf you are using MKXP-Z you don't need to use this, regardless of the RPG Maker version.\n\nCheck extension's README for more information.\n\n**DISABLE AT YOUR OWN RISK**",
+            "description": "%configuration.extension.scriptNameValidation.description%",
             "order": 18
           },
           "rgssScriptEditor.external.backUpsFolder": {
             "type": "string",
             "default": "./.rgss-script-editor/backups",
-            "description": "The relative path within the project's folder where all bundle scripts files backups will be saved.",
+            "description": "%configuration.external.backUpsFolder.description%",
             "order": 30
           },
           "rgssScriptEditor.external.loadOrderBackUpsFolder": {
             "type": "string",
             "default": "./.rgss-script-editor/backups/load orders",
-            "description": "The relative path within the project's folder where all bundle scripts files backups will be saved.",
+            "description": "%configuration.external.loadOrderBackUpsFolder.description%",
             "order": 32
           },
           "rgssScriptEditor.external.scriptsFolder": {
             "type": "string",
             "default": "./Scripts",
-            "description": "The relative path within the project's folder where all scripts will be extracted.",
+            "description": "%configuration.external.scriptsFolder.description%",
             "order": 35
           },
           "rgssScriptEditor.external.extensionLogFileFolder": {
             "type": "string",
             "default": "./.rgss-script-editor",
-            "description": "The relative path within the project's folder where the extension log file is created.",
+            "description": "%configuration.external.extensionLogFileFolder.description%",
             "order": 40
           },
           "rgssScriptEditor.external.gameLogFileFolder": {
             "type": "string",
             "default": "./.rgss-script-editor",
-            "description": "The relative path within the project's folder where the game log file is created.",
+            "description": "%configuration.external.gameLogFileFolder.description%",
             "order": 41
           },
           "rgssScriptEditor.external.scriptsCompileFolder": {
             "type": "string",
             "default": "./.rgss-script-editor/dist",
-            "description": "The relative path within the project's folder where the compiled scripts bundle file is saved.",
+            "description": "%configuration.external.scriptsCompileFolder.description%",
             "order": 45
           },
           "rgssScriptEditor.gameplay.gameExecutablePath": {
             "type": "string",
             "default": "./Game.exe",
-            "description": "The relative path to the game executable inside the project folder.",
+            "description": "%configuration.gameplay.gameExecutablePath.description%",
             "order": 50
           },
           "rgssScriptEditor.gameplay.useWine": {
             "type": "string",
             "default": "wine",
-            "description": "Sets the command to invoke Wine to run the game executable. (Linux Only!)",
+            "description": "%configuration.gameplay.useWine.description%",
             "order": 51
           },
           "rgssScriptEditor.gameplay.runGameBehavior": {
@@ -333,48 +334,48 @@
               "allow multiple"
             ],
             "enumDescriptions": [
-              "This is the default RPG Maker behavior (You need to close the game before running it again)",
-              "Kills the game executable and runs it again automatically",
-              "Allows multiple game processes running at the same time"
+              "%configuration.gameplay.runGameBehavior.enumDescriptionNothing%",
+              "%configuration.gameplay.runGameBehavior.enumDescriptionKillAndRun%",
+              "%configuration.gameplay.runGameBehavior.enumDescriptionAllowMultiple%"
             ],
             "default": "nothing",
-            "description": "Choose how the game executable is handled when it is already running.",
+            "description": "%configuration.gameplay.runGameBehavior.description%",
             "order": 55
           },
           "rgssScriptEditor.gameplay.automaticArgumentsDetection": {
             "type": "boolean",
             "default": true,
-            "description": "Enables automatic arguments detection mode.\n\nIf enabled, the extension will automatically choose the appropiate arguments based on the RPG Maker version detected.",
+            "description": "%configuration.gameplay.automaticArgumentsDetection.description%",
             "order": 60
           },
           "rgssScriptEditor.gameplay.editorTestMode": {
             "type": "boolean",
             "default": true,
-            "description": "Enables test (debug) mode.",
+            "description": "%configuration.gameplay.editorTestMode.description%",
             "order": 61
           },
           "rgssScriptEditor.gameplay.nativeConsole": {
             "type": "boolean",
             "default": true,
-            "description": "Enables RPG Maker native console. (RPG Maker VX Ace only!)",
+            "description": "%configuration.gameplay.nativeConsole.description%",
             "order": 62
           },
           "rgssScriptEditor.gameplay.customArguments": {
             "type": "string",
             "default": "",
-            "description": "Set your own custom arguments here separated by a whitespace.\n\nYou must disable 'auto. arguments detection' behavior to use this!",
+            "description": "%configuration.gameplay.customArguments.description%",
             "order": 63
           },
           "rgssScriptEditor.gameplay.gameExceptionAutoProcess": {
             "type": "boolean",
             "default": false,
-            "description": "Allows the extension to auto-process the last detected exception.",
+            "description": "%configuration.gameplay.gameExceptionAutoProcess.description%",
             "order": 70
           },
           "rgssScriptEditor.gameplay.gameExceptionShowInEditor": {
             "type": "boolean",
             "default": true,
-            "description": "Allows the extension to show a markdown file besides the active editor with the exception backtrace information.",
+            "description": "%configuration.gameplay.gameExceptionShowInEditor.description%",
             "order": 71
           }
         }
@@ -464,22 +465,22 @@
     "viewsWelcome": [
       {
         "view": "rgss-script-editor.editorView",
-        "contents": "There is no folder open in Visual Studio Code.\nYou should open a RPG Maker project folder to start this extension.\n[Open Folder](command:vscode.openFolder)",
+        "contents": "%viewsWelcome.contents1%",
         "when": "workspaceFolderCount <= 0"
       },
       {
         "view": "rgss-script-editor.editorView",
-        "contents": "A folder is currently open.\nYou can select the folder to set it as the active RPG Maker folder using the button below.\n[Set Active Project Folder](command:rgss-script-editor.setProjectFolder)",
+        "contents": "%viewsWelcome.contents2%",
         "when": "workspaceFolderCount == 1 && !rgss-script-editor.openedFolder"
       },
       {
         "view": "rgss-script-editor.editorView",
-        "contents": "There is more than one folder open in Visual Studio Code.\nYou can select a folder to set it as the active RPG Maker folder using the button below.\n[Set Active Project Folder](command:rgss-script-editor.setProjectFolder)",
+        "contents": "%viewsWelcome.contents3%",
         "when": "workspaceFolderCount > 1 && !rgss-script-editor.openedFolder"
       },
       {
         "view": "rgss-script-editor.editorView",
-        "contents": "To use this extension you must extract the contents of the RPG Maker bundled file.\nA new folder with all script files extracted will be created inside the folder.\nOnce all scripts are extracted, you can start using this editor\n[Extract Scripts](command:rgss-script-editor.extractScripts)",
+        "contents": "%viewsWelcome.contents4%",
         "when": "rgss-script-editor.openedFolder && !rgss-script-editor.extractedScripts"
       }
     ],
@@ -606,7 +607,9 @@
     "watch": "tsc -watch -p ./",
     "pretest": "yarn run compile && yarn run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "generate-package": "vsce package --out ./dist",
+    "l10n-gen": "npx @vscode/l10n-dev export --outDir ./l10n ./src"
   },
   "dependencies": {
     "@hyrious/marshal": "^0.3.2"
@@ -617,6 +620,7 @@
     "@types/vscode": "^1.84.0",
     "@typescript-eslint/eslint-plugin": "^8.32.1",
     "@typescript-eslint/parser": "^8.32.1",
+    "@vscode/l10n-dev": "^0.0.35",
     "@vscode/test-electron": "^2.3.6",
     "eslint": "^9.26.0",
     "glob": "^11.0.2",
