@@ -5,6 +5,7 @@ import * as marshal from '@hyrious/marshal';
 import * as crypto from 'crypto';
 import * as vscode from 'vscode';
 import * as fileutils from '../utils/fileutils';
+import * as strings from '../utils/strings';
 import { TextDecoder } from 'util';
 import { Configuration } from '../utils/configuration';
 import { logger } from '../utils/logger';
@@ -688,6 +689,22 @@ export abstract class EditorSectionBase extends vscode.TreeItem {
   }
 
   /**
+   * Deletes the editor section at the given position ``index``.
+   *
+   * Returns the deleted editor section.
+   *
+   * Returns ``undefined`` if the index is out-of-bounds or invalid.
+   * @param index Delete index
+   * @returns Deleted element.
+   */
+  deleteAt(index?: number) {
+    if (!index || index < 0 || index >= this._children.length) {
+      return undefined;
+    }
+    return this._children.splice(index, 1)[0];
+  }
+
+  /**
    * Deletes the given editor section instance from the children list.
    *
    * If deletion was successful it returns the removed element.
@@ -944,13 +961,25 @@ class EditorSectionFolder extends EditorSectionBase {
   }
 
   addChild(section: EditorSectionBase, pos?: number): void {
-    // Removes the section (from self or other) if it is already a child.
+    // Checks whether section parent is this intance or not
+    const sameParent = section.parent === this;
+
+    // If the context is the same parent the value of pos must be fixed
+    // since the section will be deleted and it can provoke a position mismatch
+    if (sameParent) {
+      const index = this.getChildPos(section);
+      if (pos != undefined && index !== -1 && pos > index) {
+        pos--;
+      }
+    }
+
+    // Eliminar del padre actual (puede ser otro o el mismo)
     section.parent?.deleteChild(section);
 
-    // Updates the parent reference.
+    // Actualizar referencia de padre
     section.setParent(this);
 
-    // Adds the new child instance.
+    // Insertar en la posición adecuada
     if (pos == undefined || pos < 0 || pos >= this._children.length) {
       this._children.push(section);
     } else {
@@ -1135,11 +1164,11 @@ export class ScriptsController {
   getEditorModeString() {
     switch (this._editorMode) {
       case ControllerEditorMode.MERGE:
-        return 'Merge';
+        return strings.EDITOR_MODE_MERGE;
       case ControllerEditorMode.MOVE:
-        return 'Move';
+        return strings.EDITOR_MODE_MOVE;
       default:
-        return 'Unknown';
+        return strings.EDITOR_MODE_UNKNOWN;
     }
   }
 
@@ -1148,6 +1177,7 @@ export class ScriptsController {
    * @param mode Drop mode
    */
   setEditorMode(mode: ControllerEditorMode) {
+    logger.logInfo(`Changing editor mode to: ${mode}`);
     this._editorMode = mode;
   }
 
@@ -1291,7 +1321,7 @@ export class ScriptsController {
     // Determines import folder info
     const folderInfo = this.determineSectionInfo(
       EditorSectionType.Folder,
-      `Import from ${path.parse(targetBundle.fsPath).name}`,
+      path.parse(targetBundle.fsPath).name,
       this._root,
       {
         ignoreEditorMode: true,

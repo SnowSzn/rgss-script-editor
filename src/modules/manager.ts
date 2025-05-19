@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as context from './context/vscode_context';
+import * as strings from './utils/strings';
 import { FileSystemWatcher } from './utils/filewatcher';
 import { Configuration } from './utils/configuration';
 import { logger } from './utils/logger';
@@ -95,8 +96,7 @@ export async function restart() {
     if (extensionConfig.configQuickstart()) {
       quickStart();
     } else {
-      logger.logWarning('Quickstart is disabled!');
-      logger.logInfo('To open a folder you can use the command palette.');
+      logger.logInfo('Quickstart is disabled!');
     }
   }
 }
@@ -110,6 +110,7 @@ export async function quickStart() {
   if (validFolders.length === 1) {
     // Opens the folder if there is only one valid
     let folder = validFolders[0];
+
     logger.logInfo(`Detected "${folder.name}" as a RPG Maker project!`);
     await setProjectFolder(folder.uri);
   } else if (validFolders.length > 1) {
@@ -117,9 +118,9 @@ export async function quickStart() {
     logger.logInfo(
       'Several valid RPG Maker folders were detected in the current workspace!'
     );
-    vscode.window.showInformationMessage(
-      'Several RPG Maker folders were detected in the current workspace, choose one to set it as active.'
-    );
+
+    vscode.window.showInformationMessage(strings.QUICK_START_INFO);
+
     extensionUI.control({ changeProjectFolder: true });
   } else {
     logger.logInfo(
@@ -141,22 +142,33 @@ export async function quickStart() {
 export async function setProjectFolder(projectFolder: vscode.Uri) {
   try {
     logger.logInfo(`Changing project folder to: "${projectFolder.fsPath}"...`);
+
     // If the folder is invalid an error is thrown
     const folder = await extensionConfig.update(projectFolder);
 
-    // Updates extension instances
+    // Updates logger
     logger.update(extensionConfig);
+
+    // Update gameplay controller
     await extensionGameplay.update(extensionConfig);
+
+    // Update scripts controller
     await extensionScripts.update(extensionConfig);
+
+    // Update scripts filewatcher
     await extensionScriptsWatcher.update(
       new vscode.RelativePattern(extensionConfig.determineScriptsPath()!, '**')
     );
+
+    // Update game filewatcher
     await extensionGameWatcher.update(
       new vscode.RelativePattern(
         extensionConfig.determineGameLogPath({ removeFilePart: true })!,
         Configuration.GAME_OUTPUT_FILE
       )
     );
+
+    // Update extension's UI
     await extensionUI.update({
       treeRoot: extensionScripts.root,
       statusBarOptions: {
@@ -164,16 +176,20 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
       },
     });
 
-    // Updates extension context
     logger.logInfo(
       `Workspace folder "${folder.curProjectFolder.projectFolderName}" opened successfully!`
     );
     vscode.window.showInformationMessage(
-      `Workspace folder "${folder.curProjectFolder.projectFolderName}" opened successfully!`
+      vscode.l10n.t(
+        strings.SET_PROJECT_SUCCESS,
+        folder.curProjectFolder.projectFolderName
+      )
     );
     logger.logInfo(
       `RGSS Version detected: "${folder.curProjectFolder.rgssVersion}"`
     );
+
+    // Updates extension context
     context.setOpenedProjectFolder(true);
 
     // Updates extension extracted scripts context
@@ -210,9 +226,7 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
       logger.logWarning(
         'If the script loader was overwritten, you will not be able to load external scripts until you extract all scripts again!'
       );
-      vscode.window.showInformationMessage(
-        'Some scripts were detected inside the bundle scripts file, you should be able to extract them now.'
-      );
+      vscode.window.showInformationMessage(strings.SCRIPTS_NOT_EXTRACTED);
     } else {
       context.setExtractedScripts(false);
       logger.logWarning(
@@ -225,9 +239,7 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
   } catch (error) {
     // Invalid folder
     logger.logErrorUnknown(error);
-    vscode.window.showErrorMessage(
-      `Failed to open the folder, a valid RGSS version was not detected!`
-    );
+    vscode.window.showErrorMessage(strings.SET_PROJECT_FAIL);
 
     // Updates extension context
     context.setOpenedProjectFolder(false);
@@ -345,6 +357,7 @@ export async function importScripts() {
     }
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -360,6 +373,7 @@ export async function openLoadOrderFile() {
     }
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -377,18 +391,15 @@ export async function createScriptLoader() {
       logger.logError(
         'You should make sure to extract the scripts to avoid data loss before doing this'
       );
-      vscode.window.showErrorMessage(
-        'Cannot create script loader because RPG Maker bundle file still has valid scripts inside of it!'
-      );
+      vscode.window.showErrorMessage(strings.SCRIPT_LOADER_ERROR);
       return;
     }
+
     // Overwrite bundle file with the script loader
     let loaderResponse = await extensionScripts.createLoader();
     if (loaderResponse === ScriptsController.LOADER_BUNDLE_CREATED) {
       logger.logInfo('Script loader bundle file created successfully!');
-      vscode.window.showInformationMessage(
-        'The script loader was created successfully!'
-      );
+      vscode.window.showInformationMessage(strings.SCRIPT_LOADER_SUCCESS);
     } else {
       logger.logWarning(
         `Script loader bundle file creation reported an unknown code!`
@@ -416,27 +427,30 @@ export async function createBackUpBundleFile() {
     );
 
     // Checks whether the path was determined or not
-    if (backUpFilePath) {
-      const sections = extensionScripts.root.nestedChildren();
-      const response = await extensionScripts.createBundle(
-        sections,
-        backUpFilePath
-      );
-      if (response === ScriptsController.BUNDLE_CREATED) {
-        logger.logInfo(
-          `The backup bundle file was created successfully at: "${backUpFilePath.fsPath}"`
-        );
-        vscode.window.showInformationMessage(
-          'The backup bundle file was created successfully!'
-        );
-      } else {
-        logger.logError(`Backup file creation reported an unknown code!`);
-      }
-    } else {
+    if (!backUpFilePath) {
       logger.logError(
         `The backup could not be created because it was impossible to determine the backup path!`
       );
       showBasicErrorMessage();
+      return;
+    }
+
+    // Create backup
+    const sections = extensionScripts.root.nestedChildren();
+    const response = await extensionScripts.createBundle(
+      sections,
+      backUpFilePath
+    );
+
+    // Process backup returned code
+    if (response === ScriptsController.BUNDLE_CREATED) {
+      logger.logInfo(
+        `The backup bundle file was created successfully at: "${backUpFilePath.fsPath}"`
+      );
+
+      vscode.window.showInformationMessage(strings.BUNDLE_BACKUP_SUCCESS);
+    } else {
+      logger.logError(`Backup file creation reported an unknown code!`);
     }
   } catch (error) {
     logger.logErrorUnknown(error);
@@ -457,16 +471,17 @@ export async function createBackUpLoadOrder() {
     );
 
     // Checks whether the path was determined or not
-    if (backUpFilePath) {
-      logger.logInfo('Backing up current load order...');
-      extensionScripts.createLoadOrderBackUp(backUpFilePath);
-      vscode.window.showInformationMessage('Load order backup created!');
-    } else {
+    if (!backUpFilePath) {
       logger.logError(
         `The backup could not be created because it was impossible to determine the backup path!`
       );
       showBasicErrorMessage();
+      return;
     }
+
+    logger.logInfo('Backing up current load order...');
+    extensionScripts.createLoadOrderBackUp(backUpFilePath);
+    vscode.window.showInformationMessage(strings.LOAD_ORDER_BACKUP_SUCCESS);
   } catch (error) {
     logger.logErrorUnknown(error);
     showBasicErrorMessage();
@@ -515,9 +530,7 @@ export async function createBundleFile() {
         `Bundle file created successfully at: "${bundleFilePath.fsPath}"`
       );
 
-      vscode.window.showInformationMessage(
-        'The bundle file was created successfully!'
-      );
+      vscode.window.showInformationMessage(strings.BUNDLE_CREATE_SUCCESS);
     } else {
       logger.logError(`Bundle file creation reported an unknown code!`);
     }
@@ -537,35 +550,41 @@ export async function createSelectedBundleFile() {
   try {
     // Gets the project folder
     const projectFolder = extensionConfig.projectFolderPath;
+
     // Gets destination folder
     let destination = await vscode.window.showSaveDialog({
       defaultUri: projectFolder,
     });
+
     // Checks destination validness (user may have cancelled operation no need for an Error)
     if (!destination) {
       logger.logError(`You must select a valid path to save the bundle file!`);
       return;
     }
+
     // Processes the path to append the proper extension
     const bundleFilePath = extensionConfig.processExtension(destination);
+
     // Gets the selected tree items from the tree view
     const selectedSections = extensionUI.getTreeSelection();
     if (!selectedSections) {
-      throw new Error(
-        `You must select at least one section on the tree view to create the bundle file!`
-      );
+      vscode.window.showErrorMessage(strings.BUNDLE_CREATE_SELECTED_INVALID);
+      return;
     }
+
     // Create bundle file
     let response = await extensionScripts.createBundle(
       selectedSections,
       bundleFilePath
     );
+
     if (response === ScriptsController.BUNDLE_CREATED) {
       logger.logInfo(
         `Bundle file created successfully at: "${bundleFilePath.fsPath}"`
       );
+
       vscode.window.showInformationMessage(
-        'The bundle file was created successfully!'
+        strings.BUNDLE_CREATE_SELECTED_SUCCESS
       );
     } else {
       logger.logError(`Bundle file creation reported an unknown code!`);
@@ -608,9 +627,7 @@ export async function compileBundleFile() {
       logger.logInfo(
         `Bundle file compiled successfully at: "${destination.fsPath}"`
       );
-      vscode.window.showInformationMessage(
-        'Scripts were compiled successfully!'
-      );
+      vscode.window.showInformationMessage(strings.COMPILE_SCRIPT_SUCCESS);
     } else {
       logger.logError(`Bundle file compilation reported an unknown code!`);
     }
@@ -647,7 +664,7 @@ export async function processGameException() {
     if (!exception) {
       logger.logInfo('No exception was reported in the last game session!');
       vscode.window.showInformationMessage(
-        'No exception was reported in the last game session!'
+        vscode.l10n.t(strings.PROCESS_EXCEPTION_NO_REPORT)
       );
       return;
     }
@@ -655,44 +672,45 @@ export async function processGameException() {
     // Ask the user to whether process the exception or not
     let option: string | undefined = '';
     if (extensionConfig.configGameErrorAutoProcess()) {
-      option = 'Peek Backtrace';
+      option = strings.PROCESS_EXCEPTION_OPT_PEEK;
     } else {
       option = await vscode.window.showWarningMessage(
-        'An exception was reported in the last game session.',
-        'Peek Backtrace',
-        'Close'
+        strings.PROCESS_EXCEPTION_WARNING,
+        strings.PROCESS_EXCEPTION_OPT_PEEK,
+        strings.CLOSE
       );
     }
 
-    if (option === 'Peek Backtrace') {
-      // Shows the exception in a new text document besides the main editor if allowed.
-      if (extensionConfig.configGameErrorShowEditor()) {
-        let doc = await vscode.workspace.openTextDocument({
-          language: 'markdown',
-          content: exception.markdown(),
-        });
-        await vscode.window.showTextDocument(
-          doc,
-          vscode.ViewColumn.Beside,
-          true
-        );
-      }
-      // Opens the peek menu to backtrace.
-      await vscode.commands.executeCommand(
-        'editor.action.peekLocations',
-        vscode.Uri.file(exception.backtrace[0].file),
-        new vscode.Position(exception.backtrace[0].line - 1, 0),
-        exception.backtrace.map((info) => {
-          return new vscode.Location(
-            vscode.Uri.file(info.file),
-            new vscode.Position(info.line - 1, 0)
-          );
-        }),
-        'gotoAndPeek'
-      );
+    // Checks option peek validness
+    if (option !== strings.PROCESS_EXCEPTION_OPT_PEEK) {
+      return;
     }
+
+    // Shows the exception in a new text document besides the main editor if allowed.
+    if (extensionConfig.configGameErrorShowEditor()) {
+      let doc = await vscode.workspace.openTextDocument({
+        language: 'markdown',
+        content: exception.markdown(),
+      });
+      await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside, true);
+    }
+
+    // Opens the peek menu to backtrace.
+    await vscode.commands.executeCommand(
+      'editor.action.peekLocations',
+      vscode.Uri.file(exception.backtrace[0].file),
+      new vscode.Position(exception.backtrace[0].line - 1, 0),
+      exception.backtrace.map((info) => {
+        return new vscode.Location(
+          vscode.Uri.file(info.file),
+          new vscode.Position(info.line - 1, 0)
+        );
+      }),
+      'gotoAndPeek'
+    );
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -725,24 +743,30 @@ export async function sectionCreate(section?: EditorSectionBase) {
 
     // Determine section type
     let typeOption = await vscode.window.showQuickPick(
-      ['Create Script', 'Create Folder', 'Create Separator'],
+      [
+        strings.CREATE_TYPE_OPT_SCRIPT,
+        strings.CREATE_TYPE_OPT_FOLDER,
+        strings.CREATE_TYPE_OPT_SEPARATOR,
+      ],
       {
-        title: `Create a new section at: ${target}`,
-        placeHolder: 'Choose the type...',
+        title: vscode.l10n.t(strings.CREATE_TYPE_TITLE, target.toString()),
+        placeHolder: strings.CREATE_TYPE_PLACEHOLDER,
         canPickMany: false,
       }
     );
+
+    // Evaluates new section type
     switch (typeOption) {
-      case 'Create Separator': {
+      case strings.CREATE_TYPE_OPT_SEPARATOR: {
         type = EditorSectionType.Separator;
         name = '*separator*';
         break;
       }
-      case 'Create Folder': {
+      case strings.CREATE_TYPE_OPT_FOLDER: {
         type = EditorSectionType.Folder;
         break;
       }
-      case 'Create Script': {
+      case strings.CREATE_TYPE_OPT_SCRIPT: {
         type = EditorSectionType.Script;
         break;
       }
@@ -755,13 +779,11 @@ export async function sectionCreate(section?: EditorSectionBase) {
     // Determine section name (if not set automatically)
     if (type && !name) {
       name = await vscode.window.showInputBox({
-        title: `Create a new section at: ${target}`,
-        placeHolder: 'Type a name for the new section...',
+        title: vscode.l10n.t(strings.CREATE_NAME_TITLE, target.toString()),
+        placeHolder: strings.CREATE_NAME_PLACEHOLDER,
         validateInput(value) {
           let info = extensionScripts.determineSectionInfo(type, value, target);
-          return info
-            ? validateUserInput(info.parent, info.uri, value)
-            : 'Cannot determine validness!';
+          return validateUserInput(info.parent, info.uri, value);
         },
       });
     }
@@ -780,6 +802,7 @@ export async function sectionCreate(section?: EditorSectionBase) {
     }
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -794,24 +817,28 @@ export async function sectionDelete(section?: EditorSectionBase) {
   try {
     let items = extensionUI.getTreeSelection() || (section ? [section] : []);
     let option = await vscode.window.showQuickPick(
-      ['Yes (This is irreversible)', 'No'],
+      [strings.DELETE_OPT_DELETE, strings.DELETE_OPT_CANCEL],
       {
-        title: `Deleting: ${items}`,
-        placeHolder:
-          'Are you sure you want to delete the selected items? (This is irreversible)',
+        title: vscode.l10n.t(strings.DELETE_TITLE, items.toString()),
+        placeHolder: strings.DELETE_PLACEHOLDER,
         canPickMany: false,
       }
     );
-    // Checks for user option
-    if (option === 'Yes (This is irreversible)') {
-      for (let item of items) {
-        logger.logInfo(`Deleting section: "${item.resourceUri.fsPath}"`);
-        extensionScripts.sectionDelete(item);
-      }
-      await refresh();
+
+    // Checks if user confirmed deletion
+    if (option !== strings.DELETE_OPT_DELETE) {
+      return;
     }
+
+    // Delete selected sections
+    for (let item of items) {
+      logger.logInfo(`Deleting section: "${item.resourceUri.fsPath}"`);
+      extensionScripts.sectionDelete(item);
+    }
+    await refresh();
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -832,8 +859,8 @@ export async function sectionRename(section?: EditorSectionBase) {
 
     // Determine section name
     let name = await vscode.window.showInputBox({
-      title: `Renaming: ${item.label}`,
-      placeHolder: 'Type a new name for this section...',
+      title: vscode.l10n.t(strings.RENAME_TITLE, item.toString()),
+      placeHolder: strings.RENAME_PLACEHOLDER,
       value: item.label?.toString(),
       validateInput(value) {
         let uri = extensionScripts.determineSectionUri(
@@ -845,19 +872,24 @@ export async function sectionRename(section?: EditorSectionBase) {
       },
     });
 
-    // If input is valid, perform rename operation
-    if (name) {
-      let uri = extensionScripts.determineSectionUri(
-        item.getDirectory(),
-        item.type,
-        name
-      );
-      logger.logInfo(`Renaming section: "${item}" to: "${uri.fsPath}"`);
-      extensionScripts.sectionRename(item, uri);
-      await refresh({ treeItem: item });
+    // Checks name input validness
+    if (!name) {
+      return;
     }
+
+    // Rename section
+    let uri = extensionScripts.determineSectionUri(
+      item.getDirectory(),
+      item.type,
+      name
+    );
+
+    logger.logInfo(`Renaming section: "${item}" to: "${uri.fsPath}"`);
+    extensionScripts.sectionRename(item, uri);
+    await refresh({ treeItem: item });
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -885,9 +917,7 @@ export async function sectionMove(
     }
   } catch (error) {
     logger.logErrorUnknown(error);
-    if (error instanceof Error) {
-      vscode.window.showErrorMessage(error.message);
-    }
+    showBasicErrorMessage();
   }
 }
 
@@ -914,6 +944,7 @@ export async function sectionCut(section?: EditorSectionBase) {
     extensionScripts.sectionCut(itemsArray);
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -940,6 +971,7 @@ export async function sectionCopy(section?: EditorSectionBase) {
     extensionScripts.sectionCopy(itemsArray);
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -965,6 +997,7 @@ export async function sectionPaste(section?: EditorSectionBase) {
     }
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -987,21 +1020,21 @@ export async function sectionToggleLoad(
 
     // Handles arguments
     if (section instanceof Array) {
-      // AlternateLoadMatrix
       toggleMatrix = section;
     } else {
-      let selected = extensionUI.getTreeSelection();
-      // This is used to determine how this function is called
+      // This is used to determine how this function is called.
       // If there are more than one element selected in the tree, it is always for a batch of elements
-      // otherwise, toggle is probably done using the context menu with right click or a keybind
-      // in that case, section is undefined if using a keybind and selected only contains one element
-      // section is only valid when right clicking on a tree item on the tree view.
+      // otherwise, toggle is probably done using the context menu with right click or a keybind.
+      // Section is undefined when using a keybind and ``selected`` only contains one element.
+      // section is only valid when right-clicking on a tree item on the tree view.
+      let selected = extensionUI.getTreeSelection();
       let items =
         selected && !section
           ? selected
           : selected && selected.length > 1
           ? selected
           : [section];
+
       for (let item of items) {
         if (item) {
           toggleMatrix.push([item, !item.isLoaded()]);
@@ -1021,6 +1054,7 @@ export async function sectionToggleLoad(
     }
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -1050,6 +1084,7 @@ export async function sectionToggleCollapse(section?: EditorSectionBase) {
     );
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -1082,6 +1117,7 @@ export async function sectionCopyAbsolutePath(section?: EditorSectionBase) {
     );
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -1114,6 +1150,7 @@ export async function sectionCopyRelativePath(section?: EditorSectionBase) {
     );
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -1170,6 +1207,7 @@ export async function revealInFileExplorer(section?: EditorSectionBase) {
     }
   } catch (error) {
     logger.logErrorUnknown(error);
+    showBasicErrorMessage();
   }
 }
 
@@ -1181,19 +1219,25 @@ export async function revealInFileExplorer(section?: EditorSectionBase) {
 export async function chooseEditorMode() {
   // Show drop mode selector
   let curMode = extensionScripts.getEditorModeString();
-  let value = await vscode.window.showQuickPick(['Merge', 'Move'], {
-    title: `Current Editor Mode: ${curMode}`,
-    placeHolder: 'Choose the editor mode...',
-    canPickMany: false,
-  });
-  // Update drop mode
-  if (value) {
-    logger.logInfo(`Setting editor mode to: ${value}`);
-    if (value === 'Merge') {
-      extensionScripts.setEditorMode(ControllerEditorMode.MERGE);
-    } else if (value === 'Move') {
-      extensionScripts.setEditorMode(ControllerEditorMode.MOVE);
+  let value = await vscode.window.showQuickPick(
+    [strings.EDITOR_MODE_MERGE, strings.EDITOR_MODE_MOVE],
+    {
+      title: vscode.l10n.t(strings.CHOOSE_EDITOR_MODE_TITLE, curMode),
+      placeHolder: strings.CHOOSE_EDITOR_MODE_PLACEHOLDER,
+      canPickMany: false,
     }
+  );
+
+  // Checks input editor mode validness
+  if (!value) {
+    return;
+  }
+
+  // Updates the editor mode
+  if (value === strings.EDITOR_MODE_MERGE) {
+    extensionScripts.setEditorMode(ControllerEditorMode.MERGE);
+  } else if (value === strings.EDITOR_MODE_MOVE) {
+    extensionScripts.setEditorMode(ControllerEditorMode.MOVE);
   }
 }
 
@@ -1379,11 +1423,11 @@ function validateUserInput(
   let sectionValidness = extensionScripts.sectionFind(uri, parent);
   // Checks name validness
   if (nameValidness) {
-    return `Input contains invalid characters or words! (${nameValidness})`;
+    return vscode.l10n.t(strings.VALIDATE_INPUT_NAME, nameValidness);
   }
   // Checks section validness
   if (sectionValidness) {
-    return 'An editor section already exists with the given input!';
+    return strings.VALIDATE_INPUT_PATH;
   }
   return null;
 }
@@ -1412,7 +1456,5 @@ function fetchWorkspaceFolders() {
  * Shows an error message to inform the user to check the extension's output channel
  */
 function showBasicErrorMessage() {
-  vscode.window.showErrorMessage(
-    'Something went wrong! Please check RGSS Script Editor output channel for more information'
-  );
+  vscode.window.showErrorMessage(strings.ERROR_GENERIC);
 }

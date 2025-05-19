@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as manager from './modules/manager';
+import * as strings from './modules/utils/strings';
 
 /**
  * Entry point.
@@ -39,7 +40,7 @@ export function activate(context: vscode.ExtensionContext) {
       () => {
         vscode.window
           .showWorkspaceFolderPick({
-            placeHolder: 'Choose the RPG Maker active project folder',
+            placeHolder: strings.SET_PROJECT_PLACEHOLDER,
             ignoreFocusOut: true,
           })
           .then((value) => {

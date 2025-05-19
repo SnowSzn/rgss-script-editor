@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as strings from '../../utils/strings';
 
 /**
  * Status bar control options type.
@@ -80,7 +81,10 @@ export class StatusBarItems {
    * @param options Status bar options.
    */
   update(options: StatusBarOptions): void {
-    this.itemProjectFolder.text = `$(folder) RPG Maker Active Project: ${options.projectFolder}`;
+    this.itemProjectFolder.text = `$(folder) ${vscode.l10n.t(
+      strings.UI_PROJECT_FOLDER_TEXT,
+      options.projectFolder
+    )}`;
   }
 
   /**
@@ -140,28 +144,30 @@ export class StatusBarItems {
    */
   private _initialize() {
     // Set Project Folder item
-    this.itemSetProjectFolder.name = 'RGSS Script Editor: Set Project Folder';
-    this.itemSetProjectFolder.text =
-      '$(folder-library) Choose RPG Maker Project Folder';
-    this.itemSetProjectFolder.tooltip =
-      'Choose a RPG Maker project folder from the current workspace to activate it';
+    this.itemSetProjectFolder.name = strings.UI_SET_PROJECT_NAME;
+    this.itemSetProjectFolder.text = `$(folder-library) ${strings.UI_SET_PROJECT_TEXT}`;
+    this.itemSetProjectFolder.tooltip = strings.UI_SET_PROJECT_TOOLTIP;
     this.itemSetProjectFolder.command = 'rgss-script-editor.setProjectFolder';
+
     // Opened Project Folder item
-    this.itemProjectFolder.name = 'RGSS Script Editor: Active Project Folder';
-    this.itemProjectFolder.text = '$(folder) RPG Maker Active Project: None';
-    this.itemProjectFolder.tooltip =
-      'Opens the current active RPG Maker project folder';
+    this.itemProjectFolder.name = strings.UI_PROJECT_FOLDER_NAME;
+    this.itemProjectFolder.text = `$(folder) ${vscode.l10n.t(
+      strings.UI_PROJECT_FOLDER_TEXT,
+      '-'
+    )}`;
+    this.itemProjectFolder.tooltip = strings.UI_PROJECT_FOLDER_TOOLTIP;
     this.itemProjectFolder.command = 'rgss-script-editor.openProjectFolder';
+
     // Run Game item
-    this.itemRunGame.name = 'RGSS Script Editor: Run Game';
-    this.itemRunGame.text = '$(run) Run Game';
-    this.itemRunGame.tooltip = 'Runs the game executable';
+    this.itemRunGame.name = strings.UI_RUN_GAME_NAME;
+    this.itemRunGame.text = `$(run) ${strings.UI_RUN_GAME_TEXT}`;
+    this.itemRunGame.tooltip = strings.UI_RUN_GAME_TOOLTIP;
     this.itemRunGame.command = 'rgss-script-editor.runGame';
+
     // Extract Scripts item
-    this.itemExtractScripts.name = 'RGSS Script Editor: Extract Scripts';
-    this.itemExtractScripts.text = '$(arrow-down) Extract Scripts';
-    this.itemExtractScripts.tooltip =
-      'Extracts all scripts from the bundled RPG Maker scripts file';
+    this.itemExtractScripts.name = strings.UI_EXTRACT_NAME;
+    this.itemExtractScripts.text = `$(arrow-down) ${strings.UI_EXTRACT_TEXT}`;
+    this.itemExtractScripts.tooltip = strings.UI_EXTRACT_TOOLTIP;
     this.itemExtractScripts.command = 'rgss-script-editor.extractScripts';
   }
 }

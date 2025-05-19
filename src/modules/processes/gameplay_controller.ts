@@ -137,6 +137,7 @@ export class GameException {
   markdown(): string {
     // Document title
     let mark = '**RGSS Script Editor: Last Game Exception Report**\n\n';
+
     // Document information
     mark = mark.concat(
       'This document is used to display information about the exception that was thrown in the last game session.\n\n'
@@ -147,11 +148,16 @@ export class GameException {
     mark = mark.concat(
       'The exception thrown will be shown in the following lines:\n\n'
     );
-    // Document exception display
+
+    // Process exception basic info
     mark = mark.concat(`# ${this.name}\n\n`);
     mark = mark.concat(`${this.message}\n\n`);
+
+    // Process exception time stamp
     mark = mark.concat('#### Timestamp\n\n');
     mark = mark.concat(`${this.timestamp}\n\n`);
+
+    // Process backtrace
     mark = mark.concat('#### Backtrace\n\n');
     this.backtrace.forEach((item) => {
       mark = mark.concat('```\n');
