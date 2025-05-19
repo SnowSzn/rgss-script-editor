@@ -797,7 +797,7 @@ export async function sectionCreate(section?: EditorSectionBase) {
     let info = extensionScripts.determineSectionInfo(type, name, target);
     if (info) {
       logger.logInfo(`Creating section: "${info.uri.fsPath}"`);
-      extensionScripts.sectionCreate(info);
+      extensionScripts.sectionCreate(info, { checkboxState: true });
       await refresh();
     }
   } catch (error) {
@@ -1315,11 +1315,16 @@ async function watcherScriptOnDidCreate(uri: vscode.Uri) {
     // Create new section
     if (type) {
       logger.logInfo(`(Watcher) Creating section: "${uri.fsPath}"`);
-      extensionScripts.sectionCreate({
-        parent: extensionScripts.root,
-        type: type,
-        uri: uri,
-      });
+      extensionScripts.sectionCreate(
+        {
+          parent: extensionScripts.root,
+          type: type,
+          uri: uri,
+        },
+        {
+          checkboxState: true,
+        }
+      );
       await refresh();
     }
   } catch (error) {

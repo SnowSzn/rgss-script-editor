@@ -1294,7 +1294,7 @@ export class ScriptsController {
           uri: sectionInfo.uri,
           position: sectionInfo.position,
         },
-        { contents: baseCode }
+        { checkboxState: true, contents: baseCode }
       );
     }
     return ScriptsController.SCRIPTS_EXTRACTED;
@@ -1330,7 +1330,9 @@ export class ScriptsController {
     );
 
     // Creates import folder section
-    let parent: EditorSectionBase = this.sectionCreate(folderInfo)!;
+    let parent: EditorSectionBase = this.sectionCreate(folderInfo, {
+      checkboxState: true,
+    })!;
 
     // Iterate through the bundle file extracting each script section
     for (let i = 0; i < bundle.length; i++) {
@@ -1366,7 +1368,10 @@ export class ScriptsController {
       );
 
       // Create the new section
-      this.sectionCreate(sectionInfo, { contents: baseCode });
+      this.sectionCreate(sectionInfo, {
+        checkboxState: true,
+        contents: baseCode,
+      });
     }
     return ScriptsController.SCRIPTS_IMPORTED;
   }
@@ -2237,11 +2242,14 @@ export class ScriptsController {
       }
 
       // Creates section
-      this.sectionCreate({
-        parent: this._root,
-        type: sectionType,
-        uri: entry,
-      });
+      this.sectionCreate(
+        {
+          parent: this._root,
+          type: sectionType,
+          uri: entry,
+        },
+        { checkboxState: true }
+      );
     }
   }
 
