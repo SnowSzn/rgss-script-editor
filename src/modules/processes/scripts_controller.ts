@@ -1597,7 +1597,7 @@ export class ScriptsController {
     // Process child instance is creation was successful
     if (child) {
       // Updates checkbox (loaded) state
-      child.setCheckboxState(options?.checkboxState ?? true);
+      child.setCheckboxState(options?.checkboxState ?? child.isLoaded());
 
       // Creates file system entry
       if (options?.overwrite || !fs.existsSync(child.resourceUri.fsPath)) {
@@ -2321,12 +2321,14 @@ export class ScriptsController {
           }
 
           // Create editor section
-          let child = this.sectionCreate({
-            parent: this._root,
-            type: sectionType,
-            uri: sectionPath,
-          });
-          child?.setCheckboxState(sectionEnabled);
+          this.sectionCreate(
+            {
+              parent: this._root,
+              type: sectionType,
+              uri: sectionPath,
+            },
+            { checkboxState: sectionEnabled }
+          );
           break;
         }
       }
