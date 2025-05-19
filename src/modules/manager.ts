@@ -1423,7 +1423,7 @@ function validateUserInput(
   let sectionValidness = extensionScripts.sectionFind(uri, parent);
   // Checks name validness
   if (nameValidness) {
-    return vscode.l10n.t(strings.VALIDATE_INPUT_NAME, nameValidness);
+    return vscode.l10n.t(strings.VALIDATE_INPUT_NAME, nameValidness.toString());
   }
   // Checks section validness
   if (sectionValidness) {
