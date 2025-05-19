@@ -2,6 +2,12 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.5.2] - 19/05/2025
+
+### Fixed
+
+- Fixed section checkbox state forced to true when creating sections
+
 ## [1.5.1] - 19/05/2025
 
 ### Fixed
