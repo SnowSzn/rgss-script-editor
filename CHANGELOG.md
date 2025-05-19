@@ -2,6 +2,45 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.5.0] - 19/05/2025
+
+### Added
+
+- Localization support
+  - Added spanish localization
+- Cut & Paste operations on the script editor
+  - You can select a list of sections to cut and paste in the extension's script editor
+  - All sections will move to the target avoiding overwrites
+- Added a new command to copy the absolute path to the clipboard of a any section or sections
+- Added a new command to copy the relative path to the clipboard of a any section or sections
+- Added a new command to create a backup file of the current load order
+- Added script name validation setting
+  - Allows the extension to validate script names to meet the requirements of RPG Maker based on the Ruby version used
+- Added a setting to insert encoding magic comment
+  - Since v1.5.0 the enconding magic comment is no longer needed
+  - Although, you can optionally enable this setting to insert them into scripts
+
+### Changed
+
+- Changed loader script from using `Kernel.require` and `Kernel.load` to `Kernel.eval` to load script files.
+- Modified loader script to not suppress exceptions when creating the game log file
+- Improved regular expressions to match invalid characters, depending on RGSS version
+  - Validation of invalid characters is much more permissive now, allowing wide characters when supported.
+- Modified section move operations to avoid overwriting sections in target folder
+- Forced import operations to always create a folder, avoiding overwriting sections
+- Improved script controller logic, should be more stable and efficient now
+- Removed section priority attribute and used the position in the children array to determine their priority
+- README has been improved to make it clearer and easier to read
+- Improved description for all extension settings
+
+### Fixed
+
+- Fixed the problem that caused different scripts with the same name to be overwritten when extracting
+- Fixed bugged tree view editor when changing between workspace projects
+  - The script editor view was unnecessarily re-created between workspace changes
+- Fixed drag & drop (section move) raising errors when the section was dropped in self or inside a child section
+- Fixed empty icons for separators
+
 ## [1.4.1] - 13/09/2024
 
 ### Changed
