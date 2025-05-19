@@ -2,6 +2,12 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.5.1] - 19/05/2025
+
+### Fixed
+
+- Fixed input window not showing the full list of invalid characters
+
 ## [1.5.0] - 19/05/2025
 
 ### Added
