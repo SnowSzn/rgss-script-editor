@@ -2,6 +2,12 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.5.3] - 20/05/2025
+
+### Fixed
+
+- Assign the appropriate loading status when creating new sections
+
 ## [1.5.2] - 19/05/2025
 
 ### Fixed
