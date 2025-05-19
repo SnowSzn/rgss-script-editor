@@ -973,13 +973,13 @@ class EditorSectionFolder extends EditorSectionBase {
       }
     }
 
-    // Eliminar del padre actual (puede ser otro o el mismo)
+    // Delete section parent (either self or another)
     section.parent?.deleteChild(section);
 
-    // Actualizar referencia de padre
+    // Updates section parent reference to self
     section.setParent(this);
 
-    // Insertar en la posición adecuada
+    // Inserts new section at the given position
     if (pos == undefined || pos < 0 || pos >= this._children.length) {
       this._children.push(section);
     } else {
