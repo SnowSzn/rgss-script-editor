@@ -2235,6 +2235,11 @@ export class ScriptsController {
       .map((entry) => vscode.Uri.file(entry));
 
     for (let entry of entries) {
+      // Checks if the section is already created
+      if (this.sectionFind(entry)) {
+        continue;
+      }
+
       // Determines the type
       const sectionType = this.determineSectionType(entry.fsPath);
       if (!sectionType) {

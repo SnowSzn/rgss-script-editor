@@ -1312,21 +1312,30 @@ async function watcherScriptOnDidCreate(uri: vscode.Uri) {
     logger.logInfo(`(Watcher) Entry created: "${uri.fsPath}"`);
     let type = extensionScripts.determineSectionType(uri.fsPath);
 
-    // Create new section
-    if (type) {
-      logger.logInfo(`(Watcher) Creating section: "${uri.fsPath}"`);
-      extensionScripts.sectionCreate(
-        {
-          parent: extensionScripts.root,
-          type: type,
-          uri: uri,
-        },
-        {
-          checkboxState: true,
-        }
-      );
-      await refresh();
+    // Checks type validness
+    if (!type) {
+      return;
     }
+
+    // Checks if section exists already
+    if (extensionScripts.sectionFind(uri)) {
+      logger.logInfo(`(Watcher) A section already exists for: ${uri.fsPath}`);
+      return;
+    }
+
+    // Create new section
+    logger.logInfo(`(Watcher) Creating section: "${uri.fsPath}"`);
+    extensionScripts.sectionCreate(
+      {
+        parent: extensionScripts.root,
+        type: type,
+        uri: uri,
+      },
+      {
+        checkboxState: true,
+      }
+    );
+    await refresh();
   } catch (error) {
     logger.logErrorUnknown(error);
   }
