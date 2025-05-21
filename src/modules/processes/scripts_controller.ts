@@ -2460,7 +2460,7 @@ export class ScriptsController {
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
-# Version: 1.5.0
+# Version: 1.5.1
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
@@ -2561,9 +2561,9 @@ module ScriptLoader
   #
   def self.run
     begin
+      ensure_file_descriptor_validness
       log("Running script loader...")
       load_order_path = File.join(SCRIPTS_PATH, '${config.loadOrderFileName}')
-      ensure_file_descriptor_validness
       @scripts = 0
 
       log("Scripts folder path is: '#{SCRIPTS_PATH}'")
