@@ -147,7 +147,7 @@ Older RPG Maker versions using Ruby <1.9 cannot handle special characters in fil
 
 Avoid using characters like `■` or `▼` in filenames, also wide characters like japanese or chinese causes this error too.
 
-The versions of RPG Maker affected are::
+The versions of RPG Maker affected are:
 
 - RPG Maker XP
 - RPG Maker VX
