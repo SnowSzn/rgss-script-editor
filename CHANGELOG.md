@@ -2,6 +2,13 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.5.5] - 21/05/2025
+
+### Fixed
+
+- Fixed bad file descriptor errors in the extension script loader
+  - File descriptor is redirected to null (supressed) until process allocates the console
+
 ## [1.5.4] - 20/05/2025
 
 ### Fixed
