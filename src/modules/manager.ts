@@ -1310,10 +1310,16 @@ async function watcherScriptOnDidCreate(uri: vscode.Uri) {
 
     // Determine entry type
     logger.logInfo(`(Watcher) Entry created: "${uri.fsPath}"`);
-    let type = extensionScripts.determineSectionType(uri.fsPath);
+    let type = extensionScripts.determineSectionType({
+      sectionPath: uri.fsPath,
+      isReal: true,
+    });
 
     // Checks type validness
     if (!type) {
+      logger.logInfo(
+        `(Watcher) Cannot determine the type of the new entry (not supported section type)`
+      );
       return;
     }
 

@@ -66,6 +66,37 @@ type ControllerCreateOptions = {
 };
 
 /**
+ * Controller determine type options type.
+ */
+type ControllerDetermineTypeOptions = {
+  /**
+   * Section path.
+   */
+  sectionPath: string;
+
+  /**
+   * Section contents (if any)
+   *
+   * Sections inside a RPG Maker bundle file should fill this
+   * option to be treated properly.
+   *
+   * When this option is missing, the section path will be treated as a
+   * file system entry.
+   */
+  sectionContents?: string;
+
+  /**
+   * Ensures that the given section path is *actually real*.
+   *
+   * This option is only taken into consideration when ``sectionContents`` is ``undefined`` since sections coming
+   * from a bundle file does not exist in the file system yet.
+   *
+   * If set to a falsy value, the type will be determined **based on the likeness** to each section type.
+   */
+  isReal?: boolean;
+};
+
+/**
  * Controller determine section URI options type.
  */
 type ControllerDetermineUriOptions = {
@@ -1270,7 +1301,11 @@ export class ScriptsController {
       const baseCode = bundleCode.trim();
 
       // Determine editor section type
-      let sectionType = this.determineSectionType(baseName, baseCode);
+      const sectionType = this.determineSectionType({
+        sectionPath: baseName,
+        sectionContents: baseCode,
+        isReal: false,
+      });
       if (!sectionType) {
         continue;
       }
@@ -1351,7 +1386,11 @@ export class ScriptsController {
       const baseCode = bundleCode.trim();
 
       // Determine editor section type
-      const sectionType = this.determineSectionType(baseName, baseCode);
+      const sectionType = this.determineSectionType({
+        sectionPath: baseName,
+        sectionContents: baseCode,
+        isReal: false,
+      });
       if (!sectionType) {
         continue;
       }
@@ -2094,21 +2133,22 @@ export class ScriptsController {
   }
 
   /**
-   * Determines the appropiate editor section type based on the given path.
+   * Determines the appropiate editor section type based on the given options.
    *
-   * If any section content is given it will be considered to determinate the section.
-   * @param sectionPath Section path.
-   * @param sectionContents Section contents.
+   * When ``sectionContents`` is valid, it will be assumed this section comes from a bundle file.
+   *
+   * Returns ``undefined`` if the type cannot be determined.
+   * @param options Determine type options.
    * @returns The appropiate editor section type
    */
-  determineSectionType(sectionPath: string, sectionContents?: string) {
+  determineSectionType(options: ControllerDetermineTypeOptions) {
     // Gets the section name
-    const sectionName = path.basename(sectionPath);
-    const sectionCode = sectionContents?.trim();
+    const sectionName = path.basename(options.sectionPath);
+    const sectionCode = options.sectionContents?.trim();
 
     // Determines section type
     if (sectionCode != undefined) {
-      // Section has code in it
+      // Section has code in it (comes from a bundle file)
       if (sectionCode === EDITOR_SECTION_FOLDER_CONTENTS) {
         return EditorSectionType.Folder;
       } else if (
@@ -2120,17 +2160,30 @@ export class ScriptsController {
         return EditorSectionType.Script;
       }
     } else {
-      // Section has no code
+      // Section has no code (may be a file system entry)
+      // First, check if we are dealing with a separator since
+      // they are not real files whatsoever
       if (
         sectionName.length === 0 ||
         sectionName === EDITOR_SECTION_SEPARATOR
       ) {
         return EditorSectionType.Separator;
-      } else if (fileutils.isRubyFileLike(sectionName)) {
+      }
+
+      // Checks others section types
+      if (options.isReal) {
+        if (fileutils.isRubyFile(options.sectionPath)) {
+          return EditorSectionType.Script;
+        } else if (fileutils.isFolder(options.sectionPath)) {
+          return EditorSectionType.Folder;
+        }
+      } else {
+        if (fileutils.isRubyFileLike(sectionName)) {
         return EditorSectionType.Script;
       } else if (fileutils.isFolderLike(sectionName)) {
         return EditorSectionType.Folder;
       }
+    }
     }
 
     return undefined;
@@ -2241,7 +2294,10 @@ export class ScriptsController {
       }
 
       // Determines the type
-      const sectionType = this.determineSectionType(entry.fsPath);
+      const sectionType = this.determineSectionType({
+        sectionPath: entry.fsPath,
+        isReal: true,
+      });
       if (!sectionType) {
         continue;
       }
@@ -2309,7 +2365,10 @@ export class ScriptsController {
       );
 
       // Determine type
-      const sectionType = this.determineSectionType(sectionPath.fsPath);
+      const sectionType = this.determineSectionType({
+        sectionPath: sectionPath.fsPath,
+        isReal: true,
+      });
       if (!sectionType) {
         continue;
       }
@@ -2327,12 +2386,6 @@ export class ScriptsController {
 
         case EditorSectionType.Folder:
         case EditorSectionType.Script: {
-          // Checks if file system reference is valid since the real file entry
-          // could have been removed manually when extension was not running.
-          if (!fs.existsSync(sectionPath.fsPath)) {
-            break;
-          }
-
           // Create editor section
           this.sectionCreate(
             {

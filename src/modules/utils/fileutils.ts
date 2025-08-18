@@ -39,13 +39,7 @@ export type WriteOptions = {
  * @returns Whether path is a directory.
  */
 export function isFolder(folder: string): boolean {
-  // Checks if path exists.
-  if (!fs.existsSync(folder)) {
-    return false;
-  }
-
-  // Checks if file is a directory.
-  return fs.statSync(folder).isDirectory();
+  return fs.existsSync(folder) && fs.statSync(folder).isDirectory();
 }
 
 /**
@@ -54,13 +48,7 @@ export function isFolder(folder: string): boolean {
  * @returns Whether path is a file.
  */
 export function isFile(file: string): boolean {
-  // Checks if path exists.
-  if (!fs.existsSync(file)) {
-    return false;
-  }
-
-  // Checks if file is actually a file.
-  return fs.statSync(file).isFile();
+  return fs.existsSync(file) && fs.statSync(file).isFile();
 }
 
 /**
@@ -69,13 +57,7 @@ export function isFile(file: string): boolean {
  * @returns Whether path is a Ruby file.
  */
 export function isRubyFile(file: string): boolean {
-  // Checks if it is a file.
-  if (!isFile(file)) {
-    return false;
-  }
-
-  // Checks if file is a Ruby script.
-  return path.extname(file).toLowerCase() === '.rb';
+  return isFile(file) && path.extname(file).toLowerCase() === '.rb';
 }
 
 /**
@@ -87,7 +69,7 @@ export function isRubyFile(file: string): boolean {
  */
 export function isFolderLike(folder: string): boolean {
   const baseName = path.basename(folder);
-  return baseName.length > 0 && path.extname(baseName) !== '.rb';
+  return baseName.length > 0 && path.extname(baseName).length === 0;
 }
 
 /**
