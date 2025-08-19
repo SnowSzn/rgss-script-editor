@@ -2,6 +2,26 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.6.0] - 19/08/2025
+
+### Added
+
+- Added script loader preload
+  - You can preload scripts before loading the game's scripts
+  - You can preload from the following sources:
+    - Bundle file (rxdata, rvdata and rvdata2)
+    - Loose script file
+    - Folder with a load_order.txt file
+- Added script loader logging
+  - Useful for RPG Maker XP and VX
+  - Enable/disable using a extension setting
+
+### Fixed
+
+- Fixed load order recognized as a folder sometimes in the tree view
+- Fixed uncaught error when showing peek menu with a empty backtrace
+- Fixed load order backups folder setting description
+
 ## [1.5.5] - 21/05/2025
 
 ### Fixed

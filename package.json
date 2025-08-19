@@ -29,7 +29,7 @@
   "bugs": {
     "url": "https://github.com/SnowSzn/rgss-script-editor/issues"
   },
-  "version": "1.5.5",
+  "version": "1.6.0",
   "engines": {
     "vscode": "^1.84.0"
   },
