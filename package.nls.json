@@ -41,7 +41,7 @@
 	"configuration.extension.scriptNameValidation.enumDescriptionNever": "Never validate script names (disabled)",
 	"configuration.extension.scriptNameValidation.description": "Choose script name validation mode.\n\nDue to a Ruby limitation, any RPG Maker that uses a version of Ruby below v1.9 must enable this setting.\n\nThe RPG Maker versions affected by this limitation are: RPG Maker XP and RPG Maker VX.\n\nIf you are using MKXP-Z you don't need to use this, regardless of the RPG Maker version.\n\nCheck extension's README for more information.\n\n**DISABLE AT YOUR OWN RISK**",
 	"configuration.external.backUpsFolder.description": "The relative path within the project's folder where all bundle scripts files backups will be saved.",
-	"configuration.external.loadOrderBackUpsFolder.description": "The relative path within the project's folder where all bundle scripts files backups will be saved.",
+	"configuration.external.loadOrderBackUpsFolder.description": "The relative path within the project's folder where all load order backups will be saved.",
 	"configuration.external.scriptsFolder.description": "The relative path within the project's folder where all scripts will be extracted.",
 	"configuration.external.extensionLogFileFolder.description": "The relative path within the project's folder where the extension log file is created.",
 	"configuration.external.gameLogFileFolder.description": "The relative path within the project's folder where the game log file is created.",
