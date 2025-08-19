@@ -134,6 +134,13 @@ export class Configuration {
   public static GAME_OUTPUT_FILE = 'game.log';
 
   /**
+   * Game script loader execution output file name.
+   *
+   * This file is created by the script loader to log information.
+   */
+  public static LOADER_OUTPUT_FILE = 'loader.log';
+
+  /**
    * File name of the backup file that the user creates from the extracted scripts.
    *
    * The name should not have extensions since it will get automatically determined
@@ -288,6 +295,14 @@ export class Configuration {
   }
 
   /**
+   * Gets the project relative path to the preload folder.
+   * @returns Scripts folder path.
+   */
+  configPreloadFolder(): string {
+    return this._getVSCodeConfig<string>('external.preloadFolder')!;
+  }
+
+  /**
    * Gets the project relative path to the extension log file folder.
    * @returns Log file folder.
    */
@@ -389,6 +404,14 @@ export class Configuration {
     return this._getVSCodeConfig<boolean>(
       'gameplay.gameExceptionShowInEditor'
     )!;
+  }
+
+  /**
+   * Gets the extension game loader logging flag.
+   * @returns Loader logging flag.
+   */
+  configLoaderLogging(): boolean {
+    return this._getVSCodeConfig<boolean>('gameplay.gameLoaderLogging')!;
   }
 
   /**
@@ -590,6 +613,25 @@ export class Configuration {
       return this.joinProject(
         this.configGameLogFileFolder(),
         Configuration.GAME_OUTPUT_FILE
+      );
+    }
+  }
+
+  /**
+   * Determines the path to the game's script loader log file.
+   *
+   * If the folder is not valid, it returns ``undefined``
+   *
+   * @param options Options
+   * @returns Game output file uri path
+   */
+  determineLoaderLogPath(options?: DeterminePathOptions) {
+    if (options?.removeFilePart) {
+      return this.joinProject(this.configGameLogFileFolder());
+    } else {
+      return this.joinProject(
+        this.configGameLogFileFolder(),
+        Configuration.LOADER_OUTPUT_FILE
       );
     }
   }

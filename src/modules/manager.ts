@@ -1302,6 +1302,16 @@ export async function onDidChangeConfiguration(
   ) {
     // Re-creates the script loader if user changes the game log folder path
     await createScriptLoader();
+  } else if (
+    event.affectsConfiguration('rgssScriptEditor.external.preloadFolder')
+  ) {
+    // Re-creates the script loader if user changes the preload folder path
+    await createScriptLoader();
+  } else if (
+    event.affectsConfiguration('rgssScriptEditor.gameplay.gameLoaderLogging')
+  ) {
+    // Re-creates the script loader if user enables/disables loader logging
+    await createScriptLoader();
   }
 }
 

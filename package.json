@@ -296,6 +296,12 @@
             "description": "%configuration.external.scriptsFolder.description%",
             "order": 35
           },
+          "rgssScriptEditor.external.preloadFolder": {
+            "type": "string",
+            "default": "",
+            "description": "%configuration.external.preloadFolder.description%",
+            "order": 38
+          },
           "rgssScriptEditor.external.extensionLogFileFolder": {
             "type": "string",
             "default": "./.rgss-script-editor",
@@ -377,6 +383,12 @@
             "default": true,
             "description": "%configuration.gameplay.gameExceptionShowInEditor.description%",
             "order": 71
+          },
+          "rgssScriptEditor.gameplay.gameLoaderLogging": {
+            "type": "boolean",
+            "default": false,
+            "description": "%configuration.gameplay.gameLoaderLogging.description%",
+            "order": 75
           }
         }
       }
