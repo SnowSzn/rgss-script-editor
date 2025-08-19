@@ -2634,7 +2634,7 @@ module ScriptLoaderConfiguration
   #
   # Enables/disables logging.
   #
-  LOGGING = ${config.logging ? 'true' : 'false'}
+  LOGGING = ${config.logging}
 end
 
 ###############################################################################
@@ -2756,9 +2756,7 @@ module ScriptLoader
 
       # Preload scripts
       log('Preloading scripts...')
-      preload_order_path = File.join(PRELOAD_PATH, '${
-        config.loadOrderFileName
-      }')
+      preload_order_path = File.join(PRELOAD_PATH, '${config.loadOrderFileName}')
       if File.file?(PRELOAD_PATH)
         log("Preload path points to a specific file")
 
