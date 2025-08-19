@@ -695,6 +695,14 @@ export async function processGameException() {
       await vscode.window.showTextDocument(doc, vscode.ViewColumn.Beside, true);
     }
 
+    // Checks if exception has a valid backtrace to show
+    if (!exception.hasBacktrace()) {
+      logger.logWarning(
+        'Game exception does not have a valid backtrace (empty backtrace array)'
+      );
+      return;
+    }
+
     // Opens the peek menu to backtrace.
     await vscode.commands.executeCommand(
       'editor.action.peekLocations',

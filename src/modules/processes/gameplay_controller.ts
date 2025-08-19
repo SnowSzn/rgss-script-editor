@@ -121,6 +121,13 @@ export class GameException {
   }
 
   /**
+   * Checks if this game exception has a valid backtrace.
+   */
+  hasBacktrace(): boolean {
+    return this.backtrace.length > 0;
+  }
+
+  /**
    * Adds a new backtrace element with the given information.
    * @param file File absolute path.
    * @param line Line number.
