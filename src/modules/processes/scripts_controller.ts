@@ -2552,7 +2552,7 @@ export class ScriptsController {
     return `#==============================================================================
 # ** ${config.scriptName}
 #------------------------------------------------------------------------------
-# Version: 1.6.0
+# Version: 1.6.1
 # Author: SnowSzn
 # Github: https://github.com/SnowSzn/
 # VSCode extension: https://github.com/SnowSzn/rgss-script-editor
