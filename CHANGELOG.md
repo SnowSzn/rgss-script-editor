@@ -2,6 +2,17 @@
 
 All notable changes to the "rgss-script-editor" extension will be documented in this file.
 
+## [1.6.1] - 18/10/2025
+
+### Fixed
+
+- Redirects game's stdout and stderr properly in unix-like systems
+  - Extension no longer creates a "CONOUT$" file in unix systems
+- Normalized load order entries path to ensure consistency
+  - Extension failed to process the same load order between Windows and Linux
+  - Load order entries will be written using the POSIX standard separator
+  - Load order entries are processed based on the user's OS
+
 ## [1.6.0] - 19/08/2025
 
 ### Added
