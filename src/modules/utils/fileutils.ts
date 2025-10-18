@@ -124,6 +124,29 @@ export function copyFile(
 }
 
 /**
+ * Normalizes the given path to use appropiate path separators
+ *
+ * Returns the same path if the platform is not valid
+ * @param base Path to normalize
+ * @param platform OS platform
+ */
+export function normalize(base: string, platform: NodeJS.Platform) {
+  switch (platform) {
+    case 'darwin':
+    case 'linux': {
+      const normalized = base.replace(/\\/g, '/');
+      return path.posix.normalize(normalized);
+    }
+    case 'win32': {
+      const normalized = base.replace(/\//g, '\\');
+      return path.win32.normalize(normalized);
+    }
+    default:
+      return base;
+  }
+}
+
+/**
  * Reads all entries of the given directory specified by ``base``.
  *
  * Optionally, some options ({@link ReadOptions ``ReadOptions``}) can be given that changes the behavior of this function.
