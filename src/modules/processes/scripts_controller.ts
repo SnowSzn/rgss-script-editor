@@ -2391,6 +2391,9 @@ export class ScriptsController {
         ? entry
         : entry.slice(EDITOR_SECTION_SKIPPED_CHARACTER.length);
 
+      // Normalize section name relative path with the user OS platform
+      sectionName = fileutils.normalize(sectionName, process.platform);
+
       // Process section path
       let sectionPath = vscode.Uri.joinPath(
         this._root.resourceUri,
@@ -2458,6 +2461,9 @@ export class ScriptsController {
     for (const section of sections || []) {
       // Gets relative entry
       let entry = this._root.relative(section.resourceUri);
+
+      // Normalize entry path to ensure consistency in the load order file
+      entry = fileutils.normalize(entry, 'linux');
 
       // Adds checkbox status
       entry = section.isLoaded()
