@@ -2678,6 +2678,25 @@ module ScriptLoader
   #
   class ResetLoader < StandardError; end
 
+
+  #
+  # Checks if the platform is Windows-like
+  #
+  # @return [Boolean]
+  #
+  def self.windows?
+    (/mswin|mingw|cygwin/ =~ RUBY_PLATFORM) != nil
+  end
+
+  #
+  # Checks if the platform is Unix-like
+  #
+  # @return [Boolean]
+  #
+  def self.unix?
+    (/linux|darwin/ =~ RUBY_PLATFORM) != nil
+  end
+
   #
   # Checks if the project's version is RGSS1.
   #
@@ -2973,15 +2992,20 @@ module ScriptLoader
   def self.ensure_file_descriptor_validness
     return unless rgss3?
     begin
-      $stdout.reopen("CONOUT$")
-      $stderr.reopen("CONOUT$")
+      if windows?
+        $stdout.reopen("CONOUT$")
+        $stderr.reopen("CONOUT$")
+      else
+        $stdout.reopen("/dev/stdout")
+        $stderr.reopen("/dev/stderr")
+      end
     rescue
-      if File.exist?(NULL_OUTPUT_UNIX)
-        $stdout.reopen(NULL_OUTPUT_UNIX, 'a')
-        $stderr.reopen(NULL_OUTPUT_UNIX, 'a')
-      elsif File.exist?(NULL_OUTPUT_WIN)
+      if windows?
         $stdout.reopen(NULL_OUTPUT_WIN, 'a')
         $stderr.reopen(NULL_OUTPUT_WIN, 'a')
+      else
+        $stdout.reopen(NULL_OUTPUT_UNIX, 'a')
+        $stderr.reopen(NULL_OUTPUT_UNIX, 'a')
       end
     end
   end
