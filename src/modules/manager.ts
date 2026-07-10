@@ -1347,24 +1347,18 @@ export async function onDidChangeConfiguration(
  */
 async function watcherScriptOnDidCreate(uri: vscode.Uri) {
   try {
-    // Resync the in-memory tree with on-disk state (including any hand-edits to
-    // load_order.txt) before applying this event, so the subsequent save does
-    // not clobber external edits with a stale snapshot.
-    extensionScripts.syncFromDisk();
-
     // Check if it is root path
     if (extensionScripts.root.isPath(uri)) {
       return;
     }
 
-    // Determine entry type
-    logger.logInfo(`(Watcher) Entry created: "${uri.fsPath}"`);
+    // Determine entry type. Unsupported entries (e.g. load_order.txt itself, or
+    // non-Ruby files) are ignored, matching upstream, so they never trigger a
+    // load order rewrite.
     let type = extensionScripts.determineSectionType({
       sectionPath: uri.fsPath,
       isReal: true,
     });
-
-    // Checks type validness
     if (!type) {
       logger.logInfo(
         `(Watcher) Cannot determine the type of the new entry (not supported section type)`
@@ -1372,24 +1366,30 @@ async function watcherScriptOnDidCreate(uri: vscode.Uri) {
       return;
     }
 
-    // Checks if section exists already
-    if (extensionScripts.sectionFind(uri)) {
-      logger.logInfo(`(Watcher) A section already exists for: ${uri.fsPath}`);
-      return;
+    logger.logInfo(`(Watcher) Entry created: "${uri.fsPath}"`);
+
+    // Resync the in-memory tree with on-disk state (including any hand-edits to
+    // load_order.txt) BEFORE persisting, so the save reflects external edits
+    // plus this event instead of clobbering them with a stale snapshot.
+    extensionScripts.syncFromDisk();
+
+    // syncFromDisk()'s folder scan normally picks up the new entry already; add
+    // it explicitly in case a filesystem race made the scan miss it.
+    if (!extensionScripts.sectionFind(uri)) {
+      logger.logInfo(`(Watcher) Creating section: "${uri.fsPath}"`);
+      extensionScripts.sectionCreate(
+        {
+          parent: extensionScripts.root,
+          type: type,
+          uri: uri,
+        },
+        {
+          checkboxState: true,
+        }
+      );
     }
 
-    // Create new section
-    logger.logInfo(`(Watcher) Creating section: "${uri.fsPath}"`);
-    extensionScripts.sectionCreate(
-      {
-        parent: extensionScripts.root,
-        type: type,
-        uri: uri,
-      },
-      {
-        checkboxState: true,
-      }
-    );
+    // Persists load_order.txt (hand-edits + this event) and refreshes the view.
     await refresh();
   } catch (error) {
     logger.logErrorUnknown(error);
@@ -1402,26 +1402,26 @@ async function watcherScriptOnDidCreate(uri: vscode.Uri) {
  */
 async function watcherScriptOnDidDelete(uri: vscode.Uri) {
   try {
-    // Resync the in-memory tree with on-disk state (including any hand-edits to
-    // load_order.txt) before applying this event, so the subsequent save does
-    // not clobber external edits with a stale snapshot.
-    extensionScripts.syncFromDisk();
-
-    logger.logInfo(`(Watcher) Entry deleted: "${uri.fsPath}"`);
-
-    // Find child instance that matches the deleted path.
+    // Only react if the deleted entry was actually tracked in the tree. This
+    // matches upstream (which ignores deletions of untracked files) and, in
+    // particular, avoids auto-recreating load_order.txt if it is deleted. The
+    // lookup runs before the resync, while the deleted entry is still present.
     let child = extensionScripts.root.findChild((value) => {
       return value.isPath(uri);
     }, true);
-
-    // Delete child if found.
-    if (child) {
-      logger.logInfo(
-        `(Watcher) Deleting section: "${child.resourceUri.fsPath}"`
-      );
-      extensionScripts.sectionDelete(child);
-      await refresh();
+    if (!child) {
+      return;
     }
+
+    logger.logInfo(`(Watcher) Entry deleted: "${uri.fsPath}"`);
+
+    // Resync the in-memory tree with on-disk state (including any hand-edits to
+    // load_order.txt) BEFORE persisting. The deleted entry drops out because
+    // _readLoadOrder()/_scan() skip paths that no longer exist on disk.
+    extensionScripts.syncFromDisk();
+
+    // Persists load_order.txt (hand-edits minus this event) and refreshes view.
+    await refresh();
   } catch (error) {
     logger.logErrorUnknown(error);
   }
