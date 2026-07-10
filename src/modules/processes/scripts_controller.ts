@@ -2261,6 +2261,32 @@ export class ScriptsController {
   }
 
   /**
+   * Re-reads the load order file and rescans the scripts folder for untracked
+   * entries, rebuilding the in-memory tree from what is currently on disk.
+   *
+   * This does NOT save the load order file: callers decide when to persist the
+   * resulting tree. This lets a caller sync the in-memory tree with on-disk
+   * (possibly hand-edited) state before applying a change and saving.
+   *
+   * Clears the clipboard as a side effect (same as a full restart), since the
+   * previous clipboard entries reference tree instances that no longer exist.
+   *
+   * Assumes the scripts folder path and load order file path are already set,
+   * so it must not be called before `_restart()` has run at least once.
+   */
+  syncFromDisk() {
+    // Clears previous editor section root instance and stale clipboard
+    this._root.clear();
+    this._clipboard = [];
+
+    // Reads the load order file
+    this._readLoadOrder();
+
+    // Scans the scripts directory for new files
+    this._scan();
+  }
+
+  /**
    * Restarts this instance based on the current attributes.
    */
   private _restart() {
@@ -2271,10 +2297,8 @@ export class ScriptsController {
       return;
     }
 
-    // Clears previous editor section root instance
-    this._root.clear();
+    // Renames the root to the current scripts folder path
     this._root.rename(scriptsFolderPath);
-    this._clipboard = [];
 
     // Updates load order file path
     this._loadOrderFilePath = vscode.Uri.joinPath(
@@ -2285,11 +2309,8 @@ export class ScriptsController {
     // Create scripts folder path if it does not exists
     fileutils.createFolder(scriptsFolderPath.fsPath, { recursive: true });
 
-    // Reads the load order file
-    this._readLoadOrder();
-
-    // Scans the scripts directory for new files
-    this._scan();
+    // Rebuilds the in-memory tree from disk (load order file + folder scan)
+    this.syncFromDisk();
 
     // Saves load order after reading and scanning
     this._saveLoadOrder(this._root.nestedChildren());

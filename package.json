@@ -50,6 +50,12 @@
         "icon": "$(folder)"
       },
       {
+        "command": "rgss-script-editor.reloadFromLoadOrder",
+        "title": "Reload From Load Order File",
+        "category": "RGSS Script Editor",
+        "icon": "$(refresh)"
+      },
+      {
         "command": "rgss-script-editor.openProjectFolder",
         "title": "%command.openProjectFolder.title%",
         "category": "RGSS Script Editor",

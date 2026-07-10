@@ -256,6 +256,32 @@ export async function setProjectFolder(projectFolder: vscode.Uri) {
 }
 
 /**
+ * Forces a full reload of the current project from disk, re-reading
+ * ``load_order.txt`` and rescanning the scripts folder for untracked entries,
+ * without prompting the user to pick a workspace folder.
+ *
+ * This reuses the existing ``setProjectFolder()`` pipeline, so it behaves
+ * exactly like re-opening the current project folder, just without the
+ * workspace folder quick-pick.
+ *
+ * No-op if no project folder is currently active.
+ * @returns A promise.
+ */
+export async function reloadFromLoadOrder() {
+  try {
+    const info = extensionConfig.getInfo();
+    if (!info) {
+      logger.logWarning('No active project folder to reload!');
+      return;
+    }
+    await setProjectFolder(info.projectFolderPath);
+  } catch (error) {
+    logger.logErrorUnknown(error);
+    showBasicErrorMessage();
+  }
+}
+
+/**
  * Opens the working RPG Maker project folder.
  * @returns A promise
  */
@@ -1321,6 +1347,11 @@ export async function onDidChangeConfiguration(
  */
 async function watcherScriptOnDidCreate(uri: vscode.Uri) {
   try {
+    // Resync the in-memory tree with on-disk state (including any hand-edits to
+    // load_order.txt) before applying this event, so the subsequent save does
+    // not clobber external edits with a stale snapshot.
+    extensionScripts.syncFromDisk();
+
     // Check if it is root path
     if (extensionScripts.root.isPath(uri)) {
       return;
@@ -1371,6 +1402,11 @@ async function watcherScriptOnDidCreate(uri: vscode.Uri) {
  */
 async function watcherScriptOnDidDelete(uri: vscode.Uri) {
   try {
+    // Resync the in-memory tree with on-disk state (including any hand-edits to
+    // load_order.txt) before applying this event, so the subsequent save does
+    // not clobber external edits with a stale snapshot.
+    extensionScripts.syncFromDisk();
+
     logger.logInfo(`(Watcher) Entry deleted: "${uri.fsPath}"`);
 
     // Find child instance that matches the deleted path.
