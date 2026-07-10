@@ -1,7 +1,9 @@
 # RGSS Script Editor — Fork Notes
 
 This is a personal fork of [`SnowSzn/rgss-script-editor`](https://github.com/SnowSzn/rgss-script-editor),
-pinned to upstream **v1.6.1**. It adds two small, additive safety changes so
+based on upstream commit `052c782` (**version 1.6.1** — upstream doesn't tag
+releases, so the pin is a commit, not a tag). It adds two small, additive
+safety changes so
 `load_order.txt` and the scripts folder can be edited by hand (terminal, git,
 any text editor) **without the extension silently clobbering those edits**,
 while leaving every GUI-driven code path unchanged.
@@ -157,18 +159,27 @@ The changes are small, additive, and isolated to `manager.ts` and
 `package.json`), so pulling a newer upstream release is straightforward. You
 likely won't need this often, but when you do:
 
+> **Note:** upstream does **not** publish git tags or GitHub releases — it
+> versions via `package.json` (`"version"`) and `feat: version X` commit
+> messages, and its default branch is `master`. So you rebase onto a commit,
+> not a tag. This fork is currently based on `upstream/master` @ `052c782`
+> (v1.6.1), which was its tip at fork time.
+
 ```sh
-# One-time: add the upstream remote (read-only; we never push to it).
+# One-time: add the upstream remote, fetch-only (never push to SnowSzn's repo).
 git remote add upstream https://github.com/SnowSzn/rgss-script-editor.git
+git remote set-url --push upstream DISABLED
 
-# When you want a newer upstream version:
-git fetch upstream --tags
+# When you want newer upstream code:
+git fetch upstream
 
-# Inspect available tags and pick the one you want (e.g. v1.7.0).
-git tag -l | sort -V | tail
+# See what version upstream/master is now, and what's new since your base.
+git show upstream/master:package.json | grep '"version"'
+git log --oneline 052c782..upstream/master
 
-# Rebase this fork's commits onto the new upstream tag.
-git rebase <new-tag>        # e.g. git rebase v1.7.0
+# Rebase this fork's commits onto the new upstream tip (or pin to a specific
+# commit hash instead of the moving branch if you want reproducibility).
+git rebase upstream/master
 ```
 
 Because neither change touches the GUI section-command bodies, the UI layer, or
